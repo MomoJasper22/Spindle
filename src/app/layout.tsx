@@ -25,11 +25,11 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Spindle | Appliance Repair & Field Service Operations CRM',
+    default: 'Spindle | Appliance Repair & Home Service Scheduling',
     template: '%s | Spindle',
   },
   description:
-    'Precision home and commercial appliance repair scheduling, field technician dispatch, and service lifecycle operations across the Philippines.',
+    'Trusted home and commercial appliance repair scheduling across the Philippines with certified technicians and transparent PHP pricing.',
 }
 
 export const viewport: Viewport = {

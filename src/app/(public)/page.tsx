@@ -4,66 +4,70 @@ import {
   CalendarClock,
   CheckCircle2,
   CreditCard,
+  Home,
   MapPin,
   ShieldCheck,
-  Wrench,
 } from 'lucide-react'
 import { SpindleLogo } from '@/components/shared/spindle-logo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { APPLIANCE_CATEGORIES, SERVICE_BRANCHES } from '@/lib/constants'
+import {
+  ApplianceRepairIcons,
+  SupportedBrandsStrip,
+} from '@/features/landing/components/appliance-showcase'
+import { SERVICE_BRANCHES } from '@/lib/constants'
 
-const CAPABILITIES = [
+const CUSTOMER_PROMISES = [
   {
-    title: 'Certified Local Technicians',
+    title: 'Vetted, Certified Technicians',
     description:
-      'TESDA-aligned field engineers vetted for residential and commercial inverter systems across major Philippine hubs.',
+      'Every technician visiting your home or business holds verified TESDA and brand-specific training for modern inverter units.',
     icon: ShieldCheck,
     accent: 'text-teal-700 bg-teal-50',
   },
   {
-    title: 'Transparent PHP Estimates & Digital Payments',
+    title: 'Clear Upfront PHP Pricing',
     description:
-      'Upfront Philippine Peso diagnostics and verified settlement via GCash, Maya, QR Ph, bank transfer, or cash.',
+      'Approve your estimated repair cost in Philippine Pesos before work begins—with easy digital payment via GCash, Maya, QR Ph, bank transfer, or cash.',
     icon: CreditCard,
     accent: 'text-primary bg-primary-tint',
   },
   {
-    title: 'Real-Time Appointment Scheduling',
+    title: '2-Hour Arrival Windows',
     description:
-      'Lock 2-hour Philippine Standard Time arrival windows with conflict-free technician dispatch and live stage tracking.',
+      'Choose the date and Philippine Standard Time window that fits your day, and reschedule online whenever your plans change.',
     icon: CalendarClock,
     accent: 'text-sky-700 bg-sky-50',
   },
 ] as const
 
-const WORKFLOW_STAGES = [
+const CUSTOMER_JOURNEY_STEPS = [
   {
     step: '01',
-    title: 'Request',
-    detail: 'Register your unit and pick a PHT service slot.',
-    badge: 'Pending',
+    title: 'Choose Your Appliance & Slot',
+    detail: 'Tell us what needs fixing and pick a convenient 2-hour arrival window.',
+    badge: 'Online Booking',
     badgeStyle: 'bg-[#FEF3C7] text-[#B45309]',
   },
   {
     step: '02',
-    title: 'Dispatch',
-    detail: 'Branch coordinator locks an available specialist.',
-    badge: 'Assigned',
-    badgeStyle: 'bg-[#EEF2FF] text-[#4338CA]',
-  },
-  {
-    step: '03',
-    title: 'Repair',
-    detail: 'On-site inspection, diagnostic notes & PHP quote.',
-    badge: 'In Progress',
+    title: 'Technician Confirmed',
+    detail: 'See your assigned specialist’s name and contact details before they arrive.',
+    badge: 'Verified Pro',
     badgeStyle: 'bg-[#E0F2FE] text-[#0369A1]',
   },
   {
+    step: '03',
+    title: 'Upfront Quote & Repair',
+    detail: 'Receive diagnostic findings and an honest PHP estimate before any repair starts.',
+    badge: 'On-Site Care',
+    badgeStyle: 'bg-[#EEF2FF] text-[#4338CA]',
+  },
+  {
     step: '04',
-    title: 'Pay',
-    detail: 'Settle via GCash, Maya, QR Ph, or cash receipt.',
-    badge: 'Completed',
+    title: 'Pay After Resolution',
+    detail: 'Settle comfortably via GCash, Maya, QR Ph, bank transfer, or cash.',
+    badge: 'Guaranteed',
     badgeStyle: 'bg-[#D1FAE5] text-[#047857]',
   },
 ] as const
@@ -78,7 +82,10 @@ export default function LandingPage() {
             <SpindleLogo variant="dark" />
           </Link>
 
-          <nav aria-label="Primary" className="hidden md:flex items-center gap-7 text-sm font-medium text-muted-foreground">
+          <nav
+            aria-label="Primary"
+            className="hidden md:flex items-center gap-7 text-sm font-medium text-muted-foreground"
+          >
             <a href="#services" className="hover:text-foreground transition-colors">
               Services
             </a>
@@ -102,21 +109,16 @@ export default function LandingPage() {
       </header>
 
       <main id="main-content" tabIndex={-1} className="flex-1">
-        {/* Crisp Hero Section */}
-        <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:py-20">
-          <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
+        {/* Customer-Focused Hero Section */}
+        <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:py-18">
+          <div className="grid gap-10 lg:grid-cols-12 lg:items-start">
             <div className="space-y-6 lg:col-span-6">
-              <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-primary-tint px-3.5 py-1 text-xs font-semibold text-primary">
-                <Wrench className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Philippine Appliance Repair &amp; Field Dispatch</span>
-              </div>
-
               <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
                 Reliable Appliance Repair, Scheduled Around Your Day
               </h1>
 
               <p className="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-                Book certified technicians for split-type aircons, inverter refrigerators, washers, and commercial chillers—with transparent PHP quotes and real-time job tracking.
+                Fast, dependable home and commercial appliance repair across the Philippines. Register your unit, book a trusted technician, and track every repair update in real time.
               </p>
 
               <div className="flex flex-wrap items-center gap-3 pt-1">
@@ -130,23 +132,26 @@ export default function LandingPage() {
                   <Link href="/login">Track Existing Ticket</Link>
                 </Button>
               </div>
+
+              <ApplianceRepairIcons />
             </div>
 
-            {/* Clean Visual Preview Card (Live Workflow Stages) */}
+            {/* Customer Experience Preview Card */}
             <div id="how-it-works" className="lg:col-span-6">
               <Card className="overflow-hidden border-slate-200 bg-sidebar text-sidebar-foreground shadow-lg">
                 <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3.5">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                    Spindle Dispatch Workflow
+                  <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-300">
+                    <Home className="h-3.5 w-3.5 text-teal-300" aria-hidden="true" />
+                    Your Repair Visit, Step by Step
                   </span>
                   <span className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-300">
                     <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-                    Asia/Manila (UTC+8)
+                    Same-Week Slots
                   </span>
                 </div>
                 <CardContent className="p-5 sm:p-6">
                   <div className="grid gap-3 sm:grid-cols-2">
-                    {WORKFLOW_STAGES.map((stage) => (
+                    {CUSTOMER_JOURNEY_STEPS.map((stage) => (
                       <div
                         key={stage.step}
                         className="rounded-lg border border-slate-800 bg-slate-900/90 p-4 space-y-2"
@@ -172,22 +177,24 @@ export default function LandingPage() {
               </Card>
             </div>
           </div>
+
+          <SupportedBrandsStrip />
         </section>
 
-        {/* Compact 3-Card Capability Strip */}
+        {/* Compact 3-Card Customer Capability Strip */}
         <section id="services" className="border-y border-border bg-card py-14">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 space-y-8">
             <div className="max-w-2xl space-y-2">
               <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                Built for dependable residential and commercial service
+                Care you can count on for every home and business appliance
               </h2>
               <p className="text-sm text-muted-foreground sm:text-base">
-                Supporting {APPLIANCE_CATEGORIES.slice(0, 6).join(', ')}, and commercial refrigeration units.
+                From preventive aircon cleaning to urgent refrigerator and washer repairs, everything stays transparent from booking to payment.
               </p>
             </div>
 
             <div className="grid gap-5 md:grid-cols-3">
-              {CAPABILITIES.map((cap) => {
+              {CUSTOMER_PROMISES.map((cap) => {
                 const Icon = cap.icon
                 return (
                   <Card key={cap.title} className="border-border bg-background/50">
@@ -216,10 +223,10 @@ export default function LandingPage() {
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-1.5">
               <h2 className="font-heading text-xl font-bold text-foreground sm:text-2xl">
-                Active Philippine Service Hubs
+                Where We Come to You
               </h2>
               <p className="text-sm text-muted-foreground">
-                Regional dispatch teams covering Metro Manila, Laguna, Cebu, and Davao.
+                Book on-site technician visits across Metro Manila, Laguna, Cebu, and Davao.
               </p>
             </div>
 
@@ -244,7 +251,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             <SpindleLogo variant="dark" size="sm" />
             <span className="text-xs text-muted-foreground">
-              &copy; 2026 Spindle Field Operations Inc. Philippines.
+              &copy; 2026 Spindle Appliance Care Inc. Philippines.
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-5 text-xs font-medium text-muted-foreground">
@@ -252,13 +259,13 @@ export default function LandingPage() {
               Services
             </a>
             <a href="#service-areas" className="hover:text-foreground">
-              Branches
+              Service Areas
             </a>
             <Link href="/login" className="hover:text-foreground">
-              Customer &amp; Staff Portal
+              Sign In
             </Link>
             <Link href="/signup" className="text-primary hover:underline">
-              Schedule Repair
+              Book a Repair
             </Link>
           </div>
         </div>

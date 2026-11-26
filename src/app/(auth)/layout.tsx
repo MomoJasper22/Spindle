@@ -1,6 +1,6 @@
 import * as React from 'react'
 import Link from 'next/link'
-import { CheckCircle2, MapPin, ShieldCheck, Wrench } from 'lucide-react'
+import { CheckCircle2, ShieldCheck, Wrench } from 'lucide-react'
 import { SpindleLogo } from '@/components/shared/spindle-logo'
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -18,14 +18,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           }}
         />
 
-        <div className="relative z-10 flex items-center justify-between">
+        <div className="relative z-10 flex items-center">
           <Link href="/" aria-label="Back to Spindle landing page">
             <SpindleLogo variant="light" size="lg" showTagline />
           </Link>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-xs font-medium text-teal-300">
-            <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-            Philippines Service Network
-          </span>
         </div>
 
         <div className="relative z-10 my-10 space-y-6 lg:my-0">

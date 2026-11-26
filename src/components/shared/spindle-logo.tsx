@@ -54,7 +54,7 @@ export function SpindleLogo({
         </span>
         {showTagline && (
           <span className={cn('text-[11px] font-medium mt-0.5', subColor)}>
-            Field Service CRM
+            Appliance Repair &amp; Care
           </span>
         )}
       </div>
