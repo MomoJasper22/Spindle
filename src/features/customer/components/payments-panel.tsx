@@ -47,10 +47,10 @@ export function PaymentsPanel({ repairs, payments, defaultTicketId }: PaymentsPa
 
   const initialAmount = preselected
     ? Math.max(
-        0,
-        Number(preselected.final_cost_php ?? preselected.estimated_cost_php ?? 0) -
-          Number(preselected.verified_paid_php ?? 0)
-      )
+      0,
+      Number(preselected.final_cost_php ?? preselected.estimated_cost_php ?? 0) -
+      Number(preselected.verified_paid_php ?? 0)
+    )
     : 0
 
   const [dialogOpen, setDialogOpen] = React.useState(Boolean(preselected && preselected.status !== 'completed'))
