@@ -6,16 +6,21 @@ import { SpindleLogo } from '@/components/shared/spindle-logo'
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh grid grid-cols-1 lg:grid-cols-2">
-      {/* Left Brand & Operational Showcase Panel */}
-      <aside className="relative flex flex-col justify-between overflow-hidden bg-sidebar px-6 py-8 text-sidebar-foreground sm:px-10 lg:px-12 lg:py-12">
+      {/* Left Brand & Customer Marketing Showcase with Editorial Background Photo */}
+      <aside className="relative flex flex-col justify-between overflow-hidden bg-slate-950 px-6 py-8 text-white sm:px-10 lg:px-12 lg:py-12">
+        {/* Background Picture */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/auth-showcase.jpg"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+        />
+
+        {/* High-Contrast Dark Gradient Scrim */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-20"
-          style={{
-            backgroundImage:
-              'radial-gradient(#3B82F6 1px, transparent 1px)',
-            backgroundSize: '24px 24px',
-          }}
+          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/80 to-slate-950/65"
         />
 
         <div className="relative z-10 flex items-center">
@@ -24,63 +29,34 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </Link>
         </div>
 
-        <div className="relative z-10 my-10 space-y-6 lg:my-0">
+        <div className="relative z-10 my-10 max-w-md space-y-6 lg:my-0">
           <div className="space-y-3">
-            <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl">
-              Precision appliance care, from booking to resolution.
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl drop-shadow-xs">
+              Dependable care for the appliances your home runs on.
             </h1>
-            <p className="max-w-lg text-sm leading-relaxed text-slate-300 sm:text-base">
-              Coordinated scheduling, verified technicians, and transparent Philippine Peso billing across Metro Manila, CALABARZON, Cebu, and Davao.
+            <p className="text-sm leading-relaxed text-slate-200 sm:text-base">
+              Book verified local technicians at your convenience, review upfront Philippine Peso quotes, and pay securely after the job is done.
             </p>
           </div>
 
-          {/* Workflow Stage Preview Card */}
-          <div className="rounded-xl border border-slate-700/80 bg-slate-900/90 p-5 shadow-lg">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Service Lifecycle
-              </span>
-              <span className="text-xs font-medium text-teal-300">Live Dispatch Sync</span>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {[
-                { step: '01', title: 'Request', sub: 'Pick PH slot' },
-                { step: '02', title: 'Dispatch', sub: 'Lock & assign' },
-                { step: '03', title: 'Repair', sub: 'Field notes' },
-                { step: '04', title: 'Settle', sub: 'PHP ledger' },
-              ].map((item) => (
-                <div
-                  key={item.step}
-                  className="rounded-lg border border-slate-800 bg-slate-950/60 p-3"
-                >
-                  <span className="font-mono text-[11px] font-semibold text-blue-400">
-                    {item.step}
-                  </span>
-                  <p className="mt-1 text-sm font-semibold text-white">{item.title}</p>
-                  <p className="text-xs text-slate-400">{item.sub}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <ul className="grid gap-3 sm:grid-cols-3 text-xs text-slate-300">
-            <li className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 shrink-0 text-teal-400" aria-hidden="true" />
-              <span>Verified Technicians</span>
+          <ul className="space-y-3 text-sm text-slate-100">
+            <li className="flex items-center gap-2.5">
+              <ShieldCheck className="h-4 w-4 shrink-0 text-teal-300" aria-hidden="true" />
+              <span>Certified specialists for major home &amp; inverter brands</span>
             </li>
-            <li className="flex items-center gap-2">
-              <Wrench className="h-4 w-4 shrink-0 text-blue-400" aria-hidden="true" />
-              <span>Multi-Brand Support</span>
+            <li className="flex items-center gap-2.5">
+              <Wrench className="h-4 w-4 shrink-0 text-blue-300" aria-hidden="true" />
+              <span>Flexible 2-hour arrival windows across Metro Manila, Laguna, Cebu &amp; Davao</span>
             </li>
-            <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden="true" />
-              <span>GCash, Maya &amp; QR Ph</span>
+            <li className="flex items-center gap-2.5">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-300" aria-hidden="true" />
+              <span>Pay via GCash, Maya, QR Ph, bank transfer, or cash</span>
             </li>
           </ul>
         </div>
 
-        <p className="relative z-10 text-xs text-slate-400">
-          &copy; 2026 Spindle Field Operations Inc. All rights reserved.
+        <p className="relative z-10 text-xs text-slate-300">
+          &copy; 2026 Spindle Appliance Care Inc. All rights reserved.
         </p>
       </aside>
 

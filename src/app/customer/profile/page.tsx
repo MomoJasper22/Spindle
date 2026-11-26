@@ -24,7 +24,7 @@ async function CustomerProfileContent() {
           </p>
         </div>
         <Badge variant="default" className="font-mono">
-          {profile.user_id} &middot; Customer
+          {profile.user_id} &middot; User
         </Badge>
       </div>
 

@@ -17,6 +17,7 @@ async function AdminLayoutGuard({ children }: { children: React.ReactNode }) {
       role="admin"
       userName={formatFullName(profile)}
       userEmail={profile.email}
+      avatarUrl={profile.avatar_url}
       branchLocation={profile.branch_location}
       navItems={ADMIN_NAV}
     >

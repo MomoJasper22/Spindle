@@ -1,109 +1,145 @@
-# Spindle — Landing Page, Branding & Browser Icon Task List
+# Spindle — Landing, Auth, Sidebar & Profile Refinement Task List
 
-## Phase 1: Brand Identity & Cleanup
+## Phase 1: Public Landing & Auth Showcase
 
-### Task 1: Add Spindle browser tab icon and remove `"Field Service CRM"` copy
+### Task 1: Auth split-screen background picture & concise customer marketing copy
 
-**Description:** Replace the starter Next.js `favicon.ico` with Spindle's geometric cobalt brand icon (`src/app/icon.svg`), verify `src/proxy.ts` does not interfere, and remove `"Field Service CRM"` from `SpindleLogo` and `"CRM"` from root metadata in `src/app/layout.tsx`.
+**Description:** Add an editorial appliance-service background image for the left panel of `(auth)/layout.tsx` with a Midnight Slate contrast scrim, remove the `Service Lifecycle` 4-step card, and replace it with concise customer-focused marketing highlights without information overload.
 
 **Acceptance criteria:**
-- [x] Starter `src/app/favicon.ico` is removed and `src/app/icon.svg` renders the cobalt (`#1D4ED8`) Spindle mark cleanly
-- [x] `"Field Service CRM"` no longer appears anywhere in `src/`
-- [x] Root `<title>` metadata reads cleanly for customers without `"CRM"`
+- [x] Left panel of `/login` and `/signup` renders a background photograph (`public/images/auth-showcase.jpg`) with a dark gradient scrim ensuring readable text contrast
+- [x] `Service Lifecycle` card is removed
+- [x] Concise customer marketing headline + 3 short value points appear without clutter
+- [x] Responsive layout classes present across mobile, tablet, and desktop
 
 **Verification:**
-- [x] Build succeeds: `npm run build`
-- [x] Grep check: `Select-String -Pattern "Field Service CRM|\bCRM\b|Spindle Dispatch Workflow" src/` returns 0 matches
-- [ ] Manual check: browser tab shows the Spindle cobalt icon and updated title
+- [x] Lint & build succeed: `npm run lint` and `npm run build`
+- [ ] Manual check: inspect `/login` and `/signup` text legibility over the background image in browser
 
 **Dependencies:** None
 
 **Files likely touched:**
-- `src/app/favicon.ico` (deleted)
-- `src/app/icon.svg` (new)
-- `src/components/shared/spindle-logo.tsx`
-- `src/app/layout.tsx`
-
-**Estimated scope:** Small (3–4 files)
-
----
-
-### Task 2: Remove eyebrow badges from landing page and sign-in/sign-up layout
-
-**Description:** Remove the rounded pill eyebrow badge above the hero headline on `/` and the `"Philippines Service Network"` eyebrow pill in the `(auth)` split-screen brand panel.
-
-**Acceptance criteria:**
-- [x] No eyebrow pill badge above the `<h1>` on `/`
-- [x] No eyebrow pill badge next to the logo in `/login` and `/signup` left panel
-- [x] Header and spacing remain balanced in layout markup
-
-**Verification:**
-- [x] Lint & build pass: `npm run lint` and `npm run build`
-- [ ] Manual check: inspect `/`, `/login`, and `/signup` layouts at desktop and mobile widths
-
-**Dependencies:** None
-
-**Files likely touched:**
-- `src/app/(public)/page.tsx`
+- `public/images/auth-showcase.jpg` (new)
 - `src/app/(auth)/layout.tsx`
 
 **Estimated scope:** Small (2 files)
 
 ---
 
-## Checkpoint: After Tasks 1–2
-- [x] `npm run lint` and `npm run build` pass with zero errors
-- [ ] Browser tab displays Spindle icon and clean title; eyebrow badges are gone (verify visually in browser)
+### Task 2: Separate landing Repair & Brands sections, header links, and dedicated brand SVGs
 
----
-
-## Phase 2: Customer-Focused Landing Page & Visuals
-
-### Task 3: Create appliance SVG icon grid and brand logo placeholder strip
-
-**Description:** Build a dedicated landing component (`src/features/landing/components/appliance-showcase.tsx`) containing custom geometric SVG icons for the appliance types Spindle repairs (Split-Type Aircon, Window-Type Aircon, Refrigerator, Washing Machine, Cooking Range, Commercial Chiller, Microwave Oven, Water Dispenser) and a clean placeholder logo strip for supported brands (`APPLIANCE_BRAND_SUGGESTIONS`).
+**Description:** Update `appliance-showcase.tsx` so every one of the 12 supported brands has its own dedicated inline SVG logo mark instead of a uniform placeholder icon. Refactor `src/app/(public)/page.tsx` so **Appliances We Repair** (`#repair`) and **Brands We Work With** (`#brands`) are separate, dedicated sections on the page, and add `Repair` and `Brands` navigation links in the sticky header.
 
 **Acceptance criteria:**
-- [x] Each appliance category has an actual inline SVG icon (`aria-hidden="true"`) paired with a clear label (zero emojis)
-- [x] Brand strip renders all supported brands from `APPLIANCE_BRAND_SUGGESTIONS` with consistent geometric placeholder logo marks
-- [x] Responsive grid classes across mobile (`<768px`), tablet (`768px–1023px`), and desktop (`>=1024px`)
+- [x] Each of the 12 brands (`Carrier`, `Condura`, `Panasonic`, `LG`, `Samsung`, `Daikin`, `Koppel`, `Whirlpool`, `Fujidenzo`, `Sharp`, `Midea`, `Haier`) has a distinct dedicated `<svg>` logo
+- [x] Landing page separates Appliances We Repair (`#repair`) and Brands We Work With (`#brands`) into distinct page sections outside the hero CTA block
+- [x] Sticky header navigation includes `Repair` (`#repair`) and `Brands` (`#brands`) alongside existing section links
 
 **Verification:**
-- [x] TypeScript & ESLint pass: `npm run lint` and Next.js build typecheck
-- [x] Build succeeds: `npm run build`
+- [x] Lint & build succeed: `npm run lint` and `npm run build`
+- [ ] Manual check: verify header anchor scrolling and SVG rendering visually in browser
 
-**Dependencies:** Task 1
+**Dependencies:** None
 
 **Files likely touched:**
 - `src/features/landing/components/appliance-showcase.tsx`
+- `src/app/(public)/page.tsx`
 
-**Estimated scope:** Small (1 file)
+**Estimated scope:** Medium (2 files)
 
 ---
 
-### Task 4: Refocus landing page copy and replace dispatch workflow card
+## Checkpoint: After Tasks 1–2
+- [x] `npm run lint` and `npm run build` pass clean
+- [ ] Landing page and `/login` + `/signup` visuals verified in browser
 
-**Description:** Update `src/app/(public)/page.tsx` so all copy focuses on homeowners and business customers booking appliance repairs. Place the SVG appliance category icons and supported brand placeholder strip below the `Schedule Service` / `Track Existing Ticket` CTA buttons. Replace the `"Spindle Dispatch Workflow"` card with a customer-centered service experience card (`"Your Repair Visit, Step by Step"`).
+---
+
+## Phase 2: Profile Photos, Sidebars & Settings Polish
+
+### Task 3: Profile photo schema, Storage migration, upload action & shared component
+
+**Description:** Create `supabase/migrations/004_user_avatar_and_storage.sql` to add `avatar_url TEXT` to `public.users` and configure the `avatars` Storage bucket with user-scoped RLS policies. Update `UserRow` type in `src/types/database.ts`, add shared upload/remove server actions (`src/features/auth/actions/avatar-actions.ts`), and create reusable `ProfilePhotoField` UI (`src/components/shared/profile-photo-field.tsx`).
 
 **Acceptance criteria:**
-- [x] Appliance SVG icons appear directly below `Schedule Service` and `Track Existing Ticket`, followed by the brands placeholder strip
-- [x] `"Spindle Dispatch Workflow"` card is removed and replaced with a customer-oriented booking & care card
-- [x] All landing page headings, capability cards, service hub descriptions, and footer links speak directly to customers (no internal dispatch/CRM jargon)
-- [x] Zero demo data, zero notifications, zero warranty, zero inventory, and zero academic traces
+- [x] `004_user_avatar_and_storage.sql` adds `avatar_url` column and `avatars` Storage bucket + policies cleanly
+- [x] `UserRow` includes `avatar_url?: string | null`
+- [x] Server action validates file type (JPEG/PNG/WebP) and size (<= 2 MB), uploads to Supabase Storage, and updates `public.users.avatar_url`
+- [x] Reusable `ProfilePhotoField` supports preview, upload, and photo removal with accessible labels
 
 **Verification:**
-- [x] Lint & build pass: `npm run lint` and `npm run build`
-- [ ] Manual check: open `/` in browser at desktop and mobile sizes to confirm visual hierarchy, SVG crispness, and browser tab icon
+- [x] TypeScript & ESLint pass: `npm run lint` and `npm run build`
+- [ ] Remote Supabase SQL migration `004_user_avatar_and_storage.sql` executed in Supabase SQL Editor
 
-**Dependencies:** Tasks 1, 2, 3
+**Dependencies:** None
 
 **Files likely touched:**
-- `src/app/(public)/page.tsx`
+- `supabase/migrations/004_user_avatar_and_storage.sql`
+- `src/types/database.ts`
+- `src/features/auth/actions/avatar-actions.ts`
+- `src/components/shared/profile-photo-field.tsx`
 
-**Estimated scope:** Small (1 file)
+**Estimated scope:** Medium (4 files)
+
+---
+
+### Task 4: Overhaul sidebars in PortalShell and role layouts
+
+**Description:** Update `PortalShell` (`src/components/shared/portal-shell.tsx`) and the 3 role layouts (`customer`, `technician`, `admin`) to: remove the Sign Out button from all sidebars (desktop & mobile drawer), hide the `"Customer Portal"` role badge on the customer sidebar, and render a circular profile photo or fallback `User` icon beside the user's name in every role's sidebar.
+
+**Acceptance criteria:**
+- [x] No Sign Out button exists inside desktop or mobile sidebars for Customer, Technician, or Admin
+- [x] `"Customer Portal"` label/badge is removed from the Customer sidebar and mobile drawer
+- [x] User profile icon (or uploaded `avatar_url` thumbnail) appears beside `userName` in Customer, Technician, and Admin sidebars
+
+**Verification:**
+- [x] Lint & build succeed: `npm run lint` and `npm run build`
+- [ ] Manual check: verify sidebar footer and header across all 3 portals in browser
+
+**Dependencies:** Task 3
+
+**Files likely touched:**
+- `src/components/shared/portal-shell.tsx`
+- `src/app/customer/layout.tsx`
+- `src/app/technician/layout.tsx`
+- `src/app/admin/layout.tsx`
+
+**Estimated scope:** Medium (4 files)
+
+---
+
+### Task 5: Refine Customer, Technician & Admin Profile & Settings pages
+
+**Description:** Update profile/settings pages across all three roles:
+- Make `ChangePasswordCard` subtle (compact collapsible disclosure instead of an always-open prominent card) for Customer, Technician, and Admin.
+- Customer (`/customer/profile`): change top-right tag from `Customer` to `User`, add `ProfilePhotoField`, add a clean `Sign Out` button in Settings, and make `Deactivate Account` subtle (quiet muted trigger + `ConfirmationDialog`).
+- Technician (`/technician/profile`): add `ProfilePhotoField` and keep subtle `ChangePasswordCard` + Sign Out.
+- Admin (`/admin/profile`): keep subtle `ChangePasswordCard` + Sign Out.
+
+**Acceptance criteria:**
+- [x] Customer settings top-right badge displays `{user_id} · User` instead of `Customer`
+- [x] Customer and Technician settings pages include `ProfilePhotoField` for uploading/removing a profile photo
+- [x] Customer settings page includes a `Sign Out` button (`signOutAction`)
+- [x] `Change Password` (Customer, Tech, Admin) and `Deactivate Account` (Customer) are visually subtle and understated until interacted with
+
+**Verification:**
+- [x] `npm run lint` passes with 0 errors and 0 warnings
+- [x] `npm run build` passes cleanly across all routes
+- [ ] Manual check: test photo upload, subtle toggles, and sign out in live browser
+
+**Dependencies:** Tasks 3, 4
+
+**Files likely touched:**
+- `src/features/auth/components/change-password-card.tsx`
+- `src/app/customer/profile/page.tsx`
+- `src/features/customer/components/customer-profile-forms.tsx`
+- `src/features/technician/components/technician-profile-forms.tsx`
+- `src/features/admin/components/admin-profile-forms.tsx`
+
+**Estimated scope:** Medium (5 files)
 
 ---
 
 ## Checkpoint: Complete
 - [x] `npm run lint` and `npm run build` pass with zero TypeScript or ESLint errors
-- [ ] All 6 user requests verified visually in browser on `/`, `/login`, `/signup`, and browser tab
+- [ ] Live browser & Supabase migration `004` verification completed

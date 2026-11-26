@@ -17,6 +17,7 @@ async function TechnicianLayoutGuard({ children }: { children: React.ReactNode }
       role="technician"
       userName={formatFullName(profile)}
       userEmail={profile.email}
+      avatarUrl={profile.avatar_url}
       branchLocation={profile.branch_location}
       navItems={TECHNICIAN_NAV}
     >

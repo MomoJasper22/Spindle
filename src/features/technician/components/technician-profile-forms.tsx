@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { FormBanner } from '@/components/shared/form-banner'
+import { ProfilePhotoField } from '@/components/shared/profile-photo-field'
 import { signOutAction } from '@/features/auth/actions/auth-actions'
 import { ChangePasswordCard } from '@/features/auth/components/change-password-card'
 import {
@@ -25,7 +26,7 @@ import {
   SERVICE_BRANCHES,
   TECH_AVAILABILITY_STATUSES,
 } from '@/lib/constants'
-import { humanizeLabel } from '@/lib/formatters'
+import { formatFullName, humanizeLabel } from '@/lib/formatters'
 import { cn } from '@/lib/utils'
 import type { TechnicianProfileRow, UserRow } from '@/types/database'
 import { updateTechnicianProfileAction } from '../actions/technician-actions'
@@ -107,8 +108,13 @@ export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfi
             Update your contact details, branch assignment, TESDA certification, daily job limit, and availability.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {feedback && <FormBanner type={feedback.type} message={feedback.message} className="mb-5" />}
+        <CardContent className="space-y-6">
+          <ProfilePhotoField
+            currentAvatarUrl={profile.avatar_url}
+            fullName={formatFullName(profile)}
+          />
+
+          {feedback && <FormBanner type={feedback.type} message={feedback.message} />}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
             <div className="grid gap-4 sm:grid-cols-3">
@@ -300,22 +306,21 @@ export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfi
         </CardContent>
       </Card>
 
-      <ChangePasswordCard />
+      <div className="space-y-3">
+        <ChangePasswordCard />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Session Controls</CardTitle>
-          <CardDescription>End your current authenticated field session safely.</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <div className="flex items-center justify-between rounded-lg border border-border/80 bg-card/70 px-4 py-3">
+          <span className="text-xs text-muted-foreground">
+            End your current field session safely.
+          </span>
           <form action={signOutAction}>
-            <Button type="submit" variant="outline">
+            <Button type="submit" variant="outline" size="sm">
               <LogOut className="h-4 w-4" aria-hidden="true" />
-              <span>Sign Out of Spindle</span>
+              <span>Sign Out</span>
             </Button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

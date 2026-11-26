@@ -9,11 +9,11 @@ import {
   CreditCard,
   Home,
   LayoutDashboard,
-  LogOut,
   MapPin,
   Menu,
   Settings,
   ShieldCheck,
+  User,
   UserCog,
   Users,
   Wrench,
@@ -29,7 +29,6 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
-import { signOutAction } from '@/features/auth/actions/auth-actions'
 import type { UserRole } from '@/lib/constants'
 
 export type NavIconKey =
@@ -67,13 +66,13 @@ interface PortalShellProps {
   role: UserRole
   userName: string
   userEmail: string
+  avatarUrl?: string | null
   branchLocation?: string | null
   navItems: PortalNavItem[]
   children: React.ReactNode
 }
 
-const ROLE_LABELS: Record<UserRole, string> = {
-  customer: 'Customer Portal',
+const ROLE_LABELS: Partial<Record<UserRole, string>> = {
   technician: 'Field Technician',
   admin: 'Operations Admin',
 }
@@ -82,12 +81,14 @@ export function PortalShell({
   role,
   userName,
   userEmail,
+  avatarUrl,
   branchLocation,
   navItems,
   children,
 }: PortalShellProps) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = React.useState(false)
+  const roleLabel = ROLE_LABELS[role]
 
   function isLinkActive(href: string) {
     const [basePath, hash] = href.split('#')
@@ -99,7 +100,7 @@ export function PortalShell({
 
   function renderNavLinks(onNavigate?: () => void) {
     return (
-      <nav aria-label={`${ROLE_LABELS[role]} navigation`} className="flex-1 space-y-1 px-3 py-4">
+      <nav aria-label={`${role} navigation`} className="flex-1 space-y-1 px-3 py-4">
         {navItems.map((item) => {
           const Icon = NAV_ICONS[item.icon]
           const active = isLinkActive(item.href)
@@ -124,30 +125,39 @@ export function PortalShell({
     )
   }
 
+  function renderProfileAvatar() {
+    return (
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-800 text-slate-200">
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={avatarUrl}
+            alt={`${userName} profile avatar`}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <User className="h-4 w-4 text-slate-300" aria-hidden="true" />
+        )}
+      </div>
+    )
+  }
+
   function renderUserFooter() {
     return (
-      <div className="border-t border-slate-800 p-4 space-y-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-white">{userName}</p>
-          <p className="truncate text-xs text-slate-400">{userEmail}</p>
-          {branchLocation && (
-            <p className="mt-1.5 flex items-center gap-1.5 truncate text-[11px] text-teal-300">
-              <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
-              <span className="truncate">{branchLocation}</span>
-            </p>
-          )}
+      <div className="border-t border-slate-800 p-4">
+        <div className="flex items-start gap-3">
+          {renderProfileAvatar()}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-white">{userName}</p>
+            <p className="truncate text-xs text-slate-400">{userEmail}</p>
+            {branchLocation && (
+              <p className="mt-1.5 flex items-center gap-1.5 truncate text-[11px] text-teal-300">
+                <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">{branchLocation}</span>
+              </p>
+            )}
+          </div>
         </div>
-        <form action={signOutAction}>
-          <Button
-            type="submit"
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start gap-2 border border-slate-700/80 text-slate-200 hover:bg-slate-800 hover:text-white"
-          >
-            <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>Sign Out</span>
-          </Button>
-        </form>
       </div>
     )
   }
@@ -161,11 +171,13 @@ export function PortalShell({
             <SpindleLogo variant="light" showTagline />
           </Link>
         </div>
-        <div className="px-4 pt-4">
-          <span className="inline-flex items-center rounded-md bg-slate-800/90 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-teal-300">
-            {ROLE_LABELS[role]}
-          </span>
-        </div>
+        {roleLabel && (
+          <div className="px-4 pt-4">
+            <span className="inline-flex items-center rounded-md bg-slate-800/90 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-teal-300">
+              {roleLabel}
+            </span>
+          </div>
+        )}
         {renderNavLinks()}
         {renderUserFooter()}
       </aside>
@@ -184,8 +196,14 @@ export function PortalShell({
                 <SheetTitle className="text-left">
                   <SpindleLogo variant="light" showTagline />
                 </SheetTitle>
-                <SheetDescription className="text-left text-xs text-teal-300 font-semibold uppercase tracking-wider pt-1">
-                  {ROLE_LABELS[role]}
+                <SheetDescription
+                  className={cn(
+                    !roleLabel
+                      ? 'sr-only'
+                      : 'text-left text-xs text-teal-300 font-semibold uppercase tracking-wider pt-1'
+                  )}
+                >
+                  {roleLabel ?? 'Account navigation'}
                 </SheetDescription>
               </SheetHeader>
               {renderNavLinks(() => setMobileOpen(false))}
@@ -198,9 +216,11 @@ export function PortalShell({
           <span className="hidden sm:inline-block truncate text-xs font-medium text-muted-foreground max-w-[160px]">
             {userName}
           </span>
-          <span className="inline-flex items-center rounded-full bg-primary-tint px-2.5 py-0.5 text-xs font-semibold text-primary">
-            {role.toUpperCase()}
-          </span>
+          {roleLabel && (
+            <span className="inline-flex items-center rounded-full bg-primary-tint px-2.5 py-0.5 text-xs font-semibold text-primary">
+              {role.toUpperCase()}
+            </span>
+          )}
         </div>
       </header>
 

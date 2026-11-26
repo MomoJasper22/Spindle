@@ -193,22 +193,21 @@ export function AdminProfileForms({ profile }: AdminProfileFormsProps) {
         </CardContent>
       </Card>
 
-      <ChangePasswordCard />
+      <div className="space-y-3">
+        <ChangePasswordCard />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Administrative Session Controls</CardTitle>
-          <CardDescription>End your elevated administrator session cleanly.</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <div className="flex items-center justify-between rounded-lg border border-border/80 bg-card/70 px-4 py-3">
+          <span className="text-xs text-muted-foreground">
+            End your elevated administrator session cleanly.
+          </span>
           <form action={signOutAction}>
-            <Button type="submit" variant="outline">
+            <Button type="submit" variant="outline" size="sm">
               <LogOut className="h-4 w-4" aria-hidden="true" />
               <span>Sign Out</span>
             </Button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

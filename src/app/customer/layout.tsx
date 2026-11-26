@@ -17,6 +17,7 @@ async function CustomerLayoutGuard({ children }: { children: React.ReactNode }) 
       role="customer"
       userName={formatFullName(profile)}
       userEmail={profile.email}
+      avatarUrl={profile.avatar_url}
       branchLocation={profile.branch_location}
       navItems={CUSTOMER_NAV}
     >

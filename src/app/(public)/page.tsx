@@ -12,8 +12,8 @@ import { SpindleLogo } from '@/components/shared/spindle-logo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
-  ApplianceRepairIcons,
-  SupportedBrandsStrip,
+  ApplianceRepairSection,
+  SupportedBrandsSection,
 } from '@/features/landing/components/appliance-showcase'
 import { SERVICE_BRANCHES } from '@/lib/constants'
 
@@ -84,13 +84,16 @@ export default function LandingPage() {
 
           <nav
             aria-label="Primary"
-            className="hidden md:flex items-center gap-7 text-sm font-medium text-muted-foreground"
+            className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground"
           >
+            <a href="#repair" className="hover:text-foreground transition-colors">
+              Repair
+            </a>
+            <a href="#brands" className="hover:text-foreground transition-colors">
+              Brands
+            </a>
             <a href="#services" className="hover:text-foreground transition-colors">
               Services
-            </a>
-            <a href="#how-it-works" className="hover:text-foreground transition-colors">
-              How It Works
             </a>
             <a href="#service-areas" className="hover:text-foreground transition-colors">
               Service Areas
@@ -110,8 +113,8 @@ export default function LandingPage() {
 
       <main id="main-content" tabIndex={-1} className="flex-1">
         {/* Customer-Focused Hero Section */}
-        <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:py-18">
-          <div className="grid gap-10 lg:grid-cols-12 lg:items-start">
+        <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:py-20">
+          <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
             <div className="space-y-6 lg:col-span-6">
               <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
                 Reliable Appliance Repair, Scheduled Around Your Day
@@ -132,8 +135,6 @@ export default function LandingPage() {
                   <Link href="/login">Track Existing Ticket</Link>
                 </Button>
               </div>
-
-              <ApplianceRepairIcons />
             </div>
 
             {/* Customer Experience Preview Card */}
@@ -177,9 +178,13 @@ export default function LandingPage() {
               </Card>
             </div>
           </div>
-
-          <SupportedBrandsStrip />
         </section>
+
+        {/* Dedicated Appliances We Repair Section */}
+        <ApplianceRepairSection />
+
+        {/* Dedicated Brands We Work With Section */}
+        <SupportedBrandsSection />
 
         {/* Compact 3-Card Customer Capability Strip */}
         <section id="services" className="border-y border-border bg-card py-14">
@@ -255,8 +260,11 @@ export default function LandingPage() {
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-5 text-xs font-medium text-muted-foreground">
-            <a href="#services" className="hover:text-foreground">
-              Services
+            <a href="#repair" className="hover:text-foreground">
+              Repair
+            </a>
+            <a href="#brands" className="hover:text-foreground">
+              Brands
             </a>
             <a href="#service-areas" className="hover:text-foreground">
               Service Areas

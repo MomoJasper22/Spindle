@@ -28,6 +28,7 @@ export interface UserRow {
   phone: string | null
   user_type_id: string
   branch_location: string | null
+  avatar_url?: string | null
   address_street: string | null
   address_barangay: string | null
   address_city: string | null

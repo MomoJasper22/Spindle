@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { AlertTriangle, Loader2, Save, User } from 'lucide-react'
+import { Loader2, LogOut, Save, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -17,8 +17,11 @@ import {
 } from '@/components/ui/select'
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { FormBanner } from '@/components/shared/form-banner'
+import { ProfilePhotoField } from '@/components/shared/profile-photo-field'
+import { signOutAction } from '@/features/auth/actions/auth-actions'
 import { ChangePasswordCard } from '@/features/auth/components/change-password-card'
 import { PH_PROVINCES, SERVICE_BRANCHES } from '@/lib/constants'
+import { formatFullName } from '@/lib/formatters'
 import type { UserRow } from '@/types/database'
 import {
   deactivateCustomerAccountAction,
@@ -49,7 +52,8 @@ export function CustomerProfileForms({ profile }: CustomerProfileFormsProps) {
       middle_name: profile.middle_name ?? '',
       last_name: profile.last_name,
       phone: profile.phone ?? '',
-      branch_location: (profile.branch_location as CustomerProfileInput['branch_location']) ?? SERVICE_BRANCHES[0],
+      branch_location:
+        (profile.branch_location as CustomerProfileInput['branch_location']) ?? SERVICE_BRANCHES[0],
       address_street: profile.address_street ?? '',
       address_barangay: profile.address_barangay ?? '',
       address_city: profile.address_city ?? '',
@@ -88,11 +92,16 @@ export function CustomerProfileForms({ profile }: CustomerProfileFormsProps) {
             <span>Personal Information &amp; Service Address</span>
           </CardTitle>
           <CardDescription>
-            Keep your Philippine contact number, preferred branch, and home/office address accurate for technician dispatch.
+            Keep your photo, Philippine contact number, preferred branch, and service address accurate for home visits.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {feedback && <FormBanner type={feedback.type} message={feedback.message} className="mb-5" />}
+        <CardContent className="space-y-6">
+          <ProfilePhotoField
+            currentAvatarUrl={profile.avatar_url}
+            fullName={formatFullName(profile)}
+          />
+
+          {feedback && <FormBanner type={feedback.type} message={feedback.message} />}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
             <div className="grid gap-4 sm:grid-cols-3">
@@ -230,23 +239,27 @@ export function CustomerProfileForms({ profile }: CustomerProfileFormsProps) {
         </CardContent>
       </Card>
 
-      <ChangePasswordCard />
+      {/* Subtle Security & Session Controls */}
+      <div className="space-y-3">
+        <ChangePasswordCard />
 
-      <Card className="border-rose-200">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-rose-700">
-            <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-            <span>Account Control</span>
-          </CardTitle>
-          <CardDescription>
-            Deactivating your account blocks future sign-ins and hides your portal access until reactivated by an administrator.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/80 bg-card/70 px-4 py-3">
+          <form action={signOutAction}>
+            <Button type="submit" variant="outline" size="sm">
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              <span>Sign Out</span>
+            </Button>
+          </form>
+
           <ConfirmationDialog
             trigger={
-              <Button type="button" variant="destructive">
-                Deactivate Account
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground hover:bg-rose-50 hover:text-rose-700"
+              >
+                Deactivate account
               </Button>
             }
             title="Deactivate your Spindle account?"
@@ -255,8 +268,8 @@ export function CustomerProfileForms({ profile }: CustomerProfileFormsProps) {
             isPending={isPending}
             onConfirm={handleDeactivate}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }
