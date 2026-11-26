@@ -26,26 +26,29 @@
 
 ---
 
-### Task 2: Separate landing Repair & Brands sections, header links, and dedicated brand SVGs
+### Task 2: Interactive large Appliance Repair tiles & official stored Brand logo assets
 
-**Description:** Update `appliance-showcase.tsx` so every one of the 12 supported brands has its own dedicated inline SVG logo mark instead of a uniform placeholder icon. Refactor `src/app/(public)/page.tsx` so **Appliances We Repair** (`#repair`) and **Brands We Work With** (`#brands`) are separate, dedicated sections on the page, and add `Repair` and `Brands` navigation links in the sticky header.
+**Description:** Replace custom guessed inline brand SVGs with actual official logo files stored in `public/images/brands/` (`carrier.svg`, `condura.svg`, `panasonic.svg`, `lg.svg`, `samsung.svg`, `daikin.svg`, `koppel.png`, `whirlpool.svg`, `fujidenzo.png`, `sharp.svg`, `midea.svg`, `haier.svg`). Upgrade **Appliances We Repair** (`#repair`) to a bold tile grid with large multi-tone vector appliance illustrations where repair details expand only when a user clicks an appliance tile (with `hidden="until-found"` search discovery support).
 
 **Acceptance criteria:**
-- [x] Each of the 12 brands (`Carrier`, `Condura`, `Panasonic`, `LG`, `Samsung`, `Daikin`, `Koppel`, `Whirlpool`, `Fujidenzo`, `Sharp`, `Midea`, `Haier`) has a distinct dedicated `<svg>` logo
-- [x] Landing page separates Appliances We Repair (`#repair`) and Brands We Work With (`#brands`) into distinct page sections outside the hero CTA block
-- [x] Sticky header navigation includes `Repair` (`#repair`) and `Brands` (`#brands`) alongside existing section links
+- [x] Official logo files for all 12 brands (`Carrier`, `Condura`, `Panasonic`, `LG`, `Samsung`, `Daikin`, `Koppel`, `Whirlpool`, `Fujidenzo`, `Sharp`, `Midea`, `Haier`) are stored under `public/images/brands/` and rendered in `#brands`
+- [x] Appliances We Repair (`#repair`) displays large square tiles with prominent illustrated SVG icons matching the example card layout
+- [x] Repair details stay hidden initially and expand cleanly when clicking a tile (toggling closed on repeat click or close button)
+- [x] Landing page separates Appliances We Repair (`#repair`) and Brands We Work With (`#brands`) into distinct page sections with `Repair` and `Brands` header nav links
 
 **Verification:**
 - [x] Lint & build succeed: `npm run lint` and `npm run build`
-- [ ] Manual check: verify header anchor scrolling and SVG rendering visually in browser
+- [ ] Manual check: verify interactive tile click reveal and authentic brand logos visually in browser
 
 **Dependencies:** None
 
 **Files likely touched:**
+- `public/images/brands/*` (12 official brand logo files)
+- `src/features/landing/components/appliance-repair-section.tsx` (new)
 - `src/features/landing/components/appliance-showcase.tsx`
 - `src/app/(public)/page.tsx`
 
-**Estimated scope:** Medium (2 files)
+**Estimated scope:** Medium (15 files)
 
 ---
 
