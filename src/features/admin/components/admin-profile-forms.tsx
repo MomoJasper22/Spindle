@@ -17,15 +17,17 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { FormBanner } from '@/components/shared/form-banner'
+import { ProfilePhotoField } from '@/components/shared/profile-photo-field'
 import { signOutAction } from '@/features/auth/actions/auth-actions'
 import { ChangePasswordCard } from '@/features/auth/components/change-password-card'
+import type { AuthenticatedUserProfile } from '@/lib/auth/session'
 import { PH_PROVINCES, SERVICE_BRANCHES } from '@/lib/constants'
-import type { UserRow } from '@/types/database'
+import { formatFullName } from '@/lib/formatters'
 import { updateAdminProfileAction } from '../actions/admin-actions'
 import { adminProfileSchema, type AdminProfileInput } from '../schemas/admin-schemas'
 
 interface AdminProfileFormsProps {
-  profile: UserRow
+  profile: AuthenticatedUserProfile
 }
 
 export function AdminProfileForms({ profile }: AdminProfileFormsProps) {
@@ -91,8 +93,14 @@ export function AdminProfileForms({ profile }: AdminProfileFormsProps) {
             Manage your operations contact profile, primary Philippine branch hub, and office address.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {feedback && <FormBanner type={feedback.type} message={feedback.message} className="mb-5" />}
+        <CardContent className="space-y-6">
+          <ProfilePhotoField
+            currentAvatarUrl={profile.avatar_url}
+            currentAvatarPosition={profile.avatar_position}
+            fullName={formatFullName(profile)}
+          />
+
+          {feedback && <FormBanner type={feedback.type} message={feedback.message} />}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
             <div className="grid gap-4 sm:grid-cols-3">

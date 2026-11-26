@@ -1,11 +1,22 @@
 'use client'
 
 import * as React from 'react'
+import Link from 'next/link'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { CalendarClock, Loader2, Plus, Search, Wrench, XCircle } from 'lucide-react'
+import {
+  ArrowRight,
+  CalendarClock,
+  CreditCard,
+  Loader2,
+  MapPin,
+  Plus,
+  Search,
+  UserCheck,
+  Wrench,
+  XCircle,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -23,14 +34,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -39,10 +42,8 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { REPAIR_PRIORITIES, REPAIR_STATUSES, SERVICE_TYPES, TIME_SLOTS } from '@/lib/constants'
 import {
   formatManilaDate,
-  formatPHPhone,
   formatPHP,
   getManilaTodayISO,
-  humanizeLabel,
 } from '@/lib/formatters'
 import type {
   AppointmentDetailView,
@@ -61,12 +62,29 @@ import {
   type RescheduleAppointmentInput,
 } from '../schemas/customer-schemas'
 
+const CUSTOMER_STATUS_LABELS: Record<string, string> = {
+  pending: 'Requested',
+  assigned: 'Technician Assigned',
+  in_progress: 'In Progress',
+  awaiting_payment: 'Ready for Payment',
+  completed: 'Done',
+  cancelled: 'Cancelled',
+}
+
+const CUSTOMER_PRIORITY_LABELS: Record<string, string> = {
+  low: 'Flexible — anytime this week',
+  normal: 'Standard — normal scheduling',
+  high: 'Soon — within 1 to 2 days',
+  urgent: 'Urgent — as soon as possible',
+}
+
 interface RepairsPanelProps {
   appliances: CustomerApplianceRow[]
   repairs: RepairDetailView[]
   appointments: AppointmentDetailView[]
   defaultServiceAddress: string
-  onGoToAppliances: () => void
+  defaultOpen?: boolean
+  defaultApplianceId?: string
 }
 
 export function RepairsPanel({
@@ -74,25 +92,33 @@ export function RepairsPanel({
   repairs,
   appointments,
   defaultServiceAddress,
-  onGoToAppliances,
+  defaultOpen = false,
+  defaultApplianceId,
 }: RepairsPanelProps) {
+  const activeAppliances = appliances.filter((a) => a.registration_status !== 'cancelled')
+  const todayISO = getManilaTodayISO()
+
+  const resolvedDefaultApplianceId =
+    (defaultApplianceId && activeAppliances.some((a) => a.appliance_id === defaultApplianceId)
+      ? defaultApplianceId
+      : activeAppliances[0]?.appliance_id) ?? ''
+
   const [search, setSearch] = React.useState('')
   const [statusFilter, setStatusFilter] = React.useState<string>('all')
-  const [bookDialogOpen, setBookDialogOpen] = React.useState(false)
+  const [bookDialogOpen, setBookDialogOpen] = React.useState(
+    Boolean(defaultOpen && activeAppliances.length > 0)
+  )
   const [rescheduleTarget, setRescheduleTarget] = React.useState<AppointmentDetailView | null>(null)
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
     null
   )
   const [isPending, startTransition] = React.useTransition()
 
-  const activeAppliances = appliances.filter((a) => a.registration_status !== 'cancelled')
-  const todayISO = getManilaTodayISO()
-
   const bookForm = useForm<RepairBookingInput>({
     resolver: zodResolver(repairBookingSchema),
     mode: 'onBlur',
     defaultValues: {
-      appliance_id: activeAppliances[0]?.appliance_id ?? '',
+      appliance_id: resolvedDefaultApplianceId,
       service_type: 'repair',
       priority: 'normal',
       issue_description: '',
@@ -116,7 +142,7 @@ export function RepairsPanel({
 
   function openBookDialog() {
     bookForm.reset({
-      appliance_id: activeAppliances[0]?.appliance_id ?? '',
+      appliance_id: resolvedDefaultApplianceId,
       service_type: 'repair',
       priority: 'normal',
       issue_description: '',
@@ -190,8 +216,8 @@ export function RepairsPanel({
     const q = search.trim().toLowerCase()
     if (!q) return true
     return (
-      r.ticket_id.toLowerCase().includes(q) ||
       r.appliance_brand.toLowerCase().includes(q) ||
+      r.appliance_category.toLowerCase().includes(q) ||
       r.appliance_model_number.toLowerCase().includes(q) ||
       r.issue_description.toLowerCase().includes(q) ||
       `${r.technician_first_name ?? ''} ${r.technician_last_name ?? ''}`.toLowerCase().includes(q)
@@ -199,27 +225,39 @@ export function RepairsPanel({
   })
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <CardTitle>Repairs &amp; Service Appointments</CardTitle>
-          <CardDescription>
-            Schedule field service visits, track live ticket progress, and manage appointment slots.
-          </CardDescription>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            My Bookings
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Book a home visit, check repair progress, or adjust your schedule.
+          </p>
         </div>
-        <Button onClick={openBookDialog} disabled={activeAppliances.length === 0}>
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          <span>Book Repair &amp; Slot</span>
-        </Button>
-      </CardHeader>
 
-      <CardContent className="space-y-4">
-        {feedback && !bookDialogOpen && !rescheduleTarget && (
-          <FormBanner type={feedback.type} message={feedback.message} />
+        {activeAppliances.length > 0 ? (
+          <Button onClick={openBookDialog} className="w-full sm:w-auto">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            <span>Book a Home Visit</span>
+          </Button>
+        ) : (
+          <Button asChild variant="outline" className="w-full sm:w-auto">
+            <Link href="/customer/appliances?add=1">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              <span>Add an Appliance First</span>
+            </Link>
+          </Button>
         )}
+      </div>
 
+      {feedback && !bookDialogOpen && !rescheduleTarget && (
+        <FormBanner type={feedback.type} message={feedback.message} />
+      )}
+
+      {repairs.length > 0 && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
+          <div className="relative flex-1 sm:max-w-sm">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden="true"
@@ -228,185 +266,194 @@ export function RepairsPanel({
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search ticket ID, appliance, issue..."
-              aria-label="Search repair tickets"
+              placeholder="Search appliance, problem, or technician..."
+              aria-label="Search bookings"
               className="pl-9"
             />
           </div>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-52" aria-label="Filter tickets by status">
-              <SelectValue placeholder="All statuses" />
+            <SelectTrigger className="w-full sm:w-52" aria-label="Filter bookings by status">
+              <SelectValue placeholder="All bookings" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="all">All Bookings</SelectItem>
               {REPAIR_STATUSES.map((status) => (
                 <SelectItem key={status} value={status}>
-                  {humanizeLabel(status)}
+                  {CUSTOMER_STATUS_LABELS[status] ?? status}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+      )}
 
-        {activeAppliances.length === 0 && repairs.length === 0 ? (
-          <EmptyState
-            icon={Wrench}
-            title="Register an appliance first"
-            description="Before booking a technician dispatch, register at least one appliance under My Appliances."
-            action={
-              <Button variant="outline" onClick={onGoToAppliances}>
-                Go to My Appliances
-              </Button>
-            }
-          />
-        ) : repairs.length === 0 ? (
-          <EmptyState
-            icon={CalendarClock}
-            title="No repair requests yet"
-            description="Schedule a diagnostic inspection, repair, or preventive maintenance visit around your preferred date and time slot."
-            action={
+      {activeAppliances.length === 0 && repairs.length === 0 ? (
+        <EmptyState
+          icon={Wrench}
+          title="Add an appliance to book a visit"
+          description="Save your aircon, fridge, or washer first so we know what unit to bring tools for."
+          action={
+            <Button asChild>
+              <Link href="/customer/appliances?add=1">
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                <span>Add Your First Appliance</span>
+              </Link>
+            </Button>
+          }
+        />
+      ) : filteredRepairs.length === 0 ? (
+        <EmptyState
+          icon={Wrench}
+          title="No bookings match your search"
+          description={
+            repairs.length === 0
+              ? 'Book your first repair, cleaning, or checkup visit whenever you are ready.'
+              : 'Try clearing your search or switching the status filter.'
+          }
+          action={
+            repairs.length === 0 && activeAppliances.length > 0 ? (
               <Button onClick={openBookDialog}>
                 <Plus className="h-4 w-4" aria-hidden="true" />
-                <span>Schedule First Service</span>
+                <span>Book a Home Visit</span>
               </Button>
-            }
-          />
-        ) : filteredRepairs.length === 0 ? (
-          <EmptyState
-            icon={Search}
-            title="No matching repair tickets"
-            description="No tickets match your current search or status filter."
-          />
-        ) : (
-          <Table regionLabel="Customer repair tickets and appointments">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ticket</TableHead>
-                <TableHead>Appliance &amp; Issue</TableHead>
-                <TableHead>Technician</TableHead>
-                <TableHead>Appointment Slot</TableHead>
-                <TableHead>Status &amp; Priority</TableHead>
-                <TableHead>Estimate / Final</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredRepairs.map((ticket) => {
-                const apt = appointmentByTicket.get(ticket.ticket_id)
-                const canModify = ['pending', 'confirmed'].includes(ticket.status)
-                const techName =
-                  ticket.technician_first_name && ticket.technician_last_name
-                    ? `${ticket.technician_first_name} ${ticket.technician_last_name}`
-                    : null
+            ) : undefined
+          }
+        />
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {filteredRepairs.map((repair) => {
+            const apt = appointmentByTicket.get(repair.ticket_id)
+            const totalAmount = Number(repair.final_cost_php ?? repair.estimated_cost_php ?? 0)
+            const remaining = Math.max(0, totalAmount - Number(repair.verified_paid_php ?? 0))
+            const canModify = ['pending', 'assigned'].includes(repair.status)
+            const canReschedule =
+              apt && !['completed', 'cancelled'].includes(repair.status) && !['completed', 'cancelled'].includes(apt.appointment_status)
+            const serviceLabel =
+              SERVICE_TYPES.find((st) => st.value === repair.service_type)?.label ?? 'Appliance Service'
 
-                return (
-                  <TableRow key={ticket.ticket_id}>
-                    <TableCell className="align-top">
-                      <p className="font-mono text-xs font-semibold text-primary">
-                        {ticket.ticket_id}
-                      </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {humanizeLabel(ticket.service_type)}
-                      </p>
-                    </TableCell>
-                    <TableCell className="max-w-xs align-top">
-                      <p className="font-semibold text-foreground">
-                        {ticket.appliance_brand} &middot; {ticket.appliance_model_number}
-                      </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
-                        {ticket.issue_description}
-                      </p>
-                      {ticket.diagnostic_notes && (
-                        <p className="mt-1 rounded bg-slate-100 px-2 py-1 text-xs text-slate-700">
-                          <span className="font-semibold">Tech notes:</span> {ticket.diagnostic_notes}
-                        </p>
+            return (
+              <div
+                key={repair.ticket_id}
+                className="flex flex-col justify-between rounded-xl border border-border bg-card p-5 transition-colors hover:border-[#C8C0B0]"
+              >
+                <div>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">{serviceLabel}</p>
+                      <h2 className="mt-0.5 font-heading text-lg font-bold text-foreground">
+                        {repair.appliance_brand} {repair.appliance_category}
+                      </h2>
+                    </div>
+                    <StatusBadge status={repair.status} audience="customer" />
+                  </div>
+
+                  <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+                    {repair.issue_description}
+                  </p>
+
+                  <div className="mt-4 space-y-2 border-t border-dashed border-border pt-3 text-sm">
+                    <div className="flex items-center gap-2 text-foreground">
+                      <CalendarClock className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                      <span className="font-medium">
+                        {formatManilaDate(apt?.scheduled_date ?? repair.scheduled_date)}
+                      </span>
+                      {apt?.time_slot && (
+                        <span className="text-muted-foreground">&middot; {apt.time_slot}</span>
                       )}
-                    </TableCell>
-                    <TableCell className="align-top">
-                      {techName ? (
-                        <div>
-                          <p className="font-medium text-foreground">{techName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatPHPhone(ticket.technician_phone)}
-                          </p>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">Awaiting dispatch</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="align-top whitespace-nowrap">
-                      <p className="text-sm font-medium">{formatManilaDate(ticket.scheduled_date)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {apt ? apt.time_slot : 'Slot pending'}
-                      </p>
-                      {apt && (
-                        <div className="mt-1">
-                          <StatusBadge status={apt.appointment_status} showIcon={false} />
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="align-top">
-                      <div className="flex flex-col items-start gap-1.5">
-                        <StatusBadge status={ticket.status} />
-                        <StatusBadge status={ticket.priority} showIcon={false} />
+                    </div>
+
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <UserCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                      <span>
+                        {repair.technician_first_name
+                          ? `Technician: ${repair.technician_first_name} ${repair.technician_last_name}`
+                          : 'Matching you with a nearby technician'}
+                      </span>
+                    </div>
+
+                    {apt?.service_address && (
+                      <div className="flex items-start gap-2 text-muted-foreground">
+                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                        <span className="line-clamp-1">{apt.service_address}</span>
                       </div>
-                    </TableCell>
-                    <TableCell className="align-top whitespace-nowrap tabular-nums">
-                      <p className="text-xs text-muted-foreground">
-                        Est: <span className="font-medium text-foreground">{formatPHP(ticket.estimated_cost_php)}</span>
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Final:{' '}
-                        <span className="font-semibold text-foreground">
-                          {ticket.final_cost_php !== null ? formatPHP(ticket.final_cost_php) : 'Pending'}
-                        </span>
-                      </p>
-                    </TableCell>
-                    <TableCell className="text-right align-top">
-                      <div className="inline-flex items-center justify-end gap-1.5">
-                        {apt && canModify && (
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
+                  <div className="text-sm">
+                    <span className="text-xs text-muted-foreground">
+                      {repair.final_cost_php !== null ? 'Final price' : 'Starting estimate'}
+                    </span>
+                    <p className="font-heading text-base font-bold tabular-nums text-foreground">
+                      {totalAmount > 0 ? formatPHP(totalAmount) : 'Pending checkup'}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {repair.status === 'awaiting_payment' && remaining > 0 && (
+                      <Button asChild size="sm">
+                        <Link href={`/customer/payments?ticket=${repair.ticket_id}`}>
+                          <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span>Pay {formatPHP(remaining)}</span>
+                        </Link>
+                      </Button>
+                    )}
+
+                    {canReschedule && apt && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openRescheduleDialog(apt)}
+                      >
+                        Reschedule
+                      </Button>
+                    )}
+
+                    {canModify && (
+                      <ConfirmationDialog
+                        trigger={
                           <Button
                             type="button"
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            onClick={() => openRescheduleDialog(apt)}
+                            className="text-rose-700 hover:bg-rose-50 hover:text-rose-800"
                           >
-                            Reschedule
+                            <XCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                            <span>Cancel</span>
                           </Button>
-                        )}
-                        {canModify && (
-                          <ConfirmationDialog
-                            trigger={
-                              <Button type="button" variant="ghost" size="sm">
-                                <XCircle className="h-3.5 w-3.5 text-destructive" aria-hidden="true" />
-                                <span className="sr-only sm:not-sr-only">Cancel</span>
-                              </Button>
-                            }
-                            title={`Cancel repair ticket ${ticket.ticket_id}?`}
-                            description="This cancels both your repair request and its scheduled field appointment slot."
-                            confirmLabel="Cancel Ticket"
-                            isPending={isPending}
-                            onConfirm={() => handleCancelTicket(ticket.ticket_id)}
-                          />
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
+                        }
+                        title="Cancel this booking?"
+                        description={`This will cancel your scheduled visit for the ${repair.appliance_brand} ${repair.appliance_category}.`}
+                        confirmLabel="Yes, Cancel Visit"
+                        isPending={isPending}
+                        onConfirm={() => handleCancelTicket(repair.ticket_id)}
+                      />
+                    )}
 
-      {/* Book Repair & Appointment Modal */}
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/customer/bookings/${repair.ticket_id}`}>
+                        <span>Details</span>
+                        <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Book Home Visit Modal */}
       <Dialog open={bookDialogOpen} onOpenChange={setBookDialogOpen}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Book Repair &amp; Service Appointment</DialogTitle>
+            <DialogTitle>Schedule a Home Visit</DialogTitle>
             <DialogDescription>
-              Creates your repair ticket and reserves your preferred Philippine service window atomically.
+              Pick your appliance, describe what is happening, and choose a date and time that works for you.
             </DialogDescription>
           </DialogHeader>
 
@@ -415,7 +462,7 @@ export function RepairsPanel({
           <form onSubmit={bookForm.handleSubmit(onBookSubmit)} className="space-y-4" noValidate>
             <div className="space-y-1.5">
               <Label htmlFor="book-appliance">
-                Appliance <span className="text-destructive">*</span>
+                Which appliance needs help? <span className="text-destructive">*</span>
               </Label>
               <Controller
                 name="appliance_id"
@@ -423,7 +470,7 @@ export function RepairsPanel({
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="book-appliance">
-                      <SelectValue placeholder="Choose a registered appliance" />
+                      <SelectValue placeholder="Choose your appliance" />
                     </SelectTrigger>
                     <SelectContent>
                       {activeAppliances.map((app) => (
@@ -445,7 +492,7 @@ export function RepairsPanel({
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="book-service-type">
-                  Service type <span className="text-destructive">*</span>
+                  What do you need? <span className="text-destructive">*</span>
                 </Label>
                 <Controller
                   name="service_type"
@@ -469,7 +516,7 @@ export function RepairsPanel({
 
               <div className="space-y-1.5">
                 <Label htmlFor="book-priority">
-                  Priority <span className="text-destructive">*</span>
+                  How soon do you need us? <span className="text-destructive">*</span>
                 </Label>
                 <Controller
                   name="priority"
@@ -482,7 +529,7 @@ export function RepairsPanel({
                       <SelectContent>
                         {REPAIR_PRIORITIES.map((p) => (
                           <SelectItem key={p} value={p}>
-                            {humanizeLabel(p)}
+                            {CUSTOMER_PRIORITY_LABELS[p] ?? p}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -513,7 +560,7 @@ export function RepairsPanel({
 
               <div className="space-y-1.5">
                 <Label htmlFor="book-slot">
-                  Time slot (PHT) <span className="text-destructive">*</span>
+                  Preferred time window <span className="text-destructive">*</span>
                 </Label>
                 <Controller
                   name="time_slot"
@@ -538,11 +585,11 @@ export function RepairsPanel({
 
             <div className="space-y-1.5">
               <Label htmlFor="book-issue">
-                Issue description <span className="text-destructive">*</span>
+                What seems to be the problem? <span className="text-destructive">*</span>
               </Label>
               <Textarea
                 id="book-issue"
-                placeholder="Describe symptoms, error codes, leaks, or unusual sounds..."
+                placeholder="For example: not cooling, making a loud sound, water leaking..."
                 aria-invalid={Boolean(bookForm.formState.errors.issue_description)}
                 {...bookForm.register('issue_description')}
               />
@@ -555,7 +602,7 @@ export function RepairsPanel({
 
             <div className="space-y-1.5">
               <Label htmlFor="book-address">
-                Service address <span className="text-destructive">*</span>
+                Home service address <span className="text-destructive">*</span>
               </Label>
               <Textarea
                 id="book-address"
@@ -571,10 +618,10 @@ export function RepairsPanel({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="book-remarks">Access / gate instructions (optional)</Label>
+              <Label htmlFor="book-remarks">Gate note or landmark (optional)</Label>
               <Input
                 id="book-remarks"
-                placeholder="e.g. Gate pass required at subdivision guardhouse"
+                placeholder="e.g. Beside the blue gate, inform guard at entrance"
                 {...bookForm.register('remarks')}
               />
             </div>
@@ -585,14 +632,14 @@ export function RepairsPanel({
               </Button>
               <Button type="submit" disabled={isPending}>
                 {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                <span>Submit Repair Request</span>
+                <span>Confirm Home Visit</span>
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Reschedule Appointment Modal */}
+      {/* Reschedule Visit Modal */}
       <Dialog
         open={Boolean(rescheduleTarget)}
         onOpenChange={(open) => {
@@ -601,9 +648,9 @@ export function RepairsPanel({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reschedule Appointment</DialogTitle>
+            <DialogTitle>Move Your Visit Time</DialogTitle>
             <DialogDescription>
-              Update the preferred date and window for {rescheduleTarget?.ticket_id}.
+              Pick a new date and time window that fits your schedule.
             </DialogDescription>
           </DialogHeader>
 
@@ -617,7 +664,7 @@ export function RepairsPanel({
             noValidate
           >
             <div className="space-y-1.5">
-              <Label htmlFor="resched-date">New service date</Label>
+              <Label htmlFor="resched-date">New date</Label>
               <Input
                 id="resched-date"
                 type="date"
@@ -627,7 +674,7 @@ export function RepairsPanel({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="resched-slot">New time slot (PHT)</Label>
+              <Label htmlFor="resched-slot">New time window</Label>
               <Controller
                 name="time_slot"
                 control={rescheduleForm.control}
@@ -649,10 +696,10 @@ export function RepairsPanel({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="resched-remarks">Remarks (optional)</Label>
+              <Label htmlFor="resched-remarks">Arrival or gate note (optional)</Label>
               <Input
                 id="resched-remarks"
-                placeholder="Reason or new access note"
+                placeholder="Any helpful note for our technician"
                 {...rescheduleForm.register('remarks')}
               />
             </div>
@@ -669,6 +716,6 @@ export function RepairsPanel({
           </form>
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   )
 }

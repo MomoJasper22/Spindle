@@ -2,8 +2,7 @@ import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { requireRole } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
-import { formatAddress } from '@/lib/formatters'
-import { CustomerWorkspace } from '@/features/customer/components/customer-workspace'
+import { CustomerHomeView } from '@/features/customer/components/customer-home-view'
 import { PageSkeleton } from '@/components/shared/page-skeleton'
 import type {
   ActivityLogRow,
@@ -14,7 +13,7 @@ import type {
 } from '@/types/database'
 
 export const metadata: Metadata = {
-  title: 'Customer Home',
+  title: 'Home',
 }
 
 async function CustomerHomeContent() {
@@ -46,21 +45,12 @@ async function CustomerHomeContent() {
       .from('activity_logs')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(12),
+      .limit(5),
   ])
 
-  const defaultServiceAddress = formatAddress({
-    street: profile.address_street,
-    barangay: profile.address_barangay,
-    city: profile.address_city,
-    province: profile.address_province,
-    zip: profile.address_zip_code,
-  })
-
   return (
-    <CustomerWorkspace
-      customerFirstName={profile.first_name}
-      defaultServiceAddress={defaultServiceAddress === '—' ? '' : defaultServiceAddress}
+    <CustomerHomeView
+      firstName={profile.first_name}
       appliances={(appliancesRes.data ?? []) as CustomerApplianceRow[]}
       repairs={(repairsRes.data ?? []) as RepairDetailView[]}
       appointments={(appointmentsRes.data ?? []) as AppointmentDetailView[]}

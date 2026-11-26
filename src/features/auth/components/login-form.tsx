@@ -47,11 +47,11 @@ export function LoginForm({ initialError }: LoginFormProps) {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground">
+        <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           Sign in to Spindle
         </h2>
         <p className="text-sm text-muted-foreground">
-          Access your repair tickets, field schedule, or operations workspace.
+          Check your upcoming visits, saved appliances, or payment history.
         </p>
       </div>
 
@@ -127,7 +127,7 @@ export function LoginForm({ initialError }: LoginFormProps) {
       <p className="text-center text-sm text-muted-foreground">
         New to Spindle?{' '}
         <Link href="/signup" className="font-semibold text-primary hover:underline">
-          Create a customer account
+          Create an account
         </Link>
       </p>
     </div>

@@ -1,11 +1,12 @@
 'use client'
 
 import * as React from 'react'
+import Link from 'next/link'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Laptop, Loader2, Pencil, Plus, Search, Trash2, XCircle } from 'lucide-react'
+import { CalendarPlus, ChevronRight, Laptop, Loader2, Pencil, Plus, Search, Trash2, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -24,13 +25,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -48,11 +49,13 @@ import { applianceSchema, type ApplianceInput } from '../schemas/customer-schema
 
 interface AppliancesPanelProps {
   appliances: CustomerApplianceRow[]
+  openAddByDefault?: boolean
 }
 
-export function AppliancesPanel({ appliances }: AppliancesPanelProps) {
+export function AppliancesPanel({ appliances, openAddByDefault = false }: AppliancesPanelProps) {
   const [search, setSearch] = React.useState('')
-  const [dialogOpen, setDialogOpen] = React.useState(false)
+  const [dialogOpen, setDialogOpen] = React.useState(openAddByDefault)
+  const [selectedAppliance, setSelectedAppliance] = React.useState<CustomerApplianceRow | null>(null)
   const [editingAppliance, setEditingAppliance] = React.useState<CustomerApplianceRow | null>(null)
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
     null
@@ -93,6 +96,7 @@ export function AppliancesPanel({ appliances }: AppliancesPanelProps) {
   }
 
   function openEditDialog(item: CustomerApplianceRow) {
+    setSelectedAppliance(null)
     setEditingAppliance(item)
     reset({
       brand: item.brand,
@@ -127,6 +131,7 @@ export function AppliancesPanel({ appliances }: AppliancesPanelProps) {
     startTransition(async () => {
       const result = await deleteOrCancelApplianceAction(applianceId, mode)
       if (result.success) {
+        setSelectedAppliance(null)
         setFeedback({ type: 'success', message: result.message })
       } else {
         setFeedback({ type: 'error', message: result.error })
@@ -138,34 +143,34 @@ export function AppliancesPanel({ appliances }: AppliancesPanelProps) {
     const q = search.trim().toLowerCase()
     if (!q) return true
     return (
-      a.appliance_id.toLowerCase().includes(q) ||
       a.brand.toLowerCase().includes(q) ||
       a.category.toLowerCase().includes(q) ||
       a.model_number.toLowerCase().includes(q) ||
-      a.serial_number.toLowerCase().includes(q)
+      (a.notes ?? '').toLowerCase().includes(q)
     )
   })
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <CardTitle>My Registered Appliances</CardTitle>
-          <CardDescription>
-            Register home or commercial appliances before scheduling diagnostic or repair visits.
-          </CardDescription>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            My Appliances
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Save the appliances in your home or shop so booking a visit takes one tap.
+          </p>
         </div>
-        <Button onClick={openCreateDialog} className="shrink-0">
+
+        <Button onClick={openCreateDialog} className="w-full sm:w-auto shrink-0">
           <Plus className="h-4 w-4" aria-hidden="true" />
-          <span>Register Appliance</span>
+          <span>Add Appliance</span>
         </Button>
-      </CardHeader>
+      </div>
 
-      <CardContent className="space-y-4">
-        {feedback && !dialogOpen && (
-          <FormBanner type={feedback.type} message={feedback.message} />
-        )}
+      {feedback && !dialogOpen && <FormBanner type={feedback.type} message={feedback.message} />}
 
+      {appliances.length > 0 && (
         <div className="relative max-w-sm">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
@@ -175,129 +180,196 @@ export function AppliancesPanel({ appliances }: AppliancesPanelProps) {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search brand, category, model, or serial..."
-            aria-label="Search registered appliances"
+            placeholder="Search brand, type, or room..."
+            aria-label="Search saved appliances"
             className="pl-9"
           />
         </div>
+      )}
 
-        {appliances.length === 0 ? (
-          <EmptyState
-            icon={Laptop}
-            title="No appliances registered yet"
-            description="Add your aircon, refrigerator, washing machine, or kitchen appliance to start booking repairs."
-            action={
-              <Button onClick={openCreateDialog}>
-                <Plus className="h-4 w-4" aria-hidden="true" />
-                <span>Register First Appliance</span>
-              </Button>
-            }
-          />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            icon={Search}
-            title="No matching appliances"
-            description="No appliances matched your search query. Try another brand, model, or serial number."
-          />
-        ) : (
-          <Table regionLabel="Registered customer appliances">
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Appliance</TableHead>
-                <TableHead>Model &amp; Serial</TableHead>
-                <TableHead>Purchased</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((item) => (
-                <TableRow key={item.appliance_id}>
-                  <TableCell className="font-mono text-xs font-semibold text-muted-foreground">
-                    {item.appliance_id}
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-semibold text-foreground">{item.brand}</p>
-                    <p className="text-xs text-muted-foreground">{item.category}</p>
-                  </TableCell>
-                  <TableCell>
-                    <p className="text-sm font-medium">{item.model_number}</p>
-                    <p className="font-mono text-xs text-muted-foreground">{item.serial_number}</p>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                    {item.purchase_date ? formatManilaDate(item.purchase_date) : '—'}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={item.registration_status} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="inline-flex items-center justify-end gap-1.5">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEditDialog(item)}
-                        aria-label={`Edit ${item.brand} ${item.model_number}`}
-                      >
-                        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span className="sr-only sm:not-sr-only">Edit</span>
-                      </Button>
-
-                      {item.registration_status !== 'cancelled' && (
-                        <ConfirmationDialog
-                          trigger={
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              aria-label={`Cancel registration for ${item.appliance_id}`}
-                            >
-                              <XCircle className="h-3.5 w-3.5 text-amber-600" aria-hidden="true" />
-                            </Button>
-                          }
-                          title="Cancel appliance registration?"
-                          description={`Mark ${item.brand} ${item.model_number} (${item.serial_number}) as cancelled? New repairs cannot be booked for cancelled units.`}
-                          confirmLabel="Cancel Registration"
-                          isPending={isPending}
-                          onConfirm={() => handleRemove(item.appliance_id, 'cancel')}
-                        />
-                      )}
-
-                      <ConfirmationDialog
-                        trigger={
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            aria-label={`Delete ${item.appliance_id}`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5 text-destructive" aria-hidden="true" />
-                          </Button>
-                        }
-                        title="Delete appliance registration?"
-                        description={`Permanently delete ${item.brand} ${item.model_number}? This only succeeds if no repair tickets are linked to this unit.`}
-                        confirmLabel="Delete Unit"
-                        isPending={isPending}
-                        onConfirm={() => handleRemove(item.appliance_id, 'delete')}
-                      />
+      {appliances.length === 0 ? (
+        <EmptyState
+          icon={Laptop}
+          title="No appliances saved yet"
+          description="Add your aircon, refrigerator, washing machine, or kitchen unit to start booking visits."
+          action={
+            <Button onClick={openCreateDialog}>
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              <span>Add First Appliance</span>
+            </Button>
+          }
+        />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={Search}
+          title="No matching appliances"
+          description="Try searching another brand, appliance type, or model."
+        />
+      ) : (
+        <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((item) => (
+            <Card
+              key={item.appliance_id}
+              className="transition-colors hover:border-primary/40"
+            >
+              <CardContent className="p-5 flex h-full flex-col justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-heading text-base font-bold text-foreground">
+                        {item.brand}
+                      </p>
+                      <p className="text-sm text-muted-foreground">{item.category}</p>
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
+                    <StatusBadge status={item.registration_status} audience="customer" />
+                  </div>
 
+                  {item.notes && (
+                    <p className="text-xs text-muted-foreground line-clamp-2">{item.notes}</p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between gap-2 border-t border-dashed border-border pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAppliance(item)}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-foreground hover:text-primary"
+                  >
+                    <span>See details</span>
+                    <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+
+                  {item.registration_status !== 'cancelled' && (
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/customer/bookings?book=1&appliance=${item.appliance_id}`}>
+                        <CalendarPlus className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>Book Visit</span>
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Progressive-Disclosure Appliance Detail Sheet */}
+      <Sheet
+        open={Boolean(selectedAppliance)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedAppliance(null)
+        }}
+      >
+        <SheetContent side="right" className="w-[min(28rem,94dvw)]">
+          {selectedAppliance && (
+            <>
+              <SheetHeader>
+                <div className="flex items-center gap-2">
+                  <StatusBadge status={selectedAppliance.registration_status} audience="customer" />
+                </div>
+                <SheetTitle>
+                  {selectedAppliance.brand} {selectedAppliance.category}
+                </SheetTitle>
+                <SheetDescription>
+                  Saved appliance details used when a technician visits your home.
+                </SheetDescription>
+              </SheetHeader>
+
+              <dl className="divide-y divide-dashed divide-border rounded-xl border border-border bg-background/60 px-4 py-1 text-sm">
+                <div className="flex justify-between gap-3 py-3">
+                  <dt className="text-muted-foreground">Model Number</dt>
+                  <dd className="font-semibold text-foreground text-right">
+                    {selectedAppliance.model_number}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3 py-3">
+                  <dt className="text-muted-foreground">Serial Number</dt>
+                  <dd className="font-mono text-xs font-semibold text-foreground text-right">
+                    {selectedAppliance.serial_number}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3 py-3">
+                  <dt className="text-muted-foreground">Purchase Date</dt>
+                  <dd className="font-medium text-foreground text-right">
+                    {selectedAppliance.purchase_date
+                      ? formatManilaDate(selectedAppliance.purchase_date)
+                      : 'Not added'}
+                  </dd>
+                </div>
+                <div className="py-3 space-y-1">
+                  <dt className="text-muted-foreground">Location / Notes</dt>
+                  <dd className="text-foreground">
+                    {selectedAppliance.notes || 'No extra notes added.'}
+                  </dd>
+                </div>
+              </dl>
+
+              <SheetFooter className="flex-col gap-2 sm:flex-col">
+                {selectedAppliance.registration_status !== 'cancelled' && (
+                  <Button asChild className="w-full">
+                    <Link href={`/customer/bookings?book=1&appliance=${selectedAppliance.appliance_id}`}>
+                      <CalendarPlus className="h-4 w-4" aria-hidden="true" />
+                      <span>Book a Visit for This Unit</span>
+                    </Link>
+                  </Button>
+                )}
+
+                <div className="grid grid-cols-2 gap-2 w-full">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => openEditDialog(selectedAppliance)}
+                  >
+                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>Edit Details</span>
+                  </Button>
+
+                  <ConfirmationDialog
+                    trigger={
+                      <Button type="button" variant="outline" className="text-destructive">
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>Delete</span>
+                      </Button>
+                    }
+                    title="Delete this appliance?"
+                    description="You can delete an appliance if it has no past visits yet. Otherwise, mark it as inactive."
+                    confirmLabel="Delete Appliance"
+                    isPending={isPending}
+                    onConfirm={() => handleRemove(selectedAppliance.appliance_id, 'delete')}
+                  />
+                </div>
+
+                {selectedAppliance.registration_status !== 'cancelled' && (
+                  <ConfirmationDialog
+                    trigger={
+                      <Button type="button" variant="ghost" size="sm" className="w-full text-muted-foreground">
+                        <XCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>Mark as Inactive Instead</span>
+                      </Button>
+                    }
+                    title="Mark appliance as inactive?"
+                    description="Inactive appliances stay in your history, and you won't book new visits for them."
+                    confirmLabel="Mark Inactive"
+                    isPending={isPending}
+                    onConfirm={() => handleRemove(selectedAppliance.appliance_id, 'cancel')}
+                  />
+                )}
+              </SheetFooter>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Add / Edit Appliance Modal */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingAppliance ? 'Update Appliance Details' : 'Register New Appliance'}
+              {editingAppliance ? 'Edit Appliance Details' : 'Add an Appliance'}
             </DialogTitle>
             <DialogDescription>
-              Provide your appliance model and serial details for fast technician diagnostics.
+              Share the brand and model sticker details so your technician brings the right tools.
             </DialogDescription>
           </DialogHeader>
 
@@ -330,7 +402,7 @@ export function AppliancesPanel({ appliances }: AppliancesPanelProps) {
 
               <div className="space-y-1.5">
                 <Label htmlFor="app-category">
-                  Category <span className="text-destructive">*</span>
+                  Appliance Type <span className="text-destructive">*</span>
                 </Label>
                 <Controller
                   name="category"
@@ -338,7 +410,7 @@ export function AppliancesPanel({ appliances }: AppliancesPanelProps) {
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger id="app-category">
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder="Choose appliance type" />
                       </SelectTrigger>
                       <SelectContent>
                         {APPLIANCE_CATEGORIES.map((cat) => (
@@ -365,7 +437,7 @@ export function AppliancesPanel({ appliances }: AppliancesPanelProps) {
                 </Label>
                 <Input
                   id="app-model"
-                  placeholder="e.g. FP-53KCV010"
+                  placeholder="Found on the side sticker"
                   aria-invalid={Boolean(errors.model_number)}
                   {...register('model_number')}
                 />
@@ -382,7 +454,7 @@ export function AppliancesPanel({ appliances }: AppliancesPanelProps) {
                 </Label>
                 <Input
                   id="app-serial"
-                  placeholder="e.g. SN-PH-904128"
+                  placeholder="Found on the barcode label"
                   aria-invalid={Boolean(errors.serial_number)}
                   {...register('serial_number')}
                 />
@@ -395,15 +467,15 @@ export function AppliancesPanel({ appliances }: AppliancesPanelProps) {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="app-purchase-date">Purchase date (optional)</Label>
+              <Label htmlFor="app-purchase-date">When did you buy it? (optional)</Label>
               <Input id="app-purchase-date" type="date" {...register('purchase_date')} />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="app-notes">Location / unit notes (optional)</Label>
+              <Label htmlFor="app-notes">Where is it located? (optional)</Label>
               <Textarea
                 id="app-notes"
-                placeholder="e.g. Installed in 2nd floor master bedroom, 1.5HP inverter"
+                placeholder="e.g. 2nd floor master bedroom, 1.5HP unit"
                 {...register('notes')}
               />
             </div>
@@ -414,12 +486,12 @@ export function AppliancesPanel({ appliances }: AppliancesPanelProps) {
               </Button>
               <Button type="submit" disabled={isPending}>
                 {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                <span>{editingAppliance ? 'Save Changes' : 'Register Appliance'}</span>
+                <span>{editingAppliance ? 'Save Changes' : 'Save Appliance'}</span>
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   )
 }

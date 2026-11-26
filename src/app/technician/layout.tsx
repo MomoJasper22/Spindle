@@ -5,8 +5,10 @@ import { PortalShell, type PortalNavItem } from '@/components/shared/portal-shel
 import { PageSkeleton } from '@/components/shared/page-skeleton'
 
 const TECHNICIAN_NAV: PortalNavItem[] = [
-  { label: 'Technician Dashboard', href: '/technician/dashboard', icon: 'dashboard' },
-  { label: 'Profile & Credentials', href: '/technician/profile', icon: 'profile' },
+  { label: 'Overview', mobileLabel: 'Overview', href: '/technician/dashboard', icon: 'dashboard' },
+  { label: 'Assigned Jobs', mobileLabel: 'Jobs', href: '/technician/jobs', icon: 'wrench' },
+  { label: 'Schedule & Agenda', mobileLabel: 'Schedule', href: '/technician/schedule', icon: 'calendar' },
+  { label: 'Field Collections', mobileLabel: 'Payments', href: '/technician/collections', icon: 'payments' },
 ]
 
 async function TechnicianLayoutGuard({ children }: { children: React.ReactNode }) {
@@ -18,7 +20,9 @@ async function TechnicianLayoutGuard({ children }: { children: React.ReactNode }
       userName={formatFullName(profile)}
       userEmail={profile.email}
       avatarUrl={profile.avatar_url}
+      avatarPosition={profile.avatar_position}
       branchLocation={profile.branch_location}
+      profileHref="/technician/profile"
       navItems={TECHNICIAN_NAV}
     >
       {children}

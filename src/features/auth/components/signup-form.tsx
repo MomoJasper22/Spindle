@@ -48,11 +48,11 @@ export function SignupForm() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground">
+        <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           Create your Spindle account
         </h2>
         <p className="text-sm text-muted-foreground">
-          Register your appliances and book certified repair technicians across the Philippines.
+          Save your appliances and book trusted home visits across the Philippines.
         </p>
       </div>
 
@@ -140,7 +140,7 @@ export function SignupForm() {
             Password <span className="text-destructive">*</span>
           </Label>
           <p id="signup-password-hint" className="text-xs text-muted-foreground">
-            At least 8 characters with at least one letter and one number.
+            At least 8 characters with a letter and a number.
           </p>
           <div className="relative">
             <Input

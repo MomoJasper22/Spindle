@@ -22,11 +22,15 @@ export type ActionResult<T = void> =
   | { success: true; message: string; data?: T }
   | { success: false; error: string }
 
+function revalidateCustomerPortal() {
+  revalidatePath('/customer', 'layout')
+}
+
 export async function createApplianceAction(input: ApplianceInput): Promise<ActionResult> {
   const profile = await requireRole('customer')
   const parsed = applianceSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid appliance details.' }
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Please check the appliance details.' }
   }
 
   const supabase = await createClient()
@@ -49,7 +53,7 @@ export async function createApplianceAction(input: ApplianceInput): Promise<Acti
     if (error.code === '23505') {
       return {
         success: false,
-        error: 'An appliance with this serial number is already registered.',
+        error: 'An appliance with this serial number is already saved on your account.',
       }
     }
     return { success: false, error: error.message }
@@ -60,11 +64,11 @@ export async function createApplianceAction(input: ApplianceInput): Promise<Acti
     entity_type: 'appliance',
     entity_id: inserted.appliance_id,
     action: 'appliance_registered',
-    description: `Registered ${parsed.data.brand} ${parsed.data.category} (${parsed.data.model_number}).`,
+    description: `Added ${parsed.data.brand} ${parsed.data.category} (${parsed.data.model_number}).`,
   })
 
-  revalidatePath('/customer/home')
-  return { success: true, message: 'Appliance registered and queued for verification.' }
+  revalidateCustomerPortal()
+  return { success: true, message: 'Appliance saved to your account.' }
 }
 
 export async function updateApplianceAction(
@@ -74,7 +78,7 @@ export async function updateApplianceAction(
   const profile = await requireRole('customer')
   const parsed = applianceSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid appliance details.' }
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Please check the appliance details.' }
   }
 
   const supabase = await createClient()
@@ -93,7 +97,7 @@ export async function updateApplianceAction(
 
   if (error) {
     if (error.code === '23505') {
-      return { success: false, error: 'Serial number is already registered to another unit.' }
+      return { success: false, error: 'That serial number is already used on another saved appliance.' }
     }
     return { success: false, error: error.message }
   }
@@ -103,10 +107,10 @@ export async function updateApplianceAction(
     entity_type: 'appliance',
     entity_id: applianceId,
     action: 'appliance_updated',
-    description: `Updated appliance record ${applianceId} (${parsed.data.brand} ${parsed.data.model_number}).`,
+    description: `Updated ${parsed.data.brand} ${parsed.data.model_number}.`,
   })
 
-  revalidatePath('/customer/home')
+  revalidateCustomerPortal()
   return { success: true, message: 'Appliance details updated.' }
 }
 
@@ -126,7 +130,7 @@ export async function deleteOrCancelApplianceAction(
     if ((linkedRepairs ?? 0) > 0) {
       return {
         success: false,
-        error: 'Cannot delete an appliance with repair history. You can cancel its registration instead.',
+        error: 'This appliance has past visits so it cannot be deleted. You can mark it as removed instead.',
       }
     }
 
@@ -145,11 +149,11 @@ export async function deleteOrCancelApplianceAction(
       entity_type: 'appliance',
       entity_id: applianceId,
       action: 'appliance_deleted',
-      description: `Removed unlinked appliance registration ${applianceId}.`,
+      description: `Removed a saved appliance.`,
     })
 
-    revalidatePath('/customer/home')
-    return { success: true, message: 'Appliance registration removed.' }
+    revalidateCustomerPortal()
+    return { success: true, message: 'Appliance removed.' }
   }
 
   const { error } = await supabase
@@ -167,11 +171,11 @@ export async function deleteOrCancelApplianceAction(
     entity_type: 'appliance',
     entity_id: applianceId,
     action: 'appliance_cancelled',
-    description: `Cancelled appliance registration ${applianceId}.`,
+    description: `Marked an appliance as inactive.`,
   })
 
-  revalidatePath('/customer/home')
-  return { success: true, message: 'Appliance registration cancelled.' }
+  revalidateCustomerPortal()
+  return { success: true, message: 'Appliance marked as inactive.' }
 }
 
 export async function createRepairBookingAction(
@@ -180,7 +184,7 @@ export async function createRepairBookingAction(
   const profile = await requireRole('customer')
   const parsed = repairBookingSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid booking request.' }
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Please check your booking details.' }
   }
 
   const supabase = await createClient()
@@ -201,10 +205,10 @@ export async function createRepairBookingAction(
   }
 
   const row = Array.isArray(data) ? data[0] : data
-  revalidatePath('/customer/home')
+  revalidateCustomerPortal()
   return {
     success: true,
-    message: `Repair ticket ${row?.ticket_id ?? ''} booked with appointment ${row?.appointment_id ?? ''}.`,
+    message: 'Your home visit has been booked! We will assign a technician shortly.',
     data: row,
   }
 }
@@ -215,7 +219,7 @@ export async function rescheduleAppointmentAction(
   const profile = await requireRole('customer')
   const parsed = rescheduleAppointmentSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid schedule.' }
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Please choose a valid date and window.' }
   }
 
   const supabase = await createClient()
@@ -227,11 +231,11 @@ export async function rescheduleAppointmentAction(
     .single()
 
   if (fetchError || !appointment) {
-    return { success: false, error: 'Appointment not found.' }
+    return { success: false, error: 'We could not find that visit.' }
   }
 
   if (['completed', 'cancelled'].includes(appointment.appointment_status)) {
-    return { success: false, error: 'Completed or cancelled appointments cannot be rescheduled.' }
+    return { success: false, error: 'Finished or cancelled visits cannot be moved.' }
   }
 
   const { error: updateAptError } = await supabase
@@ -260,11 +264,11 @@ export async function rescheduleAppointmentAction(
     entity_type: 'appointment',
     entity_id: appointment.appointment_id,
     action: 'appointment_rescheduled',
-    description: `Customer rescheduled appointment ${appointment.appointment_id} to ${parsed.data.scheduled_date} (${parsed.data.time_slot}).`,
+    description: `Moved home visit to ${parsed.data.scheduled_date} (${parsed.data.time_slot}).`,
   })
 
-  revalidatePath('/customer/home')
-  return { success: true, message: 'Appointment rescheduled.' }
+  revalidateCustomerPortal()
+  return { success: true, message: 'Visit schedule updated.' }
 }
 
 export async function cancelRepairTicketAction(ticketId: string): Promise<ActionResult> {
@@ -279,13 +283,13 @@ export async function cancelRepairTicketAction(ticketId: string): Promise<Action
     .single()
 
   if (fetchError || !repair) {
-    return { success: false, error: 'Repair ticket not found.' }
+    return { success: false, error: 'Booking not found.' }
   }
 
   if (!['pending', 'confirmed'].includes(repair.status)) {
     return {
       success: false,
-      error: 'Only pending or confirmed tickets can be cancelled online. Contact support for active dispatches.',
+      error: 'A technician is already on this booking. Please contact support if you need to cancel.',
     }
   }
 
@@ -310,26 +314,26 @@ export async function cancelRepairTicketAction(ticketId: string): Promise<Action
     entity_type: 'repair',
     entity_id: ticketId,
     action: 'repair_cancelled',
-    description: `Customer cancelled repair ticket ${ticketId}.`,
+    description: `Cancelled home visit booking.`,
   })
 
-  revalidatePath('/customer/home')
-  return { success: true, message: `Repair ticket ${ticketId} cancelled.` }
+  revalidateCustomerPortal()
+  return { success: true, message: 'Your booking has been cancelled.' }
 }
 
 export async function submitCustomerPaymentAction(
   input: CustomerPaymentInput
 ): Promise<ActionResult> {
-  const profile = await requireRole('customer')
+  await requireRole('customer')
   const parsed = customerPaymentSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid payment details.' }
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Please check your payment details.' }
   }
 
   if (parsed.data.payment_method !== 'Cash' && !parsed.data.reference_no?.trim()) {
     return {
       success: false,
-      error: 'Reference number is required for digital or bank payments.',
+      error: 'Please enter the reference number for your digital or bank transfer.',
     }
   }
 
@@ -349,10 +353,10 @@ export async function submitCustomerPaymentAction(
     return { success: false, error: error.message }
   }
 
-  revalidatePath('/customer/home')
+  revalidateCustomerPortal()
   return {
     success: true,
-    message: `Payment submitted for verification (${profile.first_name}).`,
+    message: 'Payment details sent. We will confirm it shortly.',
   }
 }
 
@@ -362,7 +366,7 @@ export async function updateCustomerProfileAction(
   const profile = await requireRole('customer')
   const parsed = customerProfileSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid profile fields.' }
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Please check your profile details.' }
   }
 
   const supabase = await createClient()
@@ -391,12 +395,11 @@ export async function updateCustomerProfileAction(
     entity_type: 'user',
     entity_id: profile.user_id,
     action: 'profile_updated',
-    description: `Customer updated contact information and service address.`,
+    description: `Updated contact details and home address.`,
   })
 
-  revalidatePath('/customer/profile')
-  revalidatePath('/customer/home')
-  return { success: true, message: 'Customer profile updated.' }
+  revalidateCustomerPortal()
+  return { success: true, message: 'Your profile details have been saved.' }
 }
 
 export async function deactivateCustomerAccountAction(): Promise<ActionResult> {
@@ -408,7 +411,7 @@ export async function deactivateCustomerAccountAction(): Promise<ActionResult> {
     entity_type: 'user',
     entity_id: profile.user_id,
     action: 'account_deactivated',
-    description: `Customer ${profile.first_name} ${profile.last_name} deactivated their account.`,
+    description: `${profile.first_name} ${profile.last_name} paused their account.`,
   })
 
   const { error } = await supabase

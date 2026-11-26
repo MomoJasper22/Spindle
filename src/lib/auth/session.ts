@@ -1,11 +1,13 @@
 import 'server-only'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { normalizeAvatarPosition, type AvatarPosition } from '@/lib/avatar'
 import type { UserRole } from '@/lib/constants'
 import type { TechnicianProfileRow, UserRow } from '@/types/database'
 
 export interface AuthenticatedUserProfile extends UserRow {
   role: UserRole
+  avatar_position: AvatarPosition
   technician_profile: TechnicianProfileRow | null
 }
 
@@ -64,9 +66,14 @@ export async function getCurrentUserProfile(): Promise<AuthenticatedUserProfile 
   }
   void _ignored
 
+  const avatarPosition = normalizeAvatarPosition(
+    rest.avatar_position ?? user.user_metadata?.avatar_position
+  )
+
   return {
     ...rest,
     role: rawRole,
+    avatar_position: avatarPosition,
     technician_profile: techProfile,
   }
 }

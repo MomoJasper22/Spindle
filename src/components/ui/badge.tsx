@@ -7,16 +7,16 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-primary-tint text-primary border border-blue-200',
-        secondary: 'bg-teal-50 text-teal-700 border border-teal-200',
+        default: 'bg-primary-tint text-primary border border-teal-200',
+        secondary: 'bg-slate-100 text-[#141B29] border border-border',
         outline: 'border border-border text-muted-foreground bg-card',
-        amber: 'bg-[#FEF3C7] text-[#B45309] border border-amber-200',
-        sky: 'bg-[#E0F2FE] text-[#0369A1] border border-sky-200',
-        indigo: 'bg-[#EEF2FF] text-[#4338CA] border border-indigo-200',
-        orange: 'bg-[#FFEDD5] text-[#C2410C] border border-orange-200',
-        emerald: 'bg-[#D1FAE5] text-[#047857] border border-emerald-200',
-        rose: 'bg-[#FFE4E6] text-[#BE123C] border border-rose-200',
-        slate: 'bg-slate-100 text-slate-700 border border-slate-200',
+        amber: 'bg-[#FEF3C7] text-[#92400E] border border-amber-200',
+        sky: 'bg-[#E0F2FE] text-[#075985] border border-sky-200',
+        indigo: 'bg-[#E6F4F1] text-[#0F766E] border border-teal-200',
+        orange: 'bg-[#FFEDD5] text-[#9A3412] border border-orange-200',
+        emerald: 'bg-[#D1FAE5] text-[#065F46] border border-emerald-200',
+        rose: 'bg-[#FFE4E6] text-[#9F1239] border border-rose-200',
+        slate: 'bg-muted text-muted-foreground border border-border',
       },
     },
     defaultVariants: {

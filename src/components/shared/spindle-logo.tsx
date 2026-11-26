@@ -14,16 +14,16 @@ export function SpindleLogo({
   showTagline = false,
   className,
 }: SpindleLogoProps) {
-  const iconSize = size === 'sm' ? 'h-7 w-7' : size === 'lg' ? 'h-10 w-10' : 'h-8 w-8'
+  const iconSize = size === 'sm' ? 'h-8 w-8' : size === 'lg' ? 'h-10 w-10' : 'h-9 w-9'
   const textSize = size === 'sm' ? 'text-base' : size === 'lg' ? 'text-2xl' : 'text-lg'
-  const textColor = variant === 'light' ? 'text-white' : 'text-slate-900'
-  const subColor = variant === 'light' ? 'text-slate-300' : 'text-slate-500'
+  const textColor = variant === 'light' ? 'text-[#F8F7F4]' : 'text-[#141B29]'
+  const subColor = variant === 'light' ? 'text-slate-300' : 'text-muted-foreground'
 
   return (
     <div className={cn('inline-flex items-center gap-2.5 select-none', className)}>
       <div
         className={cn(
-          'flex items-center justify-center rounded-lg bg-primary text-white shadow-xs shrink-0',
+          'flex items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs shrink-0',
           iconSize
         )}
       >
@@ -54,7 +54,7 @@ export function SpindleLogo({
         </span>
         {showTagline && (
           <span className={cn('text-[11px] font-medium mt-0.5', subColor)}>
-            Appliance Repair &amp; Care
+            Appliance Care &amp; Repair
           </span>
         )}
       </div>

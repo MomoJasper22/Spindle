@@ -100,24 +100,22 @@ const BRAND_LOGOS: BrandLogoItem[] = [
 
 export function SupportedBrandsSection() {
   return (
-    <section id="brands" className="border-t border-border bg-background py-14 sm:py-16">
+    <section id="brands" className="border-t border-border bg-background py-12 sm:py-16">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 space-y-8">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-1.5">
-            <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              Brands We Work With
-            </h2>
-            <p className="text-sm text-muted-foreground sm:text-base">
-              Trusted repair expertise across leading residential and commercial appliance makers.
-            </p>
-          </div>
+        <div className="space-y-1.5">
+          <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Brands We Work With
+          </h2>
+          <p className="text-sm text-muted-foreground sm:text-base">
+            Experienced repair care across trusted home and business appliance brands.
+          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
           {BRAND_LOGOS.map((brand) => (
             <div
               key={brand.name}
-              className="flex h-24 items-center justify-center rounded-xl border border-border bg-card px-5 py-4 shadow-2xs transition-colors hover:border-slate-300"
+              className="flex h-22 sm:h-24 items-center justify-center rounded-2xl border border-border bg-card px-5 py-4 shadow-2xs transition-colors hover:border-primary/40"
             >
               <Image
                 src={brand.logoSrc}

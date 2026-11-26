@@ -169,89 +169,161 @@ export function SchedulePanel({ appointments }: SchedulePanelProps) {
             description="Switch between Today, Upcoming, or All History to inspect your dispatched visits."
           />
         ) : (
-          <Table regionLabel="Technician appointment schedule">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date &amp; Slot (PHT)</TableHead>
-                <TableHead>Ticket &amp; Unit</TableHead>
-                <TableHead>Customer &amp; Address</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            <div className="space-y-3 md:hidden">
               {filtered.map((apt) => {
                 const isFinal = ['completed', 'cancelled'].includes(apt.appointment_status)
                 return (
-                  <TableRow key={apt.appointment_id}>
-                    <TableCell className="whitespace-nowrap">
-                      <p className="font-semibold text-foreground">
-                        {formatManilaDate(apt.scheduled_date)}
-                      </p>
-                      <p className="text-xs text-primary font-medium">{apt.time_slot}</p>
-                    </TableCell>
-                    <TableCell>
-                      <p className="font-mono text-xs font-semibold">{apt.ticket_id}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {apt.appliance_brand} {apt.appliance_model_number}
-                      </p>
-                    </TableCell>
-                    <TableCell className="max-w-xs">
-                      <p className="font-medium text-foreground">
-                        {apt.customer_first_name} {apt.customer_last_name} &middot;{' '}
-                        <span className="text-xs text-muted-foreground">
-                          {formatPHPhone(apt.customer_phone)}
-                        </span>
-                      </p>
-                      <p className="mt-0.5 flex items-start gap-1 text-xs text-muted-foreground">
-                        <MapPin className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-                        <span className="line-clamp-2">{apt.service_address}</span>
-                      </p>
-                    </TableCell>
-                    <TableCell>
+                  <div
+                    key={apt.appointment_id}
+                    className="rounded-xl border border-border bg-card p-4 space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-semibold text-foreground">
+                          {formatManilaDate(apt.scheduled_date)}
+                        </p>
+                        <p className="text-xs font-medium text-primary">{apt.time_slot}</p>
+                      </div>
                       <StatusBadge status={apt.appointment_status} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {!isFinal && (
-                        <div className="inline-flex flex-wrap items-center justify-end gap-1.5">
-                          {apt.appointment_status === 'requested' && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              disabled={isPending}
-                              onClick={() => handleQuickStatus(apt, 'confirmed')}
-                            >
-                              Confirm
-                            </Button>
-                          )}
+                    </div>
+                    <div className="space-y-1 text-sm">
+                      <p className="font-semibold text-foreground">
+                        {apt.customer_first_name} {apt.customer_last_name}
+                      </p>
+                      <p className="font-mono text-xs text-muted-foreground">
+                        {apt.ticket_id} &middot; {apt.appliance_brand} {apt.appliance_model_number}
+                      </p>
+                      <p className="flex items-start gap-1 text-xs text-muted-foreground">
+                        <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        <span>{apt.service_address}</span>
+                      </p>
+                    </div>
+                    {!isFinal && (
+                      <div className="flex flex-wrap gap-2 border-t border-border pt-3">
+                        {apt.appointment_status === 'requested' && (
                           <Button
                             type="button"
                             size="sm"
                             variant="outline"
                             disabled={isPending}
-                            onClick={() => openReschedule(apt)}
+                            onClick={() => handleQuickStatus(apt, 'confirmed')}
                           >
-                            Reschedule
+                            Confirm
                           </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            disabled={isPending}
-                            onClick={() => handleQuickStatus(apt, 'completed')}
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-                            <span>Complete</span>
-                          </Button>
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
+                        )}
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={isPending}
+                          onClick={() => openReschedule(apt)}
+                        >
+                          Reschedule
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          disabled={isPending}
+                          onClick={() => handleQuickStatus(apt, 'completed')}
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span>Complete</span>
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 )
               })}
-            </TableBody>
-          </Table>
+            </div>
+
+            <div className="hidden md:block">
+              <Table regionLabel="Technician appointment schedule">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date &amp; Slot (PHT)</TableHead>
+                    <TableHead>Ticket &amp; Unit</TableHead>
+                    <TableHead>Customer &amp; Address</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((apt) => {
+                    const isFinal = ['completed', 'cancelled'].includes(apt.appointment_status)
+                    return (
+                      <TableRow key={apt.appointment_id}>
+                        <TableCell className="whitespace-nowrap">
+                          <p className="font-semibold text-foreground">
+                            {formatManilaDate(apt.scheduled_date)}
+                          </p>
+                          <p className="text-xs text-primary font-medium">{apt.time_slot}</p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-mono text-xs font-semibold">{apt.ticket_id}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {apt.appliance_brand} {apt.appliance_model_number}
+                          </p>
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          <p className="font-medium text-foreground">
+                            {apt.customer_first_name} {apt.customer_last_name} &middot;{' '}
+                            <span className="text-xs text-muted-foreground">
+                              {formatPHPhone(apt.customer_phone)}
+                            </span>
+                          </p>
+                          <p className="mt-0.5 flex items-start gap-1 text-xs text-muted-foreground">
+                            <MapPin className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                            <span className="line-clamp-2">{apt.service_address}</span>
+                          </p>
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={apt.appointment_status} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {!isFinal && (
+                            <div className="inline-flex flex-wrap items-center justify-end gap-1.5">
+                              {apt.appointment_status === 'requested' && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={isPending}
+                                  onClick={() => handleQuickStatus(apt, 'confirmed')}
+                                >
+                                  Confirm
+                                </Button>
+                              )}
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={isPending}
+                                onClick={() => openReschedule(apt)}
+                              >
+                                Reschedule
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                disabled={isPending}
+                                onClick={() => handleQuickStatus(apt, 'completed')}
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                                <span>Complete</span>
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </CardContent>
 

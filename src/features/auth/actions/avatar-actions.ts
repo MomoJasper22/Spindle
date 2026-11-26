@@ -4,9 +4,14 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAuthenticatedUser } from '@/lib/auth/session'
+import {
+  DEFAULT_AVATAR_POSITION,
+  normalizeAvatarPosition,
+  type AvatarPosition,
+} from '@/lib/avatar'
 
 export type AvatarActionResult =
-  | { success: true; message: string; avatarUrl: string | null }
+  | { success: true; message: string; avatarUrl: string | null; avatarPosition?: AvatarPosition }
   | { success: false; error: string }
 
 const ALLOWED_TYPES: Record<string, string> = {
@@ -18,12 +23,37 @@ const ALLOWED_TYPES: Record<string, string> = {
 const MAX_FILE_BYTES = 2 * 1024 * 1024 // 2 MB
 
 function revalidateAllPortals() {
-  revalidatePath('/customer/profile')
-  revalidatePath('/customer/home')
-  revalidatePath('/technician/profile')
-  revalidatePath('/technician/dashboard')
-  revalidatePath('/admin/profile')
-  revalidatePath('/admin/dashboard')
+  revalidatePath('/customer', 'layout')
+  revalidatePath('/technician', 'layout')
+  revalidatePath('/admin', 'layout')
+}
+
+async function persistAvatarPositionMetadata(
+  authUserId: string,
+  userId: string,
+  position: AvatarPosition
+): Promise<void> {
+  const admin = createAdminClient()
+  const { data: authUserData } = await admin.auth.admin.getUserById(authUserId)
+  const existingMeta =
+    (authUserData?.user?.user_metadata as Record<string, unknown> | undefined) ?? {}
+
+  await admin.auth.admin.updateUserById(authUserId, {
+    user_metadata: {
+      ...existingMeta,
+      avatar_position: position,
+    },
+  })
+
+  // Best-effort sync to public.users if migration 005 has been applied
+  const { error: dbErr } = await admin
+    .from('users')
+    .update({ avatar_position: position })
+    .eq('user_id', userId)
+
+  if (dbErr && dbErr.code !== '42703') {
+    throw new Error(dbErr.message)
+  }
 }
 
 export async function uploadAvatarAction(formData: FormData): Promise<AvatarActionResult> {
@@ -31,20 +61,20 @@ export async function uploadAvatarAction(formData: FormData): Promise<AvatarActi
   const file = formData.get('avatar')
 
   if (!(file instanceof File) || file.size === 0) {
-    return { success: false, error: 'Select an image file to upload.' }
+    return { success: false, error: 'Please select a photo to upload.' }
   }
 
   const ext = ALLOWED_TYPES[file.type]
   if (!ext) {
-    return { success: false, error: 'Only JPEG, PNG, or WebP images are supported.' }
+    return { success: false, error: 'Please choose a JPEG, PNG, or WebP image.' }
   }
 
   if (file.size > MAX_FILE_BYTES) {
-    return { success: false, error: 'Image must be 2 MB or smaller.' }
+    return { success: false, error: 'Please choose a photo that is 2 MB or smaller.' }
   }
 
   if (!profile.auth_user_id) {
-    return { success: false, error: 'Account session missing auth identifier.' }
+    return { success: false, error: 'Please sign in again before updating your photo.' }
   }
 
   const admin = createAdminClient()
@@ -62,7 +92,7 @@ export async function uploadAvatarAction(formData: FormData): Promise<AvatarActi
   if (uploadErr) {
     return {
       success: false,
-      error: uploadErr.message || 'Unable to upload photo. Ensure migration 004 has been applied.',
+      error: uploadErr.message || 'Unable to upload photo right now. Please try again.',
     }
   }
 
@@ -77,9 +107,15 @@ export async function uploadAvatarAction(formData: FormData): Promise<AvatarActi
   if (updateErr) {
     return {
       success: false,
-      error: updateErr.message || 'Unable to save profile photo URL.',
+      error: updateErr.message || 'Unable to save your profile photo.',
     }
   }
+
+  await persistAvatarPositionMetadata(
+    profile.auth_user_id,
+    profile.user_id,
+    DEFAULT_AVATAR_POSITION
+  )
 
   await supabase.from('activity_logs').insert({
     actor_id: profile.user_id,
@@ -94,6 +130,38 @@ export async function uploadAvatarAction(formData: FormData): Promise<AvatarActi
     success: true,
     message: 'Profile photo updated.',
     avatarUrl,
+    avatarPosition: DEFAULT_AVATAR_POSITION,
+  }
+}
+
+export async function updateAvatarPositionAction(
+  positionInput: AvatarPosition
+): Promise<AvatarActionResult> {
+  const profile = await requireAuthenticatedUser()
+  if (!profile.auth_user_id) {
+    return { success: false, error: 'Please sign in again before saving your photo position.' }
+  }
+  if (!profile.avatar_url) {
+    return { success: false, error: 'Upload a profile photo first before adjusting its position.' }
+  }
+
+  const normalized = normalizeAvatarPosition(positionInput)
+
+  try {
+    await persistAvatarPositionMetadata(profile.auth_user_id, profile.user_id, normalized)
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Unable to save photo position.',
+    }
+  }
+
+  revalidateAllPortals()
+  return {
+    success: true,
+    message: 'Photo position saved.',
+    avatarUrl: profile.avatar_url,
+    avatarPosition: normalized,
   }
 }
 
@@ -110,6 +178,14 @@ export async function removeAvatarAction(): Promise<AvatarActionResult> {
     return { success: false, error: error.message }
   }
 
+  if (profile.auth_user_id) {
+    await persistAvatarPositionMetadata(
+      profile.auth_user_id,
+      profile.user_id,
+      DEFAULT_AVATAR_POSITION
+    )
+  }
+
   await supabase.from('activity_logs').insert({
     actor_id: profile.user_id,
     entity_type: 'user',
@@ -123,5 +199,6 @@ export async function removeAvatarAction(): Promise<AvatarActionResult> {
     success: true,
     message: 'Profile photo removed.',
     avatarUrl: null,
+    avatarPosition: DEFAULT_AVATAR_POSITION,
   }
 }

@@ -46,7 +46,7 @@ export async function signInAction(input: LoginInput): Promise<AuthActionResult>
     await supabase.auth.signOut()
     return {
       success: false,
-      error: 'Your user profile could not be located. Please contact Spindle support.',
+      error: 'We could not find your profile. Please reach out to Spindle support for help.',
     }
   }
 
@@ -54,7 +54,7 @@ export async function signInAction(input: LoginInput): Promise<AuthActionResult>
     await supabase.auth.signOut()
     return {
       success: false,
-      error: 'This account has been deactivated. Contact an administrator to restore access.',
+      error: 'This account is currently paused. Please reach out to Spindle support to reopen it.',
     }
   }
 

@@ -180,110 +180,181 @@ export function AdminAppointmentsPanel({
             description="No appointments matched your search or status filter."
           />
         ) : (
-          <Table regionLabel="Master dispatch schedule">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Appointment / Ticket</TableHead>
-                <TableHead>Date &amp; Slot (PHT)</TableHead>
-                <TableHead>Customer &amp; Address</TableHead>
-                <TableHead>Technician</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            <div className="space-y-3 md:hidden">
               {filtered.map((apt) => {
                 const isFinal = ['completed', 'cancelled'].includes(apt.appointment_status)
                 return (
-                  <TableRow key={apt.appointment_id}>
-                    <TableCell>
-                      <p className="font-mono text-xs font-semibold text-primary">
-                        {apt.appointment_id}
-                      </p>
-                      <p className="font-mono text-xs text-muted-foreground">{apt.ticket_id}</p>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      <p className="font-medium">{formatManilaDate(apt.scheduled_date)}</p>
-                      <p className="text-xs text-primary">{apt.time_slot}</p>
-                    </TableCell>
-                    <TableCell className="max-w-xs">
-                      <p className="font-semibold">
+                  <div key={apt.appointment_id} className="rounded-xl border border-border bg-card p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="font-mono text-xs font-semibold text-primary">
+                          {apt.appointment_id} &middot; {apt.ticket_id}
+                        </span>
+                        <p className="mt-0.5 font-semibold text-foreground">
+                          {formatManilaDate(apt.scheduled_date)} &middot; {apt.time_slot}
+                        </p>
+                      </div>
+                      <StatusBadge status={apt.appointment_status} />
+                    </div>
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      <p className="text-sm font-medium text-foreground">
                         {apt.customer_first_name} {apt.customer_last_name}
                       </p>
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {apt.service_address}
+                      <p className="line-clamp-2">{apt.service_address}</p>
+                      <p>
+                        Tech:{' '}
+                        {apt.technician_first_name
+                          ? `${apt.technician_first_name} ${apt.technician_last_name}`
+                          : 'Unassigned'}
                       </p>
-                    </TableCell>
-                    <TableCell>
-                      {apt.technician_first_name ? (
-                        <span className="font-medium">
-                          {apt.technician_first_name} {apt.technician_last_name}
-                        </span>
-                      ) : (
-                        <span className="text-xs font-medium text-amber-700">Unassigned</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={apt.appointment_status} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {!isFinal && (
-                        <div className="inline-flex flex-wrap items-center justify-end gap-1">
-                          {apt.appointment_status === 'requested' && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              disabled={isPending}
-                              onClick={() => handleStatusUpdate(apt, 'confirmed')}
-                            >
-                              Confirm
-                            </Button>
-                          )}
+                    </div>
+                    {!isFinal && (
+                      <div className="flex flex-wrap gap-1.5 border-t border-border pt-2.5">
+                        {apt.appointment_status === 'requested' && (
                           <Button
                             type="button"
                             size="sm"
                             variant="outline"
-                            disabled={activeTechs.length === 0}
-                            onClick={() => openDispatch(apt)}
-                          >
-                            <UserCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                            <span>Assign / Move</span>
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
                             disabled={isPending}
-                            onClick={() => handleStatusUpdate(apt, 'completed')}
+                            onClick={() => handleStatusUpdate(apt, 'confirmed')}
                           >
-                            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                            Confirm
                           </Button>
-                          <ConfirmationDialog
-                            trigger={
+                        )}
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={activeTechs.length === 0}
+                          onClick={() => openDispatch(apt)}
+                        >
+                          <UserCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span>Assign / Move</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          disabled={isPending}
+                          onClick={() => handleStatusUpdate(apt, 'completed')}
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="hidden md:block">
+              <Table regionLabel="Master dispatch schedule">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Appointment / Ticket</TableHead>
+                    <TableHead>Date &amp; Slot (PHT)</TableHead>
+                    <TableHead>Customer &amp; Address</TableHead>
+                    <TableHead>Technician</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((apt) => {
+                    const isFinal = ['completed', 'cancelled'].includes(apt.appointment_status)
+                    return (
+                      <TableRow key={apt.appointment_id}>
+                        <TableCell>
+                          <p className="font-mono text-xs font-semibold text-primary">
+                            {apt.appointment_id}
+                          </p>
+                          <p className="font-mono text-xs text-muted-foreground">{apt.ticket_id}</p>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <p className="font-medium">{formatManilaDate(apt.scheduled_date)}</p>
+                          <p className="text-xs text-primary">{apt.time_slot}</p>
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          <p className="font-semibold">
+                            {apt.customer_first_name} {apt.customer_last_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {apt.service_address}
+                          </p>
+                        </TableCell>
+                        <TableCell>
+                          {apt.technician_first_name ? (
+                            <span className="font-medium">
+                              {apt.technician_first_name} {apt.technician_last_name}
+                            </span>
+                          ) : (
+                            <span className="text-xs font-medium text-amber-700">Unassigned</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={apt.appointment_status} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {!isFinal && (
+                            <div className="inline-flex flex-wrap items-center justify-end gap-1">
+                              {apt.appointment_status === 'requested' && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={isPending}
+                                  onClick={() => handleStatusUpdate(apt, 'confirmed')}
+                                >
+                                  Confirm
+                                </Button>
+                              )}
                               <Button
                                 type="button"
                                 size="sm"
-                                variant="ghost"
-                                aria-label={`Cancel ${apt.appointment_id}`}
+                                variant="outline"
+                                disabled={activeTechs.length === 0}
+                                onClick={() => openDispatch(apt)}
                               >
-                                <XCircle className="h-3.5 w-3.5 text-destructive" aria-hidden="true" />
+                                <UserCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                                <span>Assign / Move</span>
                               </Button>
-                            }
-                            title={`Cancel appointment ${apt.appointment_id}?`}
-                            description="Cancels this scheduled field visit slot."
-                            confirmLabel="Cancel Slot"
-                            isPending={isPending}
-                            onConfirm={() => handleStatusUpdate(apt, 'cancelled')}
-                          />
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                disabled={isPending}
+                                onClick={() => handleStatusUpdate(apt, 'completed')}
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                              </Button>
+                              <ConfirmationDialog
+                                trigger={
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    aria-label={`Cancel ${apt.appointment_id}`}
+                                  >
+                                    <XCircle className="h-3.5 w-3.5 text-destructive" aria-hidden="true" />
+                                  </Button>
+                                }
+                                title={`Cancel appointment ${apt.appointment_id}?`}
+                                description="Cancels this scheduled field visit slot."
+                                confirmLabel="Cancel Slot"
+                                isPending={isPending}
+                                onConfirm={() => handleStatusUpdate(apt, 'cancelled')}
+                              />
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </CardContent>
 

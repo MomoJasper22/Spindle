@@ -15,7 +15,7 @@ async function LoginContent({
   const params = await searchParams
   const initialError =
     params.error === 'account_inactive'
-      ? 'This account has been deactivated. Contact an administrator to restore access.'
+      ? 'This account is currently paused. Please contact Spindle support to reopen it.'
       : null
 
   return <LoginForm initialError={initialError} />

@@ -68,7 +68,7 @@ export async function updateTechnicianRepairAction(
     description: `Technician ${profile.first_name} ${profile.last_name} updated ${parsed.data.ticket_id} to ${parsed.data.status.replace('_', ' ')}.`,
   })
 
-  revalidatePath('/technician/dashboard')
+  revalidatePath('/technician', 'layout')
   return {
     success: true,
     message: `Ticket ${parsed.data.ticket_id} updated successfully.`,
@@ -111,7 +111,7 @@ export async function recordOnsitePaymentAction(
     return { success: false, error: error.message }
   }
 
-  revalidatePath('/technician/dashboard')
+  revalidatePath('/technician', 'layout')
   return {
     success: true,
     message: 'On-site payment recorded and queued for admin verification.',
@@ -174,7 +174,7 @@ export async function updateTechnicianAppointmentAction(
     description: `Technician updated appointment ${apt.appointment_id} to ${parsed.data.appointment_status} (${parsed.data.scheduled_date} · ${parsed.data.time_slot}).`,
   })
 
-  revalidatePath('/technician/dashboard')
+  revalidatePath('/technician', 'layout')
   return {
     success: true,
     message: `Appointment ${apt.appointment_id} marked ${parsed.data.appointment_status}.`,
@@ -241,7 +241,6 @@ export async function updateTechnicianProfileAction(
     description: `Technician updated credentials & availability (${parsed.data.availability_status}).`,
   })
 
-  revalidatePath('/technician/profile')
-  revalidatePath('/technician/dashboard')
+  revalidatePath('/technician', 'layout')
   return { success: true, message: 'Technician profile and field credentials saved.' }
 }

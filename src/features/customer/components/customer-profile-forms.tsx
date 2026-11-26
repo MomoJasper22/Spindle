@@ -20,9 +20,9 @@ import { FormBanner } from '@/components/shared/form-banner'
 import { ProfilePhotoField } from '@/components/shared/profile-photo-field'
 import { signOutAction } from '@/features/auth/actions/auth-actions'
 import { ChangePasswordCard } from '@/features/auth/components/change-password-card'
+import type { AuthenticatedUserProfile } from '@/lib/auth/session'
 import { PH_PROVINCES, SERVICE_BRANCHES } from '@/lib/constants'
 import { formatFullName } from '@/lib/formatters'
-import type { UserRow } from '@/types/database'
 import {
   deactivateCustomerAccountAction,
   updateCustomerProfileAction,
@@ -30,7 +30,7 @@ import {
 import { customerProfileSchema, type CustomerProfileInput } from '../schemas/customer-schemas'
 
 interface CustomerProfileFormsProps {
-  profile: UserRow
+  profile: AuthenticatedUserProfile
 }
 
 export function CustomerProfileForms({ profile }: CustomerProfileFormsProps) {
@@ -89,15 +89,16 @@ export function CustomerProfileForms({ profile }: CustomerProfileFormsProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="h-4 w-4 text-primary" aria-hidden="true" />
-            <span>Personal Information &amp; Service Address</span>
+            <span>Contact &amp; Home Address</span>
           </CardTitle>
           <CardDescription>
-            Keep your photo, Philippine contact number, preferred branch, and service address accurate for home visits.
+            Keep your photo, mobile number, nearby branch, and home address up to date for smooth technician visits.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <ProfilePhotoField
             currentAvatarUrl={profile.avatar_url}
+            currentAvatarPosition={profile.avatar_position}
             fullName={formatFullName(profile)}
           />
 
@@ -116,7 +117,7 @@ export function CustomerProfileForms({ profile }: CustomerProfileFormsProps) {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="cust-middle">Middle name</Label>
+                <Label htmlFor="cust-middle">Middle name (optional)</Label>
                 <Input id="cust-middle" {...register('middle_name')} />
               </div>
 
@@ -138,7 +139,7 @@ export function CustomerProfileForms({ profile }: CustomerProfileFormsProps) {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="cust-phone">Phone (+63)</Label>
+                <Label htmlFor="cust-phone">Mobile number (+63)</Label>
                 <Input id="cust-phone" type="tel" {...register('phone')} />
                 {errors.phone && (
                   <p role="alert" className="text-xs text-destructive">
@@ -148,7 +149,7 @@ export function CustomerProfileForms({ profile }: CustomerProfileFormsProps) {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="cust-branch">Preferred Branch</Label>
+                <Label htmlFor="cust-branch">Nearest branch</Label>
                 <Controller
                   name="branch_location"
                   control={control}
@@ -171,7 +172,7 @@ export function CustomerProfileForms({ profile }: CustomerProfileFormsProps) {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="cust-street">Street / Unit / Building / Subdivision</Label>
+              <Label htmlFor="cust-street">Street, Unit, Building, or Subdivision</Label>
               <Input id="cust-street" {...register('address_street')} />
               {errors.address_street && (
                 <p role="alert" className="text-xs text-destructive">
@@ -233,17 +234,16 @@ export function CustomerProfileForms({ profile }: CustomerProfileFormsProps) {
               ) : (
                 <Save className="h-4 w-4" aria-hidden="true" />
               )}
-              <span>Save Profile Changes</span>
+              <span>Save Changes</span>
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      {/* Subtle Security & Session Controls */}
       <div className="space-y-3">
         <ChangePasswordCard />
 
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/80 bg-card/70 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3.5">
           <form action={signOutAction}>
             <Button type="submit" variant="outline" size="sm">
               <LogOut className="h-4 w-4" aria-hidden="true" />
@@ -259,12 +259,12 @@ export function CustomerProfileForms({ profile }: CustomerProfileFormsProps) {
                 size="sm"
                 className="text-xs text-muted-foreground hover:bg-rose-50 hover:text-rose-700"
               >
-                Deactivate account
+                Pause account
               </Button>
             }
-            title="Deactivate your Spindle account?"
-            description="You will be signed out immediately and blocked from signing back in until an administrator restores your account."
-            confirmLabel="Yes, Deactivate Account"
+            title="Pause your Spindle account?"
+            description="You will be signed out right away. Reach out to our support team anytime if you would like to turn your account back on."
+            confirmLabel="Yes, Pause Account"
             isPending={isPending}
             onConfirm={handleDeactivate}
           />

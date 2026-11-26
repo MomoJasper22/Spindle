@@ -1,3 +1,4 @@
+import type { AvatarPosition } from '@/lib/avatar'
 import type {
   AppointmentStatus,
   PaymentMethod,
@@ -29,6 +30,7 @@ export interface UserRow {
   user_type_id: string
   branch_location: string | null
   avatar_url?: string | null
+  avatar_position?: AvatarPosition | null
   address_street: string | null
   address_barangay: string | null
   address_city: string | null

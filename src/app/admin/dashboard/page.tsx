@@ -2,11 +2,10 @@ import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { requireRole } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
-import { AdminWorkspace } from '@/features/admin/components/admin-workspace'
+import { ExecutiveSummaryPanel } from '@/features/admin/components/executive-summary-panel'
 import { PageSkeleton } from '@/components/shared/page-skeleton'
 import type {
   ActivityLogRow,
-  AppointmentDetailView,
   CustomerApplianceRow,
   PaymentDetailView,
   RepairDetailView,
@@ -15,14 +14,14 @@ import type {
 } from '@/types/database'
 
 export const metadata: Metadata = {
-  title: 'Admin Operations Dashboard',
+  title: 'Admin Overview',
 }
 
 async function AdminDashboardContent() {
   const profile = await requireRole('admin')
   const supabase = await createClient()
 
-  const [usersRes, techProfilesRes, appliancesRes, repairsRes, appointmentsRes, paymentsRes, logsRes] =
+  const [usersRes, techProfilesRes, appliancesRes, repairsRes, paymentsRes, logsRes] =
     await Promise.all([
       supabase
         .from('users')
@@ -38,10 +37,6 @@ async function AdminDashboardContent() {
         .select('*')
         .order('created_at', { ascending: false }),
       supabase
-        .from('v_appointment_details')
-        .select('*')
-        .order('scheduled_date', { ascending: true }),
-      supabase
         .from('v_payment_details')
         .select('*')
         .order('created_at', { ascending: false }),
@@ -49,21 +44,29 @@ async function AdminDashboardContent() {
         .from('activity_logs')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(25),
+        .limit(20),
     ])
 
   return (
-    <AdminWorkspace
-      adminFirstName={profile.first_name}
-      currentAdminId={profile.user_id}
-      users={(usersRes.data ?? []) as UserWithRole[]}
-      techProfiles={(techProfilesRes.data ?? []) as TechnicianProfileRow[]}
-      appliances={(appliancesRes.data ?? []) as CustomerApplianceRow[]}
-      repairs={(repairsRes.data ?? []) as RepairDetailView[]}
-      appointments={(appointmentsRes.data ?? []) as AppointmentDetailView[]}
-      payments={(paymentsRes.data ?? []) as PaymentDetailView[]}
-      activityLogs={(logsRes.data ?? []) as ActivityLogRow[]}
-    />
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          Operations Overview, {profile.first_name}
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Revenue, active dispatch volume, pending verifications, and recent audit activity.
+        </p>
+      </div>
+
+      <ExecutiveSummaryPanel
+        users={(usersRes.data ?? []) as UserWithRole[]}
+        techProfiles={(techProfilesRes.data ?? []) as TechnicianProfileRow[]}
+        appliances={(appliancesRes.data ?? []) as CustomerApplianceRow[]}
+        repairs={(repairsRes.data ?? []) as RepairDetailView[]}
+        payments={(paymentsRes.data ?? []) as PaymentDetailView[]}
+        activityLogs={(logsRes.data ?? []) as ActivityLogRow[]}
+      />
+    </div>
   )
 }
 

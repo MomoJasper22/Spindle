@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { useForm, Controller, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { CreditCard, Loader2, Plus, Receipt } from 'lucide-react'
+import { ChevronDown, CreditCard, Loader2, Plus, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -23,19 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PAYMENT_METHODS } from '@/lib/constants'
 import { formatManilaDate, formatPHP } from '@/lib/formatters'
+import { cn } from '@/lib/utils'
 import type { PaymentDetailView, RepairDetailView } from '@/types/database'
 import { submitCustomerPaymentAction } from '../actions/customer-actions'
 import { customerPaymentSchema, type CustomerPaymentInput } from '../schemas/customer-schemas'
@@ -43,16 +36,29 @@ import { customerPaymentSchema, type CustomerPaymentInput } from '../schemas/cus
 interface PaymentsPanelProps {
   repairs: RepairDetailView[]
   payments: PaymentDetailView[]
+  defaultTicketId?: string
 }
 
-export function PaymentsPanel({ repairs, payments }: PaymentsPanelProps) {
-  const [dialogOpen, setDialogOpen] = React.useState(false)
+export function PaymentsPanel({ repairs, payments, defaultTicketId }: PaymentsPanelProps) {
+  const payableTickets = repairs.filter((r) => r.status !== 'cancelled')
+  const preselected = defaultTicketId
+    ? payableTickets.find((t) => t.ticket_id === defaultTicketId)
+    : undefined
+
+  const initialAmount = preselected
+    ? Math.max(
+        0,
+        Number(preselected.final_cost_php ?? preselected.estimated_cost_php ?? 0) -
+          Number(preselected.verified_paid_php ?? 0)
+      )
+    : 0
+
+  const [dialogOpen, setDialogOpen] = React.useState(Boolean(preselected && preselected.status !== 'completed'))
+  const [expandedId, setExpandedId] = React.useState<string | null>(null)
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
     null
   )
   const [isPending, startTransition] = React.useTransition()
-
-  const payableTickets = repairs.filter((r) => r.status !== 'cancelled')
 
   const {
     register,
@@ -64,9 +70,9 @@ export function PaymentsPanel({ repairs, payments }: PaymentsPanelProps) {
     resolver: zodResolver(customerPaymentSchema),
     mode: 'onBlur',
     defaultValues: {
-      ticket_id: payableTickets[0]?.ticket_id ?? '',
+      ticket_id: preselected?.ticket_id ?? payableTickets[0]?.ticket_id ?? '',
       payment_method: 'GCash',
-      amount_php: 0,
+      amount_php: initialAmount,
       installment_no: null,
       reference_no: '',
       remarks: '',
@@ -76,7 +82,7 @@ export function PaymentsPanel({ repairs, payments }: PaymentsPanelProps) {
   const selectedMethod = useWatch({ control, name: 'payment_method' })
 
   function openPaymentDialog(ticket?: RepairDetailView) {
-    const target = ticket ?? payableTickets[0]
+    const target = ticket ?? payableTickets.find((t) => t.status !== 'completed') ?? payableTickets[0]
     const costTarget = target?.final_cost_php ?? target?.estimated_cost_php ?? 0
     const remaining = Math.max(0, Number(costTarget) - Number(target?.verified_paid_php ?? 0))
 
@@ -107,166 +113,194 @@ export function PaymentsPanel({ repairs, payments }: PaymentsPanelProps) {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle>Billing Breakdown by Ticket</CardTitle>
-            <CardDescription>
-              Review estimated vs. final repair charges and submit GCash, Maya, QR Ph, or bank transfers.
-            </CardDescription>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            My Payments
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Check what is due and send payments via GCash, Maya, QR Ph, or bank transfer.
+          </p>
+        </div>
+
+        <Button
+          onClick={() => openPaymentDialog()}
+          disabled={payableTickets.length === 0}
+          className="w-full sm:w-auto"
+        >
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          <span>Make a Payment</span>
+        </Button>
+      </div>
+
+      {feedback && !dialogOpen && <FormBanner type={feedback.type} message={feedback.message} />}
+
+      {/* Bills Summary */}
+      <section aria-labelledby="bills-heading" className="space-y-3">
+        <h2 id="bills-heading" className="font-heading text-lg font-bold text-foreground">
+          Service Bills
+        </h2>
+
+        {payableTickets.length === 0 ? (
+          <EmptyState
+            icon={Receipt}
+            title="No bills right now"
+            description="When you book a home visit, your price estimate and remaining balance will show up here."
+          />
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {payableTickets.map((ticket) => {
+              const targetTotal = Number(ticket.final_cost_php ?? ticket.estimated_cost_php ?? 0)
+              const paid = Number(ticket.verified_paid_php ?? 0)
+              const balance = Math.max(0, targetTotal - paid)
+
+              return (
+                <Card key={ticket.ticket_id}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <CardTitle className="text-base">
+                          {ticket.appliance_brand} {ticket.appliance_category}
+                        </CardTitle>
+                        <CardDescription>
+                          Model {ticket.appliance_model_number} &middot; {formatManilaDate(ticket.scheduled_date)}
+                        </CardDescription>
+                      </div>
+                      <StatusBadge status={ticket.status} audience="customer" />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm">
+                    <div className="grid grid-cols-3 gap-2 rounded-lg border border-dashed border-border bg-muted/50 p-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground">
+                          {ticket.final_cost_php !== null ? 'Final bill' : 'Estimate'}
+                        </p>
+                        <p className="mt-0.5 font-semibold tabular-nums text-foreground">
+                          {targetTotal > 0 ? formatPHP(targetTotal) : 'Pending'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Paid</p>
+                        <p className="mt-0.5 font-semibold tabular-nums text-emerald-700">
+                          {formatPHP(paid)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Balance</p>
+                        <p className="mt-0.5 font-semibold tabular-nums text-foreground">
+                          {formatPHP(balance)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {ticket.pending_paid_php > 0 && (
+                      <p className="text-xs font-medium text-amber-800">
+                        +{formatPHP(ticket.pending_paid_php)} is currently being checked by our team.
+                      </p>
+                    )}
+
+                    {ticket.status !== 'completed' && (
+                      <Button
+                        type="button"
+                        variant={ticket.status === 'awaiting_payment' ? 'default' : 'outline'}
+                        size="sm"
+                        className="w-full"
+                        onClick={() => openPaymentDialog(ticket)}
+                      >
+                        <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>{balance > 0 ? `Pay ${formatPHP(balance)}` : 'Send Payment'}</span>
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
-          <Button onClick={() => openPaymentDialog()} disabled={payableTickets.length === 0}>
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            <span>Submit Payment</span>
-          </Button>
-        </CardHeader>
+        )}
+      </section>
 
-        <CardContent className="space-y-4">
-          {feedback && !dialogOpen && <FormBanner type={feedback.type} message={feedback.message} />}
+      {/* Payment History Cards */}
+      <section aria-labelledby="history-heading" className="space-y-3">
+        <h2 id="history-heading" className="font-heading text-lg font-bold text-foreground">
+          Past Payments
+        </h2>
 
-          {payableTickets.length === 0 ? (
-            <EmptyState
-              icon={Receipt}
-              title="No active billing records"
-              description="Once you book a repair, itemized PHP estimates and payment balances appear here."
-            />
-          ) : (
-            <Table regionLabel="Repair billing breakdown">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Ticket</TableHead>
-                  <TableHead>Appliance</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Estimated</TableHead>
-                  <TableHead>Final Cost</TableHead>
-                  <TableHead>Verified Paid</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {payableTickets.map((t) => {
-                  const targetTotal = t.final_cost_php ?? t.estimated_cost_php ?? 0
-                  const balance = Math.max(0, Number(targetTotal) - Number(t.verified_paid_php))
-                  return (
-                    <TableRow key={t.ticket_id}>
-                      <TableCell className="font-mono text-xs font-semibold text-primary">
-                        {t.ticket_id}
-                      </TableCell>
-                      <TableCell>
-                        <p className="font-medium">{t.appliance_brand}</p>
-                        <p className="text-xs text-muted-foreground">{t.appliance_model_number}</p>
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={t.status} />
-                      </TableCell>
-                      <TableCell className="tabular-nums">{formatPHP(t.estimated_cost_php)}</TableCell>
-                      <TableCell className="font-semibold tabular-nums">
-                        {t.final_cost_php !== null ? formatPHP(t.final_cost_php) : 'Pending'}
-                      </TableCell>
-                      <TableCell className="tabular-nums">
-                        <span className="font-semibold text-emerald-700">
-                          {formatPHP(t.verified_paid_php)}
+        {payments.length === 0 ? (
+          <EmptyState
+            icon={CreditCard}
+            title="No payments sent yet"
+            description="Your confirmed receipts and sent payments will appear here."
+          />
+        ) : (
+          <div className="divide-y divide-dashed divide-border rounded-xl border border-border bg-card">
+            {payments.map((pay) => {
+              const isExpanded = expandedId === pay.payment_id
+              return (
+                <div key={pay.payment_id} className="p-4 sm:p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-heading text-lg font-bold tabular-nums text-foreground">
+                          {formatPHP(pay.amount_php)}
                         </span>
-                        {t.pending_paid_php > 0 && (
-                          <p className="text-xs text-amber-700">
-                            +{formatPHP(t.pending_paid_php)} pending
-                          </p>
-                        )}
-                        {balance > 0 && t.final_cost_php !== null && (
-                          <p className="text-xs text-muted-foreground">
-                            Bal: {formatPHP(balance)}
-                          </p>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {t.status !== 'completed' && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openPaymentDialog(t)}
-                          >
-                            Pay
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment History</CardTitle>
-          <CardDescription>
-            All cash and digital payments submitted for your service tickets.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {payments.length === 0 ? (
-            <EmptyState
-              icon={CreditCard}
-              title="No payment transactions yet"
-              description="Submitted payments and verification statuses will appear here."
-            />
-          ) : (
-            <Table regionLabel="Customer payment history">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Payment ID</TableHead>
-                  <TableHead>Ticket</TableHead>
-                  <TableHead>Method &amp; Reference</TableHead>
-                  <TableHead>Amount (PHP)</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {payments.map((pay) => (
-                  <TableRow key={pay.payment_id}>
-                    <TableCell className="font-mono text-xs font-semibold">
-                      {pay.payment_id}
-                    </TableCell>
-                    <TableCell>
-                      <p className="font-mono text-xs text-primary">{pay.ticket_id}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {pay.appliance_brand} {pay.appliance_model_number}
+                        <StatusBadge status={pay.payment_status} audience="customer" />
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {pay.appliance_brand} {pay.appliance_category} &middot; {pay.payment_method} &middot;{' '}
+                        {formatManilaDate(pay.payment_date)}
                       </p>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm font-medium">{pay.payment_method}</p>
-                      <p className="font-mono text-xs text-muted-foreground">
-                        {pay.reference_no || 'No reference'}
-                        {pay.installment_no ? ` · Inst #${pay.installment_no}` : ''}
-                      </p>
-                    </TableCell>
-                    <TableCell className="font-semibold tabular-nums">
-                      {formatPHP(pay.amount_php)}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatManilaDate(pay.payment_date)}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={pay.payment_status} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                    </div>
 
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      aria-expanded={isExpanded}
+                      onClick={() => setExpandedId(isExpanded ? null : pay.payment_id)}
+                      className="text-xs text-muted-foreground"
+                    >
+                      <span>{isExpanded ? 'Hide receipt details' : 'Receipt details'}</span>
+                      <ChevronDown
+                        className={cn('h-3.5 w-3.5 transition-transform', isExpanded && 'rotate-180')}
+                        aria-hidden="true"
+                      />
+                    </Button>
+                  </div>
+
+                  {isExpanded && (
+                    <dl className="mt-3 grid gap-2 rounded-lg bg-muted/60 p-3 text-xs sm:grid-cols-3">
+                      <div>
+                        <dt className="text-muted-foreground">Reference number</dt>
+                        <dd className="mt-0.5 font-mono font-medium text-foreground">
+                          {pay.reference_no || 'Cash payment'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">Receipt number</dt>
+                        <dd className="mt-0.5 font-mono font-medium text-foreground">{pay.payment_id}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">Note</dt>
+                        <dd className="mt-0.5 text-foreground">
+                          {pay.remarks || (pay.installment_no ? `Part payment #${pay.installment_no}` : 'None')}
+                        </dd>
+                      </div>
+                    </dl>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Submit Payment Modal */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Submit Payment</DialogTitle>
+            <DialogTitle>Send a Payment</DialogTitle>
             <DialogDescription>
-              Submit payment details for verification. Full settlement against the final cost automatically completes the repair ticket.
+              Share your payment details below. Our team checks it quickly and marks your visit paid.
             </DialogDescription>
           </DialogHeader>
 
@@ -274,19 +308,19 @@ export function PaymentsPanel({ repairs, payments }: PaymentsPanelProps) {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
             <div className="space-y-1.5">
-              <Label htmlFor="pay-ticket">Repair Ticket</Label>
+              <Label htmlFor="pay-ticket">Which booking are you paying for?</Label>
               <Controller
                 name="ticket_id"
                 control={control}
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="pay-ticket">
-                      <SelectValue placeholder="Select repair ticket" />
+                      <SelectValue placeholder="Choose a booking" />
                     </SelectTrigger>
                     <SelectContent>
                       {payableTickets.map((t) => (
                         <SelectItem key={t.ticket_id} value={t.ticket_id}>
-                          {t.ticket_id} — {t.appliance_brand} {t.appliance_model_number}
+                          {t.appliance_brand} {t.appliance_category} ({formatManilaDate(t.scheduled_date)})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -302,7 +336,7 @@ export function PaymentsPanel({ repairs, payments }: PaymentsPanelProps) {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="pay-method">Payment Method</Label>
+                <Label htmlFor="pay-method">Payment method</Label>
                 <Controller
                   name="payment_method"
                   control={control}
@@ -344,7 +378,8 @@ export function PaymentsPanel({ repairs, payments }: PaymentsPanelProps) {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="pay-reference">
-                  Reference No. {selectedMethod !== 'Cash' && <span className="text-destructive">*</span>}
+                  Confirmation / Reference No.{' '}
+                  {selectedMethod !== 'Cash' && <span className="text-destructive">*</span>}
                 </Label>
                 <Input
                   id="pay-reference"
@@ -354,7 +389,7 @@ export function PaymentsPanel({ repairs, payments }: PaymentsPanelProps) {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="pay-installment">Installment No. (optional)</Label>
+                <Label htmlFor="pay-installment">Part payment no. (optional)</Label>
                 <Input
                   id="pay-installment"
                   type="number"
@@ -373,10 +408,10 @@ export function PaymentsPanel({ repairs, payments }: PaymentsPanelProps) {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="pay-remarks">Remarks (optional)</Label>
+              <Label htmlFor="pay-remarks">Note (optional)</Label>
               <Input
                 id="pay-remarks"
-                placeholder="e.g. Downpayment or full settlement"
+                placeholder="e.g. Downpayment or full payment"
                 {...register('remarks')}
               />
             </div>
@@ -387,7 +422,7 @@ export function PaymentsPanel({ repairs, payments }: PaymentsPanelProps) {
               </Button>
               <Button type="submit" disabled={isPending}>
                 {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                <span>Submit Payment</span>
+                <span>Send Payment</span>
               </Button>
             </DialogFooter>
           </form>

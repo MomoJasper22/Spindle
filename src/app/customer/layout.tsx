@@ -1,28 +1,21 @@
 import { Suspense } from 'react'
 import { requireRole } from '@/lib/auth/session'
 import { formatFullName } from '@/lib/formatters'
-import { PortalShell, type PortalNavItem } from '@/components/shared/portal-shell'
+import { CustomerShell } from '@/components/shared/customer-shell'
 import { PageSkeleton } from '@/components/shared/page-skeleton'
-
-const CUSTOMER_NAV: PortalNavItem[] = [
-  { label: 'Customer Home', href: '/customer/home', icon: 'home' },
-  { label: 'Profile & Settings', href: '/customer/profile', icon: 'profile' },
-]
 
 async function CustomerLayoutGuard({ children }: { children: React.ReactNode }) {
   const profile = await requireRole('customer')
 
   return (
-    <PortalShell
-      role="customer"
+    <CustomerShell
+      firstName={profile.first_name}
       userName={formatFullName(profile)}
-      userEmail={profile.email}
       avatarUrl={profile.avatar_url}
-      branchLocation={profile.branch_location}
-      navItems={CUSTOMER_NAV}
+      avatarPosition={profile.avatar_position}
     >
       {children}
-    </PortalShell>
+    </CustomerShell>
   )
 }
 

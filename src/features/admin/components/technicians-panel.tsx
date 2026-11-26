@@ -200,18 +200,8 @@ export function TechniciansPanel({ users, techProfiles, repairs }: TechniciansPa
             description="Create a Technician user in the Users module to manage specializations and dispatch assignments."
           />
         ) : (
-          <Table regionLabel="Technician roster and workload">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Technician</TableHead>
-                <TableHead>Branch &amp; Cert</TableHead>
-                <TableHead>Specializations</TableHead>
-                <TableHead>Active Load</TableHead>
-                <TableHead>Availability</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            <div className="space-y-3 md:hidden">
               {techUsers.map((tech) => {
                 const tp = techProfileById.get(tech.user_id) ?? null
                 const activeJobs = repairs.filter(
@@ -222,94 +212,148 @@ export function TechniciansPanel({ users, techProfiles, repairs }: TechniciansPa
                 const maxJobs = tp?.max_daily_jobs ?? 4
 
                 return (
-                  <TableRow key={tech.user_id}>
-                    <TableCell>
-                      <p className="font-semibold text-foreground">{formatFullName(tech)}</p>
-                      <p className="font-mono text-xs text-muted-foreground">
-                        {tech.user_id} &middot; {formatPHPhone(tech.phone)}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-xs font-medium">{tech.branch_location || 'Unassigned'}</p>
-                      <p className="font-mono text-xs text-muted-foreground">
-                        {tp?.certification_no || 'No cert on file'}
-                      </p>
-                    </TableCell>
-                    <TableCell className="max-w-xs">
-                      <div className="flex flex-wrap gap-1">
-                        {tp && tp.specializations.length > 0 ? (
-                          tp.specializations.slice(0, 3).map((spec) => (
-                            <Badge key={spec} variant="outline" className="text-[11px]">
-                              {spec}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-xs text-muted-foreground">None listed</span>
-                        )}
-                        {tp && tp.specializations.length > 3 && (
-                          <Badge variant="slate" className="text-[11px]">
-                            +{tp.specializations.length - 3}
-                          </Badge>
-                        )}
+                  <div key={tech.user_id} className="rounded-xl border border-border bg-card p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-semibold text-foreground">{formatFullName(tech)}</p>
+                        <p className="font-mono text-xs text-muted-foreground">
+                          {tech.branch_location || 'Unassigned'} &middot; {formatPHPhone(tech.phone)}
+                        </p>
                       </div>
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      <span className="font-semibold text-foreground">{activeJobs}</span>
-                      <span className="text-xs text-muted-foreground"> / {maxJobs} max daily</span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col items-start gap-1">
-                        <StatusBadge status={tp?.availability_status ?? 'available'} />
-                        {!tech.is_active && <StatusBadge status="inactive" showIcon={false} />}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="inline-flex items-center justify-end gap-1.5">
-                        {tech.is_active && assignableRepairs.length > 0 && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openAssignModal(tech.user_id)}
-                          >
-                            Dispatch
-                          </Button>
-                        )}
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => openEditTech(tech)}
-                          aria-label={`Edit technician ${tech.user_id}`}
-                        >
-                          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                      <StatusBadge status={tp?.availability_status ?? 'available'} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Load: <span className="font-semibold text-foreground">{activeJobs}</span> / {maxJobs} max daily
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 border-t border-border pt-2.5">
+                      {tech.is_active && assignableRepairs.length > 0 && (
+                        <Button type="button" size="sm" variant="outline" onClick={() => openAssignModal(tech.user_id)}>
+                          Dispatch
                         </Button>
-                        <ConfirmationDialog
-                          trigger={
-                            <Button type="button" size="sm" variant="ghost">
-                              <span className="text-xs text-muted-foreground">
-                                {tech.is_active ? 'Deactivate' : 'Activate'}
-                              </span>
-                            </Button>
-                          }
-                          title={`${tech.is_active ? 'Deactivate' : 'Activate'} technician ${formatFullName(tech)}?`}
-                          description={
-                            tech.is_active
-                              ? 'Deactivated technicians cannot sign in or receive new dispatch assignments.'
-                              : 'Restores field technician portal access.'
-                          }
-                          confirmLabel={tech.is_active ? 'Deactivate' : 'Activate'}
-                          destructive={tech.is_active}
-                          isPending={isPending}
-                          onConfirm={() => handleDeactivateTech(tech.user_id, !tech.is_active)}
-                        />
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                      )}
+                      <Button type="button" size="sm" variant="outline" onClick={() => openEditTech(tech)}>
+                        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>Edit</span>
+                      </Button>
+                    </div>
+                  </div>
                 )
               })}
-            </TableBody>
-          </Table>
+            </div>
+
+            <div className="hidden md:block">
+              <Table regionLabel="Technician roster and workload">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Technician</TableHead>
+                    <TableHead>Branch &amp; Cert</TableHead>
+                    <TableHead>Specializations</TableHead>
+                    <TableHead>Active Load</TableHead>
+                    <TableHead>Availability</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {techUsers.map((tech) => {
+                    const tp = techProfileById.get(tech.user_id) ?? null
+                    const activeJobs = repairs.filter(
+                      (r) =>
+                        r.technician_id === tech.user_id &&
+                        !['completed', 'cancelled'].includes(r.status)
+                    ).length
+                    const maxJobs = tp?.max_daily_jobs ?? 4
+
+                    return (
+                      <TableRow key={tech.user_id}>
+                        <TableCell>
+                          <p className="font-semibold text-foreground">{formatFullName(tech)}</p>
+                          <p className="font-mono text-xs text-muted-foreground">
+                            {tech.user_id} &middot; {formatPHPhone(tech.phone)}
+                          </p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-xs font-medium">{tech.branch_location || 'Unassigned'}</p>
+                          <p className="font-mono text-xs text-muted-foreground">
+                            {tp?.certification_no || 'No cert on file'}
+                          </p>
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          <div className="flex flex-wrap gap-1">
+                            {tp && tp.specializations.length > 0 ? (
+                              tp.specializations.slice(0, 3).map((spec) => (
+                                <Badge key={spec} variant="outline" className="text-[11px]">
+                                  {spec}
+                                </Badge>
+                              ))
+                            ) : (
+                              <span className="text-xs text-muted-foreground">None listed</span>
+                            )}
+                            {tp && tp.specializations.length > 3 && (
+                              <Badge variant="slate" className="text-[11px]">
+                                +{tp.specializations.length - 3}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          <span className="font-semibold text-foreground">{activeJobs}</span>
+                          <span className="text-xs text-muted-foreground"> / {maxJobs} max daily</span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col items-start gap-1">
+                            <StatusBadge status={tp?.availability_status ?? 'available'} />
+                            {!tech.is_active && <StatusBadge status="inactive" showIcon={false} />}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="inline-flex items-center justify-end gap-1.5">
+                            {tech.is_active && assignableRepairs.length > 0 && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openAssignModal(tech.user_id)}
+                              >
+                                Dispatch
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => openEditTech(tech)}
+                              aria-label={`Edit technician ${tech.user_id}`}
+                            >
+                              <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                            </Button>
+                            <ConfirmationDialog
+                              trigger={
+                                <Button type="button" size="sm" variant="ghost">
+                                  <span className="text-xs text-muted-foreground">
+                                    {tech.is_active ? 'Deactivate' : 'Activate'}
+                                  </span>
+                                </Button>
+                              }
+                              title={`${tech.is_active ? 'Deactivate' : 'Activate'} technician ${formatFullName(tech)}?`}
+                              description={
+                                tech.is_active
+                                  ? 'Deactivated technicians cannot sign in or receive new dispatch assignments.'
+                                  : 'Restores field technician portal access.'
+                              }
+                              confirmLabel={tech.is_active ? 'Deactivate' : 'Activate'}
+                              destructive={tech.is_active}
+                              isPending={isPending}
+                              onConfirm={() => handleDeactivateTech(tech.user_id, !tech.is_active)}
+                            />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </CardContent>
 

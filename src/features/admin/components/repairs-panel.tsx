@@ -312,99 +312,135 @@ export function AdminRepairsPanel({ repairs, users, appliances }: AdminRepairsPa
             description="No tickets match your current filters."
           />
         ) : (
-          <Table regionLabel="Master repair transactions">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ticket</TableHead>
-                <TableHead>Customer &amp; Branch</TableHead>
-                <TableHead>Appliance</TableHead>
-                <TableHead>Technician</TableHead>
-                <TableHead>Status &amp; Priority</TableHead>
-                <TableHead>Cost &amp; Paid</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            <div className="space-y-3 md:hidden">
               {filtered.map((t) => (
-                <TableRow key={t.ticket_id}>
-                  <TableCell>
-                    <p className="font-mono text-xs font-semibold text-primary">{t.ticket_id}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatManilaDate(t.scheduled_date)}
-                    </p>
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-semibold text-foreground">
-                      {t.customer_first_name} {t.customer_last_name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{t.customer_branch || '—'}</p>
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-medium">
-                      {t.appliance_brand} {t.appliance_model_number}
-                    </p>
-                    <p className="font-mono text-xs text-muted-foreground">
-                      {t.appliance_serial_number}
-                    </p>
-                  </TableCell>
-                  <TableCell>
-                    {t.technician_first_name ? (
-                      <span className="font-medium">
-                        {t.technician_first_name} {t.technician_last_name}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-amber-700 font-medium">Unassigned</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col items-start gap-1">
+                <div key={t.ticket_id} className="rounded-xl border border-border bg-card p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="font-mono text-xs font-semibold text-primary">{t.ticket_id}</span>
+                      <p className="mt-0.5 font-semibold text-foreground">
+                        {t.customer_first_name} {t.customer_last_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {t.appliance_brand} {t.appliance_model_number} &middot; {t.customer_branch || '—'}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
                       <StatusBadge status={t.status} />
                       <StatusBadge status={t.priority} showIcon={false} />
                     </div>
-                  </TableCell>
-                  <TableCell className="tabular-nums text-xs">
-                    <p>Est: {formatPHP(t.estimated_cost_php)}</p>
-                    <p className="font-semibold">
-                      Final: {t.final_cost_php !== null ? formatPHP(t.final_cost_php) : '—'}
-                    </p>
-                    <p className="text-emerald-700">Paid: {formatPHP(t.verified_paid_php)}</p>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="inline-flex items-center justify-end gap-1">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => openEdit(t)}
-                        aria-label={`Edit ${t.ticket_id}`}
-                      >
-                        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                      </Button>
-                      {t.status !== 'cancelled' && t.status !== 'completed' && (
-                        <ConfirmationDialog
-                          trigger={
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              aria-label={`Cancel ${t.ticket_id}`}
-                            >
-                              <XCircle className="h-3.5 w-3.5 text-destructive" aria-hidden="true" />
-                            </Button>
-                          }
-                          title={`Cancel repair ticket ${t.ticket_id}?`}
-                          description="Marks this repair ticket and its active appointments as cancelled."
-                          confirmLabel="Cancel Ticket"
-                          isPending={isPending}
-                          onConfirm={() => handleCancelTicket(t)}
-                        />
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-border pt-2.5 text-xs">
+                    <span className="tabular-nums text-muted-foreground">
+                      {formatManilaDate(t.scheduled_date)} &middot;{' '}
+                      {t.final_cost_php !== null ? formatPHP(t.final_cost_php) : formatPHP(t.estimated_cost_php)}
+                    </span>
+                    <Button type="button" size="sm" variant="outline" onClick={() => openEdit(t)}>
+                      <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>Manage</span>
+                    </Button>
+                  </div>
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+
+            <div className="hidden md:block">
+              <Table regionLabel="Master repair transactions">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Ticket</TableHead>
+                    <TableHead>Customer &amp; Branch</TableHead>
+                    <TableHead>Appliance</TableHead>
+                    <TableHead>Technician</TableHead>
+                    <TableHead>Status &amp; Priority</TableHead>
+                    <TableHead>Cost &amp; Paid</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((t) => (
+                    <TableRow key={t.ticket_id}>
+                      <TableCell>
+                        <p className="font-mono text-xs font-semibold text-primary">{t.ticket_id}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatManilaDate(t.scheduled_date)}
+                        </p>
+                      </TableCell>
+                      <TableCell>
+                        <p className="font-semibold text-foreground">
+                          {t.customer_first_name} {t.customer_last_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{t.customer_branch || '—'}</p>
+                      </TableCell>
+                      <TableCell>
+                        <p className="font-medium">
+                          {t.appliance_brand} {t.appliance_model_number}
+                        </p>
+                        <p className="font-mono text-xs text-muted-foreground">
+                          {t.appliance_serial_number}
+                        </p>
+                      </TableCell>
+                      <TableCell>
+                        {t.technician_first_name ? (
+                          <span className="font-medium">
+                            {t.technician_first_name} {t.technician_last_name}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-amber-700 font-medium">Unassigned</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col items-start gap-1">
+                          <StatusBadge status={t.status} />
+                          <StatusBadge status={t.priority} showIcon={false} />
+                        </div>
+                      </TableCell>
+                      <TableCell className="tabular-nums text-xs">
+                        <p>Est: {formatPHP(t.estimated_cost_php)}</p>
+                        <p className="font-semibold">
+                          Final: {t.final_cost_php !== null ? formatPHP(t.final_cost_php) : '—'}
+                        </p>
+                        <p className="text-emerald-700">Paid: {formatPHP(t.verified_paid_php)}</p>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="inline-flex items-center justify-end gap-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => openEdit(t)}
+                            aria-label={`Edit ${t.ticket_id}`}
+                          >
+                            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                          </Button>
+                          {t.status !== 'cancelled' && t.status !== 'completed' && (
+                            <ConfirmationDialog
+                              trigger={
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  aria-label={`Cancel ${t.ticket_id}`}
+                                >
+                                  <XCircle className="h-3.5 w-3.5 text-destructive" aria-hidden="true" />
+                                </Button>
+                              }
+                              title={`Cancel repair ticket ${t.ticket_id}?`}
+                              description="Marks this repair ticket and its active appointments as cancelled."
+                              confirmLabel="Cancel Ticket"
+                              isPending={isPending}
+                              onConfirm={() => handleCancelTicket(t)}
+                            />
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </CardContent>
 

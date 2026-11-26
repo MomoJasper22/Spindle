@@ -1,5 +1,7 @@
 import * as React from 'react'
-import { Activity, CheckCircle2, Clock, CreditCard, ShieldCheck, Users, Wrench } from 'lucide-react'
+import Link from 'next/link'
+import { Activity, ArrowRight, CheckCircle2, Clock, CreditCard, ShieldCheck, Users, Wrench } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/shared/empty-state'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -106,6 +108,34 @@ export function ExecutiveSummaryPanel({
         })}
       </div>
 
+      {(pendingAppliances > 0 || pendingPayments > 0 || activeRepairs > 0) && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm">
+          <span className="font-semibold text-foreground mr-2">Quick dispatch queues:</span>
+          {pendingPayments > 0 && (
+            <Button asChild size="sm" variant="outline">
+              <Link href="/admin/payments">
+                <span>Verify Payments ({pendingPayments})</span>
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
+            </Button>
+          )}
+          {pendingAppliances > 0 && (
+            <Button asChild size="sm" variant="outline">
+              <Link href="/admin/appliances">
+                <span>Verify Appliances ({pendingAppliances})</span>
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
+            </Button>
+          )}
+          <Button asChild size="sm" variant="ghost">
+            <Link href="/admin/repairs">
+              <span>Manage Repairs ({activeRepairs} active)</span>
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </Link>
+          </Button>
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-3">
         <Card>
           <CardHeader>
@@ -127,7 +157,7 @@ export function ExecutiveSummaryPanel({
                       {count} ({pct}%)
                     </span>
                   </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-primary transition-all"
                       style={{ width: `${pct}%` }}

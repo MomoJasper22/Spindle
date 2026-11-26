@@ -20,6 +20,7 @@ import { FormBanner } from '@/components/shared/form-banner'
 import { ProfilePhotoField } from '@/components/shared/profile-photo-field'
 import { signOutAction } from '@/features/auth/actions/auth-actions'
 import { ChangePasswordCard } from '@/features/auth/components/change-password-card'
+import type { AuthenticatedUserProfile } from '@/lib/auth/session'
 import {
   APPLIANCE_CATEGORIES,
   PH_PROVINCES,
@@ -28,7 +29,7 @@ import {
 } from '@/lib/constants'
 import { formatFullName, humanizeLabel } from '@/lib/formatters'
 import { cn } from '@/lib/utils'
-import type { TechnicianProfileRow, UserRow } from '@/types/database'
+import type { TechnicianProfileRow } from '@/types/database'
 import { updateTechnicianProfileAction } from '../actions/technician-actions'
 import {
   technicianProfileSchema,
@@ -36,7 +37,7 @@ import {
 } from '../schemas/technician-schemas'
 
 interface TechnicianProfileFormsProps {
-  profile: UserRow
+  profile: AuthenticatedUserProfile
   techProfile: TechnicianProfileRow | null
 }
 
@@ -111,6 +112,7 @@ export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfi
         <CardContent className="space-y-6">
           <ProfilePhotoField
             currentAvatarUrl={profile.avatar_url}
+            currentAvatarPosition={profile.avatar_position}
             fullName={formatFullName(profile)}
           />
 

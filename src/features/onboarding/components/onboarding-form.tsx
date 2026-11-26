@@ -97,19 +97,21 @@ export function OnboardingForm({ firstName, role, initialValues }: OnboardingFor
   }
 
   const stepsMeta = [
-    { id: 1, title: 'Contact & Branch', icon: Phone },
-    { id: 2, title: 'Service Address', icon: MapPin },
+    { id: 1, title: isTechnician ? 'Contact & Branch' : 'Phone & Area', icon: Phone },
+    { id: 2, title: isTechnician ? 'Base Address' : 'Home Address', icon: MapPin },
     ...(isTechnician ? [{ id: 3, title: 'Field Credentials', icon: Wrench }] : []),
   ]
 
   return (
-    <Card className="w-full max-w-2xl shadow-sm">
+    <Card className="w-full max-w-2xl">
       <CardHeader className="border-b border-border pb-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <CardTitle className="text-xl">Welcome to Spindle, {firstName}</CardTitle>
+            <CardTitle className="text-xl sm:text-2xl">Welcome to Spindle, {firstName}</CardTitle>
             <CardDescription className="mt-1">
-              Complete your Philippine service profile to activate your workspace.
+              {isTechnician
+                ? 'Complete your contact details, address, and field credentials to get started.'
+                : 'Add your phone number and home address so our technicians know where to visit.'}
             </CardDescription>
           </div>
           <span className="rounded-full bg-primary-tint px-3 py-1 text-xs font-semibold text-primary">
@@ -117,8 +119,10 @@ export function OnboardingForm({ firstName, role, initialValues }: OnboardingFor
           </span>
         </div>
 
-        {/* Step Indicator */}
-        <ol className="mt-5 grid gap-2 sm:grid-cols-3" aria-label="Onboarding progress">
+        <ol
+          className={cn('mt-5 grid gap-2', isTechnician ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}
+          aria-label="Setup progress"
+        >
           {stepsMeta.map((item) => {
             const Icon = item.icon
             const isCurrent = step === item.id
@@ -127,12 +131,12 @@ export function OnboardingForm({ firstName, role, initialValues }: OnboardingFor
               <li
                 key={item.id}
                 className={cn(
-                  'flex items-center gap-2.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors',
+                  'flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-colors',
                   isCurrent
                     ? 'border-primary bg-primary-tint text-primary'
                     : isCompleted
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                      : 'border-border bg-slate-50 text-muted-foreground'
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                      : 'border-border bg-muted/40 text-muted-foreground'
                 )}
               >
                 {isCompleted ? (
@@ -155,16 +159,16 @@ export function OnboardingForm({ firstName, role, initialValues }: OnboardingFor
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="onboard-phone">
-                  Philippine mobile or landline <span className="text-destructive">*</span>
+                  Mobile or landline number <span className="text-destructive">*</span>
                 </Label>
                 <p id="onboard-phone-hint" className="text-xs text-muted-foreground">
-                  Accepted format: +63 917 555 0192 or 0917 555 0192
+                  Example: 0917 555 0192 or +63 917 555 0192
                 </p>
                 <Input
                   id="onboard-phone"
                   type="tel"
                   autoComplete="tel"
-                  placeholder="+63 917 555 0192"
+                  placeholder="0917 555 0192"
                   aria-invalid={Boolean(errors.phone)}
                   aria-describedby={
                     errors.phone ? 'onboard-phone-hint onboard-phone-error' : 'onboard-phone-hint'
@@ -180,7 +184,7 @@ export function OnboardingForm({ firstName, role, initialValues }: OnboardingFor
 
               <div className="space-y-1.5">
                 <Label htmlFor="onboard-branch">
-                  Nearest Spindle service hub <span className="text-destructive">*</span>
+                  Nearest service area <span className="text-destructive">*</span>
                 </Label>
                 <Controller
                   name="branch_location"
@@ -188,7 +192,7 @@ export function OnboardingForm({ firstName, role, initialValues }: OnboardingFor
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger id="onboard-branch" aria-invalid={Boolean(errors.branch_location)}>
-                        <SelectValue placeholder="Select service branch" />
+                        <SelectValue placeholder="Choose your service area" />
                       </SelectTrigger>
                       <SelectContent>
                         {SERVICE_BRANCHES.map((branch) => (
@@ -213,8 +217,7 @@ export function OnboardingForm({ firstName, role, initialValues }: OnboardingFor
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="onboard-street">
-                  House / Unit No., Building, Street, Subdivision{' '}
-                  <span className="text-destructive">*</span>
+                  House / Unit No., Street, Subdivision <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="onboard-street"
@@ -294,7 +297,7 @@ export function OnboardingForm({ firstName, role, initialValues }: OnboardingFor
 
                 <div className="space-y-1.5">
                   <Label htmlFor="onboard-zip">
-                    4-Digit Postal / ZIP Code <span className="text-destructive">*</span>
+                    4-Digit Postal Code <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="onboard-zip"
@@ -333,7 +336,7 @@ export function OnboardingForm({ firstName, role, initialValues }: OnboardingFor
                         key={cat}
                         htmlFor={checkboxId}
                         className={cn(
-                          'flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm cursor-pointer transition-colors',
+                          'flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm cursor-pointer transition-colors',
                           checked
                             ? 'border-primary bg-primary-tint/70 text-foreground'
                             : 'border-border bg-card hover:bg-muted/50'
@@ -395,12 +398,12 @@ export function OnboardingForm({ firstName, role, initialValues }: OnboardingFor
                 {isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                    <span>Saving profile...</span>
+                    <span>Saving...</span>
                   </>
                 ) : (
                   <>
                     <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                    <span>Complete Setup</span>
+                    <span>Finish Setup</span>
                   </>
                 )}
               </Button>

@@ -228,67 +228,109 @@ export function PipelinePanel({ repairs, onSelectTicket }: PipelinePanelProps) {
             })}
           </div>
         ) : (
-          <Table regionLabel="Assigned repair tickets">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ticket</TableHead>
-                <TableHead>Customer &amp; Location</TableHead>
-                <TableHead>Appliance</TableHead>
-                <TableHead>Scheduled</TableHead>
-                <TableHead>Status &amp; Priority</TableHead>
-                <TableHead>Cost (PHP)</TableHead>
-                <TableHead className="text-right">Manage</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            <div className="space-y-3 md:hidden">
               {filtered.map((ticket) => (
-                <TableRow key={ticket.ticket_id}>
-                  <TableCell className="font-mono text-xs font-semibold text-primary">
-                    {ticket.ticket_id}
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-semibold text-foreground">
-                      {ticket.customer_first_name} {ticket.customer_last_name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatPHPhone(ticket.customer_phone)} &middot;{' '}
-                      {[ticket.customer_address_barangay, ticket.customer_address_city]
-                        .filter(Boolean)
-                        .join(', ')}
-                    </p>
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-medium">
-                      {ticket.appliance_brand} {ticket.appliance_model_number}
-                    </p>
-                    <p className="font-mono text-xs text-muted-foreground">
-                      {ticket.appliance_serial_number}
-                    </p>
-                  </TableCell>
-                  <TableCell className="text-xs whitespace-nowrap">
-                    {formatManilaDate(ticket.scheduled_date)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col items-start gap-1">
+                <div
+                  key={ticket.ticket_id}
+                  className="rounded-xl border border-border bg-card p-4 space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="font-mono text-xs font-semibold text-primary">
+                        {ticket.ticket_id}
+                      </span>
+                      <p className="mt-0.5 font-semibold text-foreground">
+                        {ticket.customer_first_name} {ticket.customer_last_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {ticket.appliance_brand} {ticket.appliance_model_number}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
                       <StatusBadge status={ticket.status} />
                       <StatusBadge status={ticket.priority} showIcon={false} />
                     </div>
-                  </TableCell>
-                  <TableCell className="tabular-nums text-xs">
-                    <p>Est: {formatPHP(ticket.estimated_cost_php)}</p>
-                    <p className="font-semibold">
-                      Final: {ticket.final_cost_php !== null ? formatPHP(ticket.final_cost_php) : '—'}
-                    </p>
-                  </TableCell>
-                  <TableCell className="text-right">
+                  </div>
+                  <div className="flex items-center justify-between border-t border-border pt-2.5 text-xs">
+                    <span className="text-muted-foreground">
+                      {formatManilaDate(ticket.scheduled_date)} &middot;{' '}
+                      {ticket.final_cost_php !== null
+                        ? formatPHP(ticket.final_cost_php)
+                        : formatPHP(ticket.estimated_cost_php)}
+                    </span>
                     <Button size="sm" variant="outline" onClick={() => onSelectTicket(ticket)}>
                       Open Drawer
                     </Button>
-                  </TableCell>
-                </TableRow>
+                  </div>
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+
+            <div className="hidden md:block">
+              <Table regionLabel="Assigned repair tickets">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Ticket</TableHead>
+                    <TableHead>Customer &amp; Location</TableHead>
+                    <TableHead>Appliance</TableHead>
+                    <TableHead>Scheduled</TableHead>
+                    <TableHead>Status &amp; Priority</TableHead>
+                    <TableHead>Cost (PHP)</TableHead>
+                    <TableHead className="text-right">Manage</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((ticket) => (
+                    <TableRow key={ticket.ticket_id}>
+                      <TableCell className="font-mono text-xs font-semibold text-primary">
+                        {ticket.ticket_id}
+                      </TableCell>
+                      <TableCell>
+                        <p className="font-semibold text-foreground">
+                          {ticket.customer_first_name} {ticket.customer_last_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatPHPhone(ticket.customer_phone)} &middot;{' '}
+                          {[ticket.customer_address_barangay, ticket.customer_address_city]
+                            .filter(Boolean)
+                            .join(', ')}
+                        </p>
+                      </TableCell>
+                      <TableCell>
+                        <p className="font-medium">
+                          {ticket.appliance_brand} {ticket.appliance_model_number}
+                        </p>
+                        <p className="font-mono text-xs text-muted-foreground">
+                          {ticket.appliance_serial_number}
+                        </p>
+                      </TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {formatManilaDate(ticket.scheduled_date)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col items-start gap-1">
+                          <StatusBadge status={ticket.status} />
+                          <StatusBadge status={ticket.priority} showIcon={false} />
+                        </div>
+                      </TableCell>
+                      <TableCell className="tabular-nums text-xs">
+                        <p>Est: {formatPHP(ticket.estimated_cost_php)}</p>
+                        <p className="font-semibold">
+                          Final: {ticket.final_cost_php !== null ? formatPHP(ticket.final_cost_php) : '—'}
+                        </p>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button size="sm" variant="outline" onClick={() => onSelectTicket(ticket)}>
+                          Open Drawer
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </CardContent>
     </Card>

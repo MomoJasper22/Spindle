@@ -11,7 +11,7 @@ const Table = React.forwardRef<HTMLTableElement, TableProps>(
       tabIndex={0}
       role="region"
       aria-label={regionLabel}
-      className="relative w-full overflow-x-auto rounded-lg border border-border bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="relative w-full overflow-x-auto rounded-xl border border-border bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <table
         ref={ref}
@@ -29,7 +29,7 @@ const TableHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <thead
     ref={ref}
-    className={cn('border-b border-border bg-slate-50/90 [&_tr]:border-b', className)}
+    className={cn('border-b border-border bg-muted/70 [&_tr]:border-b', className)}
     {...props}
   />
 ))
@@ -60,7 +60,7 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
     <tr
       ref={ref}
       className={cn(
-        'border-b border-border transition-colors hover:bg-slate-50/80 data-[state=selected]:bg-primary-tint',
+        'border-b border-border transition-colors hover:bg-muted/40 data-[state=selected]:bg-primary-tint',
         className
       )}
       {...props}

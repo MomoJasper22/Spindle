@@ -243,53 +243,27 @@ export function AdminPaymentsPanel({ payments, repairs }: AdminPaymentsPanelProp
             description="No entries match your search or status filter."
           />
         ) : (
-          <Table regionLabel="Master PHP payment ledger">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Payment ID</TableHead>
-                <TableHead>Ticket &amp; Customer</TableHead>
-                <TableHead>Method &amp; Ref No.</TableHead>
-                <TableHead>Amount (PHP)</TableHead>
-                <TableHead>Collected By / Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            <div className="space-y-3 md:hidden">
               {filtered.map((pay) => (
-                <TableRow key={pay.payment_id}>
-                  <TableCell className="font-mono text-xs font-semibold text-primary">
-                    {pay.payment_id}
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-mono text-xs font-semibold">{pay.ticket_id}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {pay.customer_first_name} {pay.customer_last_name}
-                    </p>
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-medium">{pay.payment_method}</p>
-                    <p className="font-mono text-xs text-muted-foreground">
-                      {pay.reference_no || 'No ref'}
-                      {pay.installment_no ? ` · Inst #${pay.installment_no}` : ''}
-                    </p>
-                  </TableCell>
-                  <TableCell className="font-semibold tabular-nums">
-                    {formatPHP(pay.amount_php)}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    <p>
-                      {pay.received_by_first_name
-                        ? `${pay.received_by_first_name} ${pay.received_by_last_name}`
-                        : 'Customer Portal'}
-                    </p>
-                    <p>{formatManilaDate(pay.payment_date)}</p>
-                  </TableCell>
-                  <TableCell>
+                <div key={pay.payment_id} className="rounded-xl border border-border bg-card p-4 space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="font-mono text-xs font-semibold text-primary">
+                        {pay.payment_id} &middot; {pay.ticket_id}
+                      </span>
+                      <p className="mt-0.5 font-heading text-base font-bold tabular-nums text-foreground">
+                        {formatPHP(pay.amount_php)}
+                      </p>
+                    </div>
                     <StatusBadge status={pay.payment_status} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="inline-flex items-center justify-end gap-1.5">
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {pay.customer_first_name} {pay.customer_last_name} &middot; {pay.payment_method} ({pay.reference_no || 'Cash'})
+                  </p>
+                  <div className="flex items-center justify-between border-t border-border pt-2.5 text-xs text-muted-foreground">
+                    <span>{formatManilaDate(pay.payment_date)}</span>
+                    <div className="inline-flex items-center gap-1.5">
                       {pay.payment_status === 'pending_verification' && (
                         <Button
                           type="button"
@@ -305,12 +279,7 @@ export function AdminPaymentsPanel({ payments, repairs }: AdminPaymentsPanelProp
                       {pay.payment_status !== 'cancelled' && (
                         <ConfirmationDialog
                           trigger={
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              aria-label={`Cancel payment ${pay.payment_id}`}
-                            >
+                            <Button type="button" size="sm" variant="ghost" aria-label={`Cancel payment ${pay.payment_id}`}>
                               <XCircle className="h-3.5 w-3.5 text-destructive" aria-hidden="true" />
                             </Button>
                           }
@@ -322,11 +291,98 @@ export function AdminPaymentsPanel({ payments, repairs }: AdminPaymentsPanelProp
                         />
                       )}
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </div>
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+
+            <div className="hidden md:block">
+              <Table regionLabel="Master PHP payment ledger">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Payment ID</TableHead>
+                    <TableHead>Ticket &amp; Customer</TableHead>
+                    <TableHead>Method &amp; Ref No.</TableHead>
+                    <TableHead>Amount (PHP)</TableHead>
+                    <TableHead>Collected By / Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((pay) => (
+                    <TableRow key={pay.payment_id}>
+                      <TableCell className="font-mono text-xs font-semibold text-primary">
+                        {pay.payment_id}
+                      </TableCell>
+                      <TableCell>
+                        <p className="font-mono text-xs font-semibold">{pay.ticket_id}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {pay.customer_first_name} {pay.customer_last_name}
+                        </p>
+                      </TableCell>
+                      <TableCell>
+                        <p className="font-medium">{pay.payment_method}</p>
+                        <p className="font-mono text-xs text-muted-foreground">
+                          {pay.reference_no || 'No ref'}
+                          {pay.installment_no ? ` · Inst #${pay.installment_no}` : ''}
+                        </p>
+                      </TableCell>
+                      <TableCell className="font-semibold tabular-nums">
+                        {formatPHP(pay.amount_php)}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        <p>
+                          {pay.received_by_first_name
+                            ? `${pay.received_by_first_name} ${pay.received_by_last_name}`
+                            : 'Customer Portal'}
+                        </p>
+                        <p>{formatManilaDate(pay.payment_date)}</p>
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={pay.payment_status} />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="inline-flex items-center justify-end gap-1.5">
+                          {pay.payment_status === 'pending_verification' && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              disabled={isPending}
+                              onClick={() => handleVerify(pay)}
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                              <span>Verify</span>
+                            </Button>
+                          )}
+                          {pay.payment_status !== 'cancelled' && (
+                            <ConfirmationDialog
+                              trigger={
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  aria-label={`Cancel payment ${pay.payment_id}`}
+                                >
+                                  <XCircle className="h-3.5 w-3.5 text-destructive" aria-hidden="true" />
+                                </Button>
+                              }
+                              title={`Cancel payment entry ${pay.payment_id}?`}
+                              description="Marks this payment entry as cancelled and excludes it from verified PHP totals."
+                              confirmLabel="Cancel Payment"
+                              isPending={isPending}
+                              onConfirm={() => handleCancel(pay.payment_id)}
+                            />
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </CardContent>
 

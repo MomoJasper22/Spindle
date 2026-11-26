@@ -9,12 +9,14 @@ interface ActivityFeedProps {
   logs: ActivityLogRow[]
   title?: string
   description?: string
+  audience?: 'customer' | 'staff'
 }
 
 export function ActivityFeed({
   logs,
-  title = 'Recent Activity',
-  description = 'Real-time log of your appliance registrations, bookings, and payment updates.',
+  title = 'Recent Updates',
+  description = 'Latest updates on your appliances, visits, and payments.',
+  audience = 'customer',
 }: ActivityFeedProps) {
   return (
     <Card>
@@ -29,19 +31,24 @@ export function ActivityFeed({
         {logs.length === 0 ? (
           <EmptyState
             icon={Activity}
-            title="No recent activity yet"
-            description="Activity entries appear here once you register an appliance, schedule a repair, or submit a payment."
+            title="No updates yet"
+            description="Updates appear here as soon as you add an appliance, book a visit, or send a payment."
           />
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-dashed divide-border">
             {logs.map((log) => (
-              <li key={log.log_id} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <li
+                key={log.log_id}
+                className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+              >
                 <div className="min-w-0 space-y-0.5">
                   <p className="text-sm font-medium text-foreground">{log.description}</p>
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-mono text-[11px]">{log.entity_id}</span> &middot;{' '}
-                    {humanizeLabel(log.action)}
-                  </p>
+                  {audience === 'staff' && (
+                    <p className="text-xs text-muted-foreground">
+                      <span className="font-mono text-[11px]">{log.entity_id}</span> &middot;{' '}
+                      {humanizeLabel(log.action)}
+                    </p>
+                  )}
                 </div>
                 <time
                   dateTime={log.created_at}

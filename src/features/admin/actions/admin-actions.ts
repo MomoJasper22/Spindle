@@ -32,10 +32,9 @@ export type AdminActionResult =
   | { success: false; error: string }
 
 function revalidateAdminPaths() {
-  revalidatePath('/admin/dashboard')
-  revalidatePath('/admin/profile')
-  revalidatePath('/technician/dashboard')
-  revalidatePath('/customer/home')
+  revalidatePath('/admin', 'layout')
+  revalidatePath('/technician', 'layout')
+  revalidatePath('/customer', 'layout')
 }
 
 export async function adminCreateUserAction(

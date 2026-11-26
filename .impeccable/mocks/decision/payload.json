@@ -1,0 +1,245 @@
+{
+  "title": "Choose Spindle's Visual Direction",
+  "question": "The roll assigned Sunlit Home Sanctuary for Spindle's overhaul. Keep it, choose an alternate, or re-roll.",
+  "options": [
+    {
+      "id": "assigned",
+      "kind": "assigned",
+      "label": "Sunlit Home Sanctuary",
+      "kicker": "THE ROLL",
+      "lineage": "Philippine daylight residential interiors & precision utility",
+      "thesis": "Warm stone surfaces meet crisp booking slots so home repair feels calm, plain-spoken, and trustworthy.",
+      "palette": [
+        "#F7F6F2",
+        "#FFFFFF",
+        "#1B4FD8",
+        "#0F766E",
+        "#111827"
+      ],
+      "materials": [
+        "warm porcelain stone",
+        "crisp matte cards",
+        "cobalt & teal utility inks"
+      ],
+      "viewport": "Clean top bar over a daylight hero with an interactive Appliance & 2-Hour Window picker, leading into illustrated appliance tiles and local hubs.",
+      "risk": "Could feel understated if spacing rhythm and interactive widget craft are softened.",
+      "raised": [
+        {
+          "from": "challenger-cape",
+          "raise": "Progressive disclosure keeps every page clean at rest and moves details into sub-pages and drawers."
+        },
+        {
+          "from": "challenger-ink",
+          "raise": "Unbroken surface flow eliminates nested card-inside-card clutter."
+        },
+        {
+          "from": "challenger-cel",
+          "raise": "Clear focal framing gives every appliance type and status stage instant mobile scanability."
+        }
+      ],
+      "html": ".impeccable/mocks/decision/assigned.html",
+      "comp": ".impeccable/mocks/decision/assigned.png"
+    },
+    {
+      "id": "model-pick",
+      "kind": "pick",
+      "label": "Tactile Service Passbook",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "Household appliance care booklets & stamped appointment slips",
+      "thesis": "Every appliance and visit reads like a clean, durable household care passbook with stamped 2-hour windows.",
+      "palette": [
+        "#F8F7F4",
+        "#141B29",
+        "#0F766E",
+        "#D97706"
+      ],
+      "materials": [
+        "warm cardstock",
+        "stamped appointment ink",
+        "tabbed dividers"
+      ],
+      "viewport": "Clear offer beside a stamped service passbook card showing the next available 2-hour home visit slots.",
+      "risk": "Closest to familiar service-booking layouts in the home-care category.",
+      "html": ".impeccable/mocks/decision/model-pick.html",
+      "comp": ".impeccable/mocks/decision/model-pick.png"
+    },
+    {
+      "id": "challenger-leather",
+      "kind": "challenger",
+      "catalogId": "digital-design-canon-skeuomorph-leather-studio",
+      "verdict": "competitive",
+      "label": "Stitched Care Shelf",
+      "lineage": "Tooled saddle headers, warm linen ground & walnut shelf cards",
+      "thesis": "Registered appliances and bookings sit like physical household care manuals on warm domestic shelves.",
+      "palette": [
+        "#F3EFE6",
+        "#8B5A2B",
+        "#4A3525",
+        "#E8E2D5"
+      ],
+      "materials": [
+        "stitched leather trim",
+        "linen paper",
+        "walnut dividers"
+      ],
+      "viewport": "Warm linen canvas with stitched care tabs and tactile raised appliance cards.",
+      "case": "Strong domestic warmth and tactile clarity, though heavy textures can crowd technician and admin tables.",
+      "risk": "Reads vintage rather than modern for smart inverter appliances.",
+      "hero": "https://impeccable.style/worlds/cards/digital-design-canon-skeuomorph-leather-studio-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/digital-design-canon-skeuomorph-leather-studio.webp",
+      "html": ".impeccable/mocks/decision/challenger-leather.html",
+      "comp": ".impeccable/mocks/decision/challenger-leather.png"
+    },
+    {
+      "id": "challenger-darkroom",
+      "kind": "challenger",
+      "catalogId": "signals-instruments-darkroom-safelight-bay",
+      "verdict": "competitive",
+      "label": "Amber Station Sequence",
+      "lineage": "Timed bay progression under warm amber safelight",
+      "thesis": "Repairs move through four crisp numbered stations in order—Book, Confirm, Visit, Settle—with unmistakable stage focus.",
+      "palette": [
+        "#1A1410",
+        "#F59E0B",
+        "#FFFBEB",
+        "#78350F"
+      ],
+      "materials": [
+        "amber-lit dark steel",
+        "enamel white",
+        "stamped timer numerals"
+      ],
+      "viewport": "Deep amber-lit opening staging the four repair visit stations across the first viewport.",
+      "case": "Unmatched step clarity for tracking repairs, though darkroom lighting feels less natural for daytime home booking.",
+      "risk": "Dark amber palette may feel heavy for casual household visitors.",
+      "hero": "https://impeccable.style/worlds/cards/signals-instruments-darkroom-safelight-bay-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/signals-instruments-darkroom-safelight-bay.webp",
+      "html": ".impeccable/mocks/decision/challenger-darkroom.html",
+      "comp": ".impeccable/mocks/decision/challenger-darkroom.png"
+    },
+    {
+      "id": "challenger-cel",
+      "kind": "challenger",
+      "catalogId": "pop-culture-shelf-rubber-hose-cel",
+      "verdict": "declined",
+      "label": "Rubber-Hose Cel",
+      "lineage": "Early sound-era animation cels & circular iris vignettes",
+      "thesis": "Appliances bounce inside circular ink vignettes across a gray wash stage.",
+      "palette": [
+        "#111111",
+        "#F4F4F4",
+        "#9CA3AF"
+      ],
+      "materials": [
+        "cel ink",
+        "gray wash"
+      ],
+      "viewport": "Circular iris opening over cartoon appliance silhouettes.",
+      "case": "Cartoon aesthetic undermines homeowner trust when inviting a technician into their home.",
+      "risk": "Playful gag framing clashes with reliable repair care.",
+      "kept": "Unmistakable focal framing for each appliance type.",
+      "hero": "https://impeccable.style/worlds/cards/pop-culture-shelf-rubber-hose-cel-hero.webp"
+    },
+    {
+      "id": "challenger-ink",
+      "kind": "challenger",
+      "catalogId": "medium-native-fluid-ink-basin",
+      "verdict": "declined",
+      "label": "Fluid Ink Basin",
+      "lineage": "Suminagashi ink marbling on water",
+      "thesis": "Service sections drift across swirling liquid ink currents.",
+      "palette": [
+        "#F8FAFC",
+        "#1E3A8A",
+        "#334155"
+      ],
+      "materials": [
+        "marbled sumi ink",
+        "still paper margin"
+      ],
+      "viewport": "Marbled ink current flowing behind minimal booking actions.",
+      "case": "Fluid motion obscures structured scheduling and adds heavy mobile GPU cost.",
+      "risk": "Distracts from clear slot booking and pricing.",
+      "kept": "Continuous surface flow without nested box clutter.",
+      "hero": "https://impeccable.style/worlds/cards/medium-native-fluid-ink-basin-hero.webp"
+    },
+    {
+      "id": "challenger-cape",
+      "kind": "challenger",
+      "catalogId": "textiles-weave-drape-fashion-drawcord-transforming-cape",
+      "verdict": "declined",
+      "label": "Drawcord Transforming Silk",
+      "lineage": "Tailored matte black silk with gold drawcord channels",
+      "thesis": "Pulling gold cord lines gathers flat rows into layered pleated panels.",
+      "palette": [
+        "#111111",
+        "#D4AF37",
+        "#334155"
+      ],
+      "materials": [
+        "matte silk",
+        "gold cord stitching"
+      ],
+      "viewport": "Dark pleated panel with gold cord controls.",
+      "case": "High-fashion textile language feels disconnected from household appliance care.",
+      "risk": "Confusing metaphor for homeowners booking repairs.",
+      "kept": "Progressive disclosure—compact at rest, detailed on demand.",
+      "hero": "https://impeccable.style/worlds/cards/textiles-weave-drape-fashion-drawcord-transforming-cape-hero.webp"
+    },
+    {
+      "id": "challenger-film",
+      "kind": "challenger",
+      "catalogId": "cinema-cinematography-editing-hand-processed-film-bloom",
+      "verdict": "declined",
+      "label": "Hand-Processed 16mm Film",
+      "lineage": "Scratched silver emulsion strips with amber light leaks",
+      "thesis": "Repair milestones appear as frames along a sprocketed film strip.",
+      "palette": [
+        "#121212",
+        "#9CA3AF",
+        "#F97316"
+      ],
+      "materials": [
+        "silver emulsion",
+        "light-leak flare"
+      ],
+      "viewport": "Sprocket-margined horizontal frames over dark film leader.",
+      "case": "Scratches and chemical grain evoke damage rather than dependable repair.",
+      "risk": "Hurts clarity and legibility on phones.",
+      "kept": "Strict timestamped milestone alignment.",
+      "hero": "https://impeccable.style/worlds/cards/cinema-cinematography-editing-hand-processed-film-bloom-hero.webp"
+    }
+  ],
+  "reroll": {
+    "registers": [
+      "safer",
+      "bolder"
+    ]
+  },
+  "buildPath": {
+    "value": "code",
+    "toggle": true
+  },
+  "canon": true,
+  "canonCard": {
+    "kind": "canon",
+    "label": "Precision Cobalt Standard",
+    "thesis": "Clean white & slate grid with cobalt actions, executed at full craft.",
+    "palette": [
+      "#F8FAFC",
+      "#FFFFFF",
+      "#1D4ED8",
+      "#0F172A"
+    ],
+    "materials": [
+      "clean white cards",
+      "slate rules",
+      "cobalt accents"
+    ],
+    "viewport": "Split hero over light gray canvas with clean feature row.",
+    "risk": "Matches standard SaaS and home-service marketplaces.",
+    "html": ".impeccable/mocks/decision/canon.html",
+    "comp": ".impeccable/mocks/decision/canon.png"
+  },
+  "steer": true
+}

@@ -58,9 +58,9 @@ export function ChangePasswordCard() {
         <div className="flex items-center gap-2.5 text-sm">
           <KeyRound className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <div>
-            <p className="font-medium text-foreground">Password &amp; Security</p>
+            <p className="font-medium text-foreground">Password</p>
             <p className="text-xs text-muted-foreground">
-              Update your account sign-in password when needed.
+              Update your password anytime to keep your account safe.
             </p>
           </div>
         </div>
