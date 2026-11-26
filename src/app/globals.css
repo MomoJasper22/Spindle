@@ -166,3 +166,26 @@
   border: 0 !important;
   white-space: nowrap !important;
 }
+
+@keyframes spindle-marquee-rtl {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .spindle-marquee-track {
+    display: flex;
+    width: max-content;
+    animation: spindle-marquee-rtl 34s linear infinite;
+    will-change: transform;
+  }
+
+  .spindle-marquee-viewport:hover .spindle-marquee-track,
+  .spindle-marquee-track[data-paused="true"] {
+    animation-play-state: paused;
+  }
+}
