@@ -1,0 +1,140 @@
+export const SERVICE_BRANCHES = [
+  'Metro Manila - North (Quezon City)',
+  'Metro Manila - Central (Makati / Pasig)',
+  'Metro Manila - South (Alabang / Paranaque)',
+  'CALABARZON Hub (Sta. Rosa, Laguna)',
+  'Central Visayas Hub (Cebu City)',
+  'Southern Mindanao Hub (Davao City)',
+] as const
+
+export type ServiceBranch = (typeof SERVICE_BRANCHES)[number]
+
+export const APPLIANCE_CATEGORIES = [
+  'Split-Type Aircon',
+  'Window-Type Aircon',
+  'Inverter Refrigerator',
+  'Front-Load Washing Machine',
+  'Top-Load Washing Machine',
+  'Gas / Induction Range',
+  'Commercial Chiller / Freezer',
+  'Microwave Oven',
+  'Water Dispenser',
+] as const
+
+export type ApplianceCategory = (typeof APPLIANCE_CATEGORIES)[number]
+
+export const APPLIANCE_BRAND_SUGGESTIONS = [
+  'Carrier',
+  'Condura',
+  'Panasonic',
+  'LG',
+  'Samsung',
+  'Daikin',
+  'Koppel',
+  'Whirlpool',
+  'Fujidenzo',
+  'Sharp',
+  'Midea',
+  'Haier',
+] as const
+
+export const PAYMENT_METHODS = [
+  'Cash',
+  'GCash',
+  'Maya',
+  'QR Ph',
+  'Bank Transfer (BPI / BDO / UnionBank)',
+  'Credit / Debit Card',
+] as const
+
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number]
+
+export const TIME_SLOTS = [
+  '08:00 AM - 10:00 AM',
+  '10:00 AM - 12:00 PM',
+  '01:00 PM - 03:00 PM',
+  '03:00 PM - 05:00 PM',
+] as const
+
+export type TimeSlot = (typeof TIME_SLOTS)[number]
+
+export const SERVICE_TYPES = [
+  { value: 'diagnostic', label: 'Diagnostic Inspection' },
+  { value: 'repair', label: 'Appliance Repair' },
+  { value: 'maintenance_cleaning', label: 'Maintenance & Deep Cleaning' },
+  { value: 'installation', label: 'Unit Installation' },
+] as const
+
+export type ServiceType = (typeof SERVICE_TYPES)[number]['value']
+
+export const REPAIR_STATUSES = [
+  'pending',
+  'confirmed',
+  'assigned',
+  'in_progress',
+  'awaiting_payment',
+  'completed',
+  'cancelled',
+] as const
+
+export type RepairStatus = (typeof REPAIR_STATUSES)[number]
+
+export const REPAIR_PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const
+
+export type RepairPriority = (typeof REPAIR_PRIORITIES)[number]
+
+export const APPOINTMENT_STATUSES = [
+  'requested',
+  'confirmed',
+  'rescheduled',
+  'completed',
+  'cancelled',
+] as const
+
+export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number]
+
+export const REGISTRATION_STATUSES = [
+  'pending_verification',
+  'verified',
+  'cancelled',
+] as const
+
+export type RegistrationStatus = (typeof REGISTRATION_STATUSES)[number]
+
+export const PAYMENT_STATUSES = [
+  'pending_verification',
+  'verified',
+  'cancelled',
+] as const
+
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number]
+
+export const TECH_AVAILABILITY_STATUSES = [
+  'available',
+  'busy',
+  'off_duty',
+] as const
+
+export type TechAvailabilityStatus = (typeof TECH_AVAILABILITY_STATUSES)[number]
+
+export const USER_TYPE_IDS = {
+  customer: 'UTP-CUST',
+  technician: 'UTP-TECH',
+  admin: 'UTP-ADMIN',
+} as const
+
+export type UserRole = keyof typeof USER_TYPE_IDS
+
+export const PH_PROVINCES = [
+  'Metro Manila',
+  'Cavite',
+  'Laguna',
+  'Batangas',
+  'Rizal',
+  'Bulacan',
+  'Pampanga',
+  'Cebu',
+  'Davao del Sur',
+  'Iloilo',
+  'Negros Occidental',
+] as const
