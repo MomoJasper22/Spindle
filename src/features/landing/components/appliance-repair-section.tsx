@@ -442,9 +442,36 @@ export function ApplianceRepairSection() {
     [selectedId],
   )
 
+  function renderApplianceCard(item: ApplianceCategory, isDuplicate = false) {
+    const isSelected = selectedId === item.id
+    return (
+      <button
+        key={isDuplicate ? `${item.id}-dup` : item.id}
+        type="button"
+        tabIndex={isDuplicate ? -1 : undefined}
+        aria-hidden={isDuplicate ? true : undefined}
+        aria-haspopup="dialog"
+        onClick={() => setSelectedId(item.id)}
+        className={cn(
+          'appliance-card group relative flex w-40 sm:w-48 shrink-0 aspect-square flex-col items-center justify-between rounded-2xl border px-3 py-5 sm:px-4 sm:py-6 text-center transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          isSelected
+            ? 'border-primary bg-primary text-white shadow-md -translate-y-0.5'
+            : 'border-border bg-background text-foreground shadow-2xs hover:border-primary/50 hover:bg-primary-tint/45 hover:-translate-y-0.5',
+        )}
+      >
+        <span className="flex flex-1 items-center justify-center transition-transform duration-200 group-hover:scale-105">
+          {item.renderIllustration(isSelected)}
+        </span>
+        <span className="mt-2 font-heading text-xs font-semibold sm:text-sm">
+          {item.shortLabel}
+        </span>
+      </button>
+    )
+  }
+
   return (
     <section id="repair" className="border-t border-border bg-card py-12 sm:py-16">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 space-y-8">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="mx-auto max-w-2xl space-y-2 text-center">
           <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             Appliances We Care For
@@ -453,33 +480,20 @@ export function ApplianceRepairSection() {
             Tap any appliance to see how we can help get it working smoothly again.
           </p>
         </div>
+      </div>
 
-        <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4 sm:gap-5">
-          {APPLIANCE_CATEGORIES.map((item) => {
-            const isSelected = selectedId === item.id
-            return (
-              <button
-                key={item.id}
-                type="button"
-                aria-haspopup="dialog"
-                onClick={() => setSelectedId(item.id)}
-                className={cn(
-                  'group relative flex aspect-square flex-col items-center justify-between rounded-2xl border px-3 py-5 sm:px-4 sm:py-6 text-center transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                  isSelected
-                    ? 'border-primary bg-primary text-white shadow-md -translate-y-0.5'
-                    : 'border-border bg-background text-foreground shadow-2xs hover:border-primary/50 hover:bg-primary-tint/45 hover:-translate-y-0.5',
-                )}
-              >
-                <span className="flex flex-1 items-center justify-center transition-transform duration-200 group-hover:scale-105">
-                  {item.renderIllustration(isSelected)}
-                </span>
-                <span className="mt-2 font-heading text-xs font-semibold sm:text-sm">
-                  {item.shortLabel}
-                </span>
-              </button>
-            )
-          })}
+      <div className="appliance-marquee-viewport mt-8">
+        <div className="appliance-marquee-track">
+          <div className="appliance-marquee-group">
+            {APPLIANCE_CATEGORIES.map((item) => renderApplianceCard(item))}
+          </div>
+          <div className="appliance-marquee-group-duplicate" aria-hidden="true">
+            {APPLIANCE_CATEGORIES.map((item) => renderApplianceCard(item, true))}
+          </div>
         </div>
+      </div>
+
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
 
         <Dialog
           open={selectedItem !== null}
