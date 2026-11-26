@@ -89,8 +89,7 @@ Run the SQL migrations in `supabase/migrations/` in numeric order against your S
 1. `001_schema_and_alphanumeric_ids.sql` — Core tables (`users`, `user_types`, `technician_profiles`, `customer_appliances`, `repair`, `appointments`, `payments`, `activity_logs`), views (`v_repair_details`, `v_appointment_details`, `v_payment_details`), and custom alphanumeric ID generators.
 2. `002_rls_policies.sql` — Row-level security policies per role.
 3. `003_transactions_and_locking_rpcs.sql` — Atomic RPCs (`rpc_create_repair_with_appointment`, `rpc_assign_technician_and_confirm_slot`, `rpc_record_and_verify_payment`).
-4. `004_user_avatar_and_storage.sql` — Profile `avatar_url` column and Supabase Storage policies for the `avatars` bucket.
-5. `005_avatar_position.sql` — Adds `avatar_position JSONB` (`{ x, y, zoom }`) on `public.users` (note: framing also syncs to Supabase Auth `user_metadata` for graceful backwards compatibility).
+4. `004_user_avatar_and_storage.sql` — Profile `avatar_url` and `avatar_position` (`{ x, y, zoom }` JSONB) columns plus Supabase Storage policies for the `avatars` bucket (framing also syncs to Supabase Auth `user_metadata` for graceful backwards compatibility).
 
 ### 3. Install Dependencies & Run
 

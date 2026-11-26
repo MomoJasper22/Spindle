@@ -45,7 +45,7 @@ async function persistAvatarPositionMetadata(
     },
   })
 
-  // Best-effort sync to public.users if migration 005 has been applied
+  // Best-effort sync to public.users if migration 004 avatar_position column has been applied
   const { error: dbErr } = await admin
     .from('users')
     .update({ avatar_position: position })

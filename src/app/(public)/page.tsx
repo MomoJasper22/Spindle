@@ -66,59 +66,77 @@ export default function LandingPage() {
 
       <main id="main-content" tabIndex={-1} className="flex-1">
         {/* Tactile Service Passbook Hero (Single Primary CTA, Zero Track Ticket Button) */}
-        <section id="how-it-works" className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16 lg:py-20">
-          <div className="grid gap-10 lg:grid-cols-12 lg:items-center lg:gap-12">
-            <div className="space-y-6 lg:col-span-6">
-              <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-[3.35rem] lg:leading-[1.06]">
-                Keep every home appliance running smoothly.
-              </h1>
+        <section id="how-it-works" className="relative overflow-hidden bg-[#F8F7F4]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/care-appliances-bg.jpg"
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#F8F7F4]/95 via-[#F8F7F4]/86 to-[#F8F7F4]/62"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[#F8F7F4]/35 lg:hidden"
+          />
 
-              <p className="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-                Book trusted repair and cleaning visits across the Philippines. Clear Peso pricing before work starts, flexible 2-hour windows, and simple online updates.
-              </p>
+          <div className="relative z-10 mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16 lg:py-20">
+            <div className="grid gap-10 lg:grid-cols-12 lg:items-center lg:gap-12">
+              <div className="space-y-6 lg:col-span-6">
+                <h1 className="font-heading text-3xl font-bold tracking-tight text-[#141B29] sm:text-5xl lg:text-[3.35rem] lg:leading-[1.06]">
+                  Keep every home appliance running smoothly.
+                </h1>
 
-              <div className="pt-1">
-                <Button asChild size="lg" className="w-full sm:w-auto px-7">
-                  <Link href="/signup">
-                    <span>Schedule a Visit</span>
-                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </Link>
-                </Button>
-              </div>
-            </div>
+                <p className="max-w-xl text-base font-medium leading-relaxed text-[#141B29]/90 sm:text-lg">
+                  Book trusted repair and cleaning visits across the Philippines. Clear Peso pricing before work starts, flexible 2-hour windows, and simple online updates.
+                </p>
 
-            {/* Signature Service Passbook Card */}
-            <div className="lg:col-span-6">
-              <div className="overflow-hidden rounded-2xl border-2 border-[#141B29] bg-card shadow-[0_18px_36px_-14px_rgba(20,27,41,0.18),0_4px_12px_rgba(20,27,41,0.06)]">
-                <div className="flex items-center justify-between gap-3 bg-[#141B29] px-5 py-4 sm:px-7">
-                  <h2 className="font-heading text-lg font-bold text-[#F8F7F4] sm:text-xl">
-                    Service Passbook
-                  </h2>
-                  <span className="-rotate-2 rounded-md border-2 border-emerald-400 px-2.5 py-0.5 text-[11px] font-bold tracking-wider text-emerald-300 uppercase">
-                    Clear Estimate
-                  </span>
+                <div className="pt-1">
+                  <Button asChild size="lg" className="w-full sm:w-auto px-7 shadow-md">
+                    <Link href="/signup">
+                      <span>Schedule a Visit</span>
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </Button>
                 </div>
+              </div>
 
-                <ol className="divide-y divide-dashed divide-slate-300 px-5 py-2 sm:px-7">
-                  {PASSBOOK_STEPS.map((item) => (
-                    <li
-                      key={item.step}
-                      className="flex flex-col gap-1 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="font-heading text-sm font-bold text-[#D97706] tabular-nums">
-                          {item.step}
+              {/* Signature Service Passbook Card */}
+              <div className="lg:col-span-6">
+                <div className="overflow-hidden rounded-2xl border-2 border-[#141B29] bg-card shadow-[0_18px_36px_-14px_rgba(20,27,41,0.18),0_4px_12px_rgba(20,27,41,0.06)]">
+                  <div className="flex items-center justify-between gap-3 bg-[#141B29] px-5 py-4 sm:px-7">
+                    <h2 className="font-heading text-lg font-bold text-[#F8F7F4] sm:text-xl">
+                      Service Passbook
+                    </h2>
+                    <span className="-rotate-2 rounded-md border-2 border-emerald-400 px-2.5 py-0.5 text-[11px] font-bold tracking-wider text-emerald-300 uppercase">
+                      Clear Estimate
+                    </span>
+                  </div>
+
+                  <ol className="divide-y divide-dashed divide-slate-300 px-5 py-2 sm:px-7">
+                    {PASSBOOK_STEPS.map((item) => (
+                      <li
+                        key={item.step}
+                        className="flex flex-col gap-1 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="font-heading text-sm font-bold text-[#D97706] tabular-nums">
+                            {item.step}
+                          </span>
+                          <span className="text-sm font-semibold text-muted-foreground">
+                            {item.title}
+                          </span>
+                        </div>
+                        <span className="text-sm font-bold text-foreground sm:text-right">
+                          {item.detail}
                         </span>
-                        <span className="text-sm font-semibold text-muted-foreground">
-                          {item.title}
-                        </span>
-                      </div>
-                      <span className="text-sm font-bold text-foreground sm:text-right">
-                        {item.detail}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
               </div>
             </div>
           </div>
@@ -131,13 +149,25 @@ export default function LandingPage() {
         <SupportedBrandsSection />
 
         {/* Plain-Language Care Promises */}
-        <section id="services" className="border-t border-border bg-card py-12 sm:py-16">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 space-y-8">
+        <section id="services" className="relative overflow-hidden border-t border-border bg-[#141B29] py-12 sm:py-16">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/auth-showcase.jpg"
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#141B29]/90 via-[#141B29]/78 to-[#141B29]/88"
+          />
+
+          <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6 space-y-8">
             <div className="max-w-2xl space-y-2">
-              <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              <h2 className="font-heading text-2xl font-bold tracking-tight text-[#F8F7F4] sm:text-3xl">
                 Care you can count on for every home and shop appliance
               </h2>
-              <p className="text-sm text-muted-foreground sm:text-base">
+              <p className="text-sm text-slate-200 sm:text-base">
                 From routine aircon cleaning to urgent fridge and washer repairs, everything stays straightforward from booking to payment.
               </p>
             </div>
@@ -148,7 +178,7 @@ export default function LandingPage() {
                 return (
                   <div
                     key={cap.title}
-                    className="rounded-2xl border border-border bg-background/60 p-6 space-y-3"
+                    className="rounded-2xl border border-[#E6E1D6] bg-card/95 p-6 space-y-3 shadow-[0_14px_30px_-12px_rgba(0,0,0,0.28)] backdrop-blur-xs"
                   >
                     <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-primary-tint text-primary">
                       <Icon className="h-5 w-5" aria-hidden="true" />

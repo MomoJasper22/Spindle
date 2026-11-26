@@ -35,7 +35,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
    - Touch controls must meet `44×44px` hit targets on coarse pointers.
 5. **Avatar Photo Framing:**
    - Uploaded profile photos support non-destructive focal framing (`{ x, y, zoom }`) via `ProfilePhotoField` (`src/components/shared/profile-photo-field.tsx`), rendered consistently with `UserAvatar` (`src/components/shared/user-avatar.tsx`) and `getAvatarImageStyle` (`src/lib/avatar.ts`).
-   - `updateAvatarPositionAction` persists framing to Supabase Auth `user_metadata` and best-effort syncs `public.users.avatar_position` (`supabase/migrations/005_avatar_position.sql`).
+   - `updateAvatarPositionAction` persists framing to Supabase Auth `user_metadata` and best-effort syncs `public.users.avatar_position` (`supabase/migrations/004_user_avatar_and_storage.sql`).
 
 ## Next.js 16 & Supabase Rules
 
