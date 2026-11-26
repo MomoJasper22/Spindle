@@ -17,13 +17,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { FormBanner } from '@/components/shared/form-banner'
+import { PhilippineAddressFields } from '@/components/shared/ph-address-fields'
 import { ProfilePhotoField } from '@/components/shared/profile-photo-field'
 import { Badge } from '@/components/ui/badge'
 import type { AvatarPosition } from '@/lib/avatar'
-import { APPLIANCE_CATEGORIES, PH_PROVINCES, SERVICE_BRANCHES, type UserRole } from '@/lib/constants'
+import { APPLIANCE_CATEGORIES, SERVICE_BRANCHES, type UserRole } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { completeOnboardingAction } from '../actions/onboarding-actions'
-import { onboardingSchema, type OnboardingInput } from '../schemas/onboarding-schemas'
+import { getOnboardingSchema, type OnboardingInput } from '../schemas/onboarding-schemas'
 
 interface OnboardingFormProps {
   firstName: string
@@ -58,7 +59,7 @@ export function OnboardingForm({
     setValue,
     formState: { errors },
   } = useForm<OnboardingInput>({
-    resolver: zodResolver(onboardingSchema),
+    resolver: zodResolver(getOnboardingSchema(role)),
     mode: 'onBlur',
     defaultValues: {
       phone: initialValues?.phone ?? '',
@@ -231,106 +232,15 @@ export function OnboardingForm({
 
           {step === 2 && (
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="onboard-street">
-                  House / Unit No., Street, Subdivision <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="onboard-street"
-                  autoComplete="street-address"
-                  placeholder="Unit 14B, Katipunan Ave., Loyola Heights"
-                  aria-invalid={Boolean(errors.address_street)}
-                  {...register('address_street')}
-                />
-                {errors.address_street && (
-                  <p role="alert" className="text-xs font-medium text-destructive">
-                    {errors.address_street.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="onboard-barangay">
-                    Barangay <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="onboard-barangay"
-                    placeholder="Brgy. Loyola Heights"
-                    aria-invalid={Boolean(errors.address_barangay)}
-                    {...register('address_barangay')}
-                  />
-                  {errors.address_barangay && (
-                    <p role="alert" className="text-xs font-medium text-destructive">
-                      {errors.address_barangay.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="onboard-city">
-                    City / Municipality <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="onboard-city"
-                    autoComplete="address-level2"
-                    placeholder="Quezon City"
-                    aria-invalid={Boolean(errors.address_city)}
-                    {...register('address_city')}
-                  />
-                  {errors.address_city && (
-                    <p role="alert" className="text-xs font-medium text-destructive">
-                      {errors.address_city.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="onboard-province">
-                    Province / Region <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="onboard-province"
-                    list="ph-provinces-list"
-                    autoComplete="address-level1"
-                    placeholder="Metro Manila"
-                    aria-invalid={Boolean(errors.address_province)}
-                    {...register('address_province')}
-                  />
-                  <datalist id="ph-provinces-list">
-                    {PH_PROVINCES.map((prov) => (
-                      <option key={prov} value={prov} />
-                    ))}
-                  </datalist>
-                  {errors.address_province && (
-                    <p role="alert" className="text-xs font-medium text-destructive">
-                      {errors.address_province.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="onboard-zip">
-                    4-Digit Postal Code <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="onboard-zip"
-                    inputMode="numeric"
-                    maxLength={4}
-                    autoComplete="postal-code"
-                    placeholder="1108"
-                    aria-invalid={Boolean(errors.address_zip_code)}
-                    {...register('address_zip_code')}
-                  />
-                  {errors.address_zip_code && (
-                    <p role="alert" className="text-xs font-medium text-destructive">
-                      {errors.address_zip_code.message}
-                    </p>
-                  )}
-                </div>
-              </div>
+              <PhilippineAddressFields
+                register={register}
+                errors={errors}
+                idPrefix="onboard"
+                streetLabel="House / Unit No., Street, Subdivision"
+                streetPlaceholder="Unit 14B, Katipunan Ave., Loyola Heights"
+                zipLabel="4-Digit Postal Code"
+                requiredMark
+              />
             </div>
           )}
 

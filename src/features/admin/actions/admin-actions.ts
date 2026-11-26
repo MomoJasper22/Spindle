@@ -12,9 +12,7 @@ import {
 import {
   USER_TYPE_IDS,
   type AdminFeatureKey,
-  type AppointmentStatus,
   type RegistrationStatus,
-  type TimeSlot,
 } from '@/lib/constants'
 import { normalizePHPhone } from '@/lib/formatters'
 import {
@@ -25,6 +23,7 @@ import {
   adminProfileSchema,
   adminRecordPaymentSchema,
   adminTechProfileSchema,
+  adminUpdateAppointmentSchema,
   adminUpdateRepairSchema,
   adminUpdateUserSchema,
   type AdminApplianceInput,
@@ -34,6 +33,7 @@ import {
   type AdminProfileInput,
   type AdminRecordPaymentInput,
   type AdminTechProfileInput,
+  type AdminUpdateAppointmentInput,
   type AdminUpdateRepairInput,
   type AdminUpdateUserInput,
 } from '../schemas/admin-schemas'
@@ -492,7 +492,12 @@ export async function adminUpsertApplianceAction(
       })
       .eq('appliance_id', applianceId)
 
-    if (error) return { success: false, error: error.message }
+    if (error) {
+      if (error.code === '23505') {
+        return { success: false, error: 'An appliance with this serial number already exists.' }
+      }
+      return { success: false, error: error.message }
+    }
 
     await supabase.from('activity_logs').insert({
       actor_id: adminProfile.user_id,
@@ -522,6 +527,9 @@ export async function adminUpsertApplianceAction(
     .single()
 
   if (error || !created) {
+    if (error?.code === '23505') {
+      return { success: false, error: 'An appliance with this serial number already exists.' }
+    }
     return { success: false, error: error?.message ?? 'Failed to register appliance.' }
   }
 
@@ -633,6 +641,12 @@ export async function adminUpdateRepairAction(
   }
 
   const supabase = await createClient()
+  const { data: existingRepair } = await supabase
+    .from('repair')
+    .select('completed_at')
+    .eq('ticket_id', parsed.data.ticket_id)
+    .maybeSingle()
+
   const { error } = await supabase
     .from('repair')
     .update({
@@ -641,7 +655,10 @@ export async function adminUpdateRepairAction(
       diagnostic_notes: parsed.data.diagnostic_notes || null,
       estimated_cost_php: parsed.data.estimated_cost_php,
       final_cost_php: parsed.data.final_cost_php,
-      ...(parsed.data.status === 'completed' ? { completed_at: new Date().toISOString() } : {}),
+      completed_at:
+        parsed.data.status === 'completed'
+          ? (existingRepair?.completed_at ?? new Date().toISOString())
+          : null,
     })
     .eq('ticket_id', parsed.data.ticket_id)
 
@@ -672,51 +689,74 @@ export async function adminUpdateRepairAction(
   return { success: true, message: `Updated repair ticket ${parsed.data.ticket_id}.` }
 }
 
-export async function adminUpdateAppointmentAction(input: {
-  appointment_id: string
-  appointment_status: AppointmentStatus
-  scheduled_date: string
-  time_slot: TimeSlot
-  remarks?: string
-}): Promise<AdminActionResult> {
+export async function adminUpdateAppointmentAction(
+  input: AdminUpdateAppointmentInput
+): Promise<AdminActionResult> {
   const adminProfile = await requireAdminFeature('appointments')
+  const parsed = adminUpdateAppointmentSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid appointment update.' }
+  }
+
   const supabase = await createClient()
 
   const { data: apt, error: fetchErr } = await supabase
     .from('appointments')
-    .select('appointment_id, ticket_id')
-    .eq('appointment_id', input.appointment_id)
+    .select('appointment_id, ticket_id, technician_id, scheduled_date, time_slot')
+    .eq('appointment_id', parsed.data.appointment_id)
     .single()
 
   if (fetchErr || !apt) return { success: false, error: 'Appointment not found.' }
 
+  if (
+    apt.technician_id &&
+    !['cancelled', 'completed'].includes(parsed.data.appointment_status) &&
+    (apt.scheduled_date !== parsed.data.scheduled_date || apt.time_slot !== parsed.data.time_slot)
+  ) {
+    const { count: conflictCount } = await supabase
+      .from('appointments')
+      .select('appointment_id', { count: 'exact', head: true })
+      .eq('technician_id', apt.technician_id)
+      .eq('scheduled_date', parsed.data.scheduled_date)
+      .eq('time_slot', parsed.data.time_slot)
+      .not('appointment_status', 'in', '(cancelled,completed)')
+      .neq('appointment_id', apt.appointment_id)
+
+    if ((conflictCount ?? 0) > 0) {
+      return {
+        success: false,
+        error: 'Double-booking conflict: assigned technician already has another appointment in that time slot.',
+      }
+    }
+  }
+
   const { error } = await supabase
     .from('appointments')
     .update({
-      appointment_status: input.appointment_status,
-      scheduled_date: input.scheduled_date,
-      time_slot: input.time_slot,
-      remarks: input.remarks || null,
+      appointment_status: parsed.data.appointment_status,
+      scheduled_date: parsed.data.scheduled_date,
+      time_slot: parsed.data.time_slot,
+      remarks: parsed.data.remarks || null,
     })
-    .eq('appointment_id', input.appointment_id)
+    .eq('appointment_id', parsed.data.appointment_id)
 
   if (error) return { success: false, error: error.message }
 
   await supabase
     .from('repair')
-    .update({ scheduled_date: input.scheduled_date })
+    .update({ scheduled_date: parsed.data.scheduled_date })
     .eq('ticket_id', apt.ticket_id)
 
   await supabase.from('activity_logs').insert({
     actor_id: adminProfile.user_id,
     entity_type: 'appointment',
-    entity_id: input.appointment_id,
-    action: `appointment_${input.appointment_status}_by_admin`,
-    description: `Admin updated appointment ${input.appointment_id} to ${input.appointment_status} (${input.scheduled_date} · ${input.time_slot}).`,
+    entity_id: parsed.data.appointment_id,
+    action: `appointment_${parsed.data.appointment_status}_by_admin`,
+    description: `Admin updated appointment ${parsed.data.appointment_id} to ${parsed.data.appointment_status} (${parsed.data.scheduled_date} · ${parsed.data.time_slot}).`,
   })
 
   revalidateAdminPaths()
-  return { success: true, message: `Appointment ${input.appointment_id} updated.` }
+  return { success: true, message: `Appointment ${parsed.data.appointment_id} updated.` }
 }
 
 export async function adminVerifyPaymentAction(

@@ -19,6 +19,7 @@ async function CustomerAppliancesContent({
 
   return (
     <AppliancesPanel
+      key={params.add === '1' ? 'add' : 'list'}
       appliances={appliances}
       openAddByDefault={params.add === '1'}
     />

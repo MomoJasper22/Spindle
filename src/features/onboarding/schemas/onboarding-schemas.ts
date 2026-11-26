@@ -1,8 +1,8 @@
 import { z } from 'zod'
-import { SERVICE_BRANCHES } from '@/lib/constants'
+import { SERVICE_BRANCHES, type UserRole } from '@/lib/constants'
 import { validatePHPhone } from '@/lib/formatters'
 
-export const onboardingSchema = z.object({
+const baseOnboardingSchema = z.object({
   phone: z
     .string()
     .trim()
@@ -48,5 +48,31 @@ export const onboardingSchema = z.object({
     .optional()
     .or(z.literal('')),
 })
+
+export const onboardingSchema = baseOnboardingSchema
+
+export function getOnboardingSchema(role: UserRole) {
+  if (role !== 'technician') {
+    return baseOnboardingSchema
+  }
+  return baseOnboardingSchema.superRefine((data, ctx) => {
+    const nickname = data.nickname?.trim() ?? ''
+    if (nickname.length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['nickname'],
+        message: 'Enter a display nickname (at least 2 characters).',
+      })
+    }
+    const cert = data.certification_no?.trim() ?? ''
+    if (cert.length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['certification_no'],
+        message: 'Enter your TESDA or technical certification number.',
+      })
+    }
+  })
+}
 
 export type OnboardingInput = z.infer<typeof onboardingSchema>

@@ -2,6 +2,7 @@ import { z } from 'zod'
 import {
   ADMIN_FEATURE_KEYS,
   APPLIANCE_CATEGORIES,
+  APPOINTMENT_STATUSES,
   PAYMENT_METHODS,
   REPAIR_PRIORITIES,
   REPAIR_STATUSES,
@@ -78,11 +79,21 @@ export type AdminTechProfileInput = z.infer<typeof adminTechProfileSchema>
 export const adminAssignTechSchema = z.object({
   ticket_id: z.string().trim().min(1, 'Select a repair ticket.'),
   technician_id: z.string().trim().min(1, 'Select a technician.'),
-  scheduled_date: z.string().trim().min(1, 'Select a scheduled date.'),
+  scheduled_date: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Select a scheduled date.'),
   time_slot: z.enum(TIME_SLOTS, { message: 'Select a time slot.' }),
 })
 
 export type AdminAssignTechInput = z.infer<typeof adminAssignTechSchema>
+
+export const adminUpdateAppointmentSchema = z.object({
+  appointment_id: z.string().trim().min(1, 'Appointment ID is required.'),
+  appointment_status: z.enum(APPOINTMENT_STATUSES),
+  scheduled_date: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Select a valid date.'),
+  time_slot: z.enum(TIME_SLOTS),
+  remarks: z.string().trim().max(500).optional().or(z.literal('')),
+})
+
+export type AdminUpdateAppointmentInput = z.infer<typeof adminUpdateAppointmentSchema>
 
 export const adminApplianceSchema = z.object({
   customer_id: z.string().trim().min(1, 'Select a customer.'),
@@ -103,7 +114,7 @@ export const adminCreateRepairSchema = z.object({
   service_type: z.enum(['diagnostic', 'repair', 'maintenance_cleaning', 'installation']),
   priority: z.enum(REPAIR_PRIORITIES),
   issue_description: z.string().trim().min(10, 'Describe the issue in at least 10 characters.').max(1000),
-  scheduled_date: z.string().trim().min(1),
+  scheduled_date: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Select a valid scheduled date.'),
   time_slot: z.enum(TIME_SLOTS),
   service_address: z.string().trim().min(8).max(500),
   remarks: z.string().trim().max(500).optional().or(z.literal('')),
@@ -122,15 +133,25 @@ export const adminUpdateRepairSchema = z.object({
 
 export type AdminUpdateRepairInput = z.infer<typeof adminUpdateRepairSchema>
 
-export const adminRecordPaymentSchema = z.object({
-  ticket_id: z.string().trim().min(1, 'Select a ticket.'),
-  payment_method: z.enum(PAYMENT_METHODS),
-  amount_php: z.number().positive('Amount must be greater than PHP 0.00.').max(1000000),
-  installment_no: z.number().int().min(1).nullable(),
-  reference_no: z.string().trim().max(100).optional().or(z.literal('')),
-  remarks: z.string().trim().max(500).optional().or(z.literal('')),
-  verify_immediately: z.boolean(),
-})
+export const adminRecordPaymentSchema = z
+  .object({
+    ticket_id: z.string().trim().min(1, 'Select a ticket.'),
+    payment_method: z.enum(PAYMENT_METHODS),
+    amount_php: z.number().positive('Amount must be greater than PHP 0.00.').max(1000000),
+    installment_no: z.number().int().min(1).nullable(),
+    reference_no: z.string().trim().max(100).optional().or(z.literal('')),
+    remarks: z.string().trim().max(500).optional().or(z.literal('')),
+    verify_immediately: z.boolean(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.payment_method !== 'Cash' && !data.reference_no?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['reference_no'],
+        message: 'Reference number is required for non-cash payments.',
+      })
+    }
+  })
 
 export type AdminRecordPaymentInput = z.infer<typeof adminRecordPaymentSchema>
 

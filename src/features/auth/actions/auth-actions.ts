@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getRoleHomePath } from '@/lib/auth/session'
-import { USER_TYPE_IDS, type UserRole } from '@/lib/constants'
+import { USER_TYPE_IDS, type AdminFeatureKey, type UserRole } from '@/lib/constants'
 import { loginSchema, signupSchema, type LoginInput, type SignupInput } from '../schemas/auth-schemas'
 
 export type AuthActionResult =
@@ -39,7 +39,7 @@ export async function signInAction(input: LoginInput): Promise<AuthActionResult>
   const admin = createAdminClient()
   const { data: profile, error: profileError } = await admin
     .from('users')
-    .select('user_id, is_onboarded, is_active, user_types(type_name)')
+    .select('user_id, is_onboarded, is_active, admin_permissions, user_types(type_name)')
     .eq('auth_user_id', authData.user.id)
     .maybeSingle()
 
@@ -69,7 +69,11 @@ export async function signInAction(input: LoginInput): Promise<AuthActionResult>
     redirect('/onboarding')
   }
 
-  redirect(getRoleHomePath(role ?? 'customer'))
+  const resolvedRole: UserRole = role ?? 'customer'
+  const adminPermissions = Array.isArray(profile.admin_permissions)
+    ? (profile.admin_permissions as AdminFeatureKey[])
+    : null
+  redirect(getRoleHomePath(resolvedRole, { role: resolvedRole, admin_permissions: adminPermissions }))
 }
 
 export async function signUpAction(input: SignupInput): Promise<AuthActionResult> {

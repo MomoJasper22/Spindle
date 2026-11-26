@@ -39,7 +39,9 @@ export function CustomerHomeView({
   activityLogs,
 }: CustomerHomeViewProps) {
   const activeAppliances = appliances.filter((a) => a.registration_status !== 'cancelled')
-  const activeBookings = repairs.filter((r) => !['completed', 'cancelled'].includes(r.status))
+  const activeBookings = repairs
+    .filter((r) => !['completed', 'cancelled'].includes(r.status))
+    .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date))
   const nextBooking = activeBookings[0] ?? null
   const nextAppointment = nextBooking
     ? appointments.find((a) => a.ticket_id === nextBooking.ticket_id) ?? null

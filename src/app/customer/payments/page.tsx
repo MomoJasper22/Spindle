@@ -23,6 +23,7 @@ async function CustomerPaymentsContent({
 
   return (
     <PaymentsPanel
+      key={params.ticket ?? 'list'}
       repairs={repairs}
       payments={payments}
       defaultTicketId={params.ticket}

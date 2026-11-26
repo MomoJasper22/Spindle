@@ -36,13 +36,13 @@ import {
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
+import { PhilippineAddressFields } from '@/components/shared/ph-address-fields'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import {
   ADMIN_FEATURES,
   ADMIN_FEATURE_KEYS,
   APPLIANCE_CATEGORIES,
-  PH_PROVINCES,
   SERVICE_BRANCHES,
   type AdminFeatureKey,
   type UserRole,
@@ -196,13 +196,13 @@ export function UsersPanel({
       middle_name: user.middle_name ?? '',
       last_name: user.last_name,
       role,
-      phone: user.phone ?? '+63 917 000 0000',
+      phone: user.phone ?? '',
       branch_location: (user.branch_location as AdminUpdateUserInput['branch_location']) ?? SERVICE_BRANCHES[0],
-      address_street: user.address_street ?? 'N/A',
-      address_barangay: user.address_barangay ?? 'N/A',
-      address_city: user.address_city ?? 'Quezon City',
-      address_province: user.address_province ?? 'Metro Manila',
-      address_zip_code: user.address_zip_code ?? '1100',
+      address_street: user.address_street ?? '',
+      address_barangay: user.address_barangay ?? '',
+      address_city: user.address_city ?? '',
+      address_province: user.address_province ?? '',
+      address_zip_code: user.address_zip_code ?? '',
       is_active: user.is_active,
       admin_permissions: isLimited ? user.admin_permissions : null,
     })
@@ -763,43 +763,13 @@ export function UsersPanel({
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="adm-c-street">Street / Unit / Building</Label>
-              <Input id="adm-c-street" {...createForm.register('address_street')} />
-              {createForm.formState.errors.address_street && (
-                <p role="alert" className="text-xs text-destructive">
-                  {createForm.formState.errors.address_street.message}
-                </p>
-              )}
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-c-brgy">Barangay</Label>
-                <Input id="adm-c-brgy" {...createForm.register('address_barangay')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-c-city">City</Label>
-                <Input id="adm-c-city" {...createForm.register('address_city')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-c-prov">Province</Label>
-                <Input
-                  id="adm-c-prov"
-                  list="adm-c-provinces"
-                  {...createForm.register('address_province')}
-                />
-                <datalist id="adm-c-provinces">
-                  {PH_PROVINCES.map((p) => (
-                    <option key={p} value={p} />
-                  ))}
-                </datalist>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-c-zip">4-Digit ZIP</Label>
-                <Input id="adm-c-zip" maxLength={4} {...createForm.register('address_zip_code')} />
-              </div>
-            </div>
+            <PhilippineAddressFields
+              register={createForm.register}
+              errors={createForm.formState.errors}
+              idPrefix="adm-c"
+              streetLabel="Street / Unit / Building"
+              zipLabel="4-Digit ZIP"
+            />
 
             {createRole === 'technician' && (
               <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-3.5">
@@ -824,6 +794,11 @@ export function UsersPanel({
                       max={15}
                       {...createForm.register('max_daily_jobs', { valueAsNumber: true })}
                     />
+                    {createForm.formState.errors.max_daily_jobs && (
+                      <p role="alert" className="text-xs text-destructive">
+                        {createForm.formState.errors.max_daily_jobs.message}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -915,11 +890,23 @@ export function UsersPanel({
 
           {feedback && editingUser && <FormBanner type={feedback.type} message={feedback.message} />}
 
+          {editingUser?.user_id === currentAdminId && !isActingFullAdmin && (
+            <FormBanner
+              type="error"
+              message="Limited administrators cannot edit their own profile details here. Use Profile & Security to update your photo or password."
+            />
+          )}
+
           <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4" noValidate>
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="space-y-1.5">
                 <Label htmlFor="adm-e-first">First name</Label>
                 <Input id="adm-e-first" {...editForm.register('first_name')} />
+                {editForm.formState.errors.first_name && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {editForm.formState.errors.first_name.message}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="adm-e-middle">Middle name</Label>
@@ -928,6 +915,11 @@ export function UsersPanel({
               <div className="space-y-1.5">
                 <Label htmlFor="adm-e-last">Last name</Label>
                 <Input id="adm-e-last" {...editForm.register('last_name')} />
+                {editForm.formState.errors.last_name && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {editForm.formState.errors.last_name.message}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -959,6 +951,11 @@ export function UsersPanel({
               <div className="space-y-1.5">
                 <Label htmlFor="adm-e-phone">Phone</Label>
                 <Input id="adm-e-phone" {...editForm.register('phone')} />
+                {editForm.formState.errors.phone && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {editForm.formState.errors.phone.message}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -984,29 +981,13 @@ export function UsersPanel({
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="adm-e-street">Street Address</Label>
-              <Input id="adm-e-street" {...editForm.register('address_street')} />
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-e-brgy">Barangay</Label>
-                <Input id="adm-e-brgy" {...editForm.register('address_barangay')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-e-city">City</Label>
-                <Input id="adm-e-city" {...editForm.register('address_city')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-e-prov">Province</Label>
-                <Input id="adm-e-prov" {...editForm.register('address_province')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-e-zip">ZIP</Label>
-                <Input id="adm-e-zip" maxLength={4} {...editForm.register('address_zip_code')} />
-              </div>
-            </div>
+            <PhilippineAddressFields
+              register={editForm.register}
+              errors={editForm.formState.errors}
+              idPrefix="adm-e"
+              streetLabel="Street Address"
+              zipLabel="ZIP"
+            />
 
             {editRole === 'admin' &&
               renderPermissionSelector({
@@ -1037,7 +1018,10 @@ export function UsersPanel({
               <Button type="button" variant="outline" onClick={() => setEditingUser(null)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isPending}>
+              <Button
+                type="submit"
+                disabled={isPending || (editingUser?.user_id === currentAdminId && !isActingFullAdmin)}
+              >
                 {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                 <span>Save User</span>
               </Button>

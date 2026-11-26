@@ -13,13 +13,6 @@ import type {
   UserRole,
 } from '@/lib/constants'
 
-export interface UserTypeRow {
-  user_type_id: string
-  type_name: UserRole
-  description: string | null
-  created_at: string
-}
-
 export interface UserRow {
   user_id: string
   auth_user_id: string | null
@@ -85,52 +78,6 @@ export interface CustomerApplianceRow {
   notes: string | null
   created_at: string
   updated_at: string
-}
-
-export interface RepairRow {
-  ticket_id: string
-  customer_id: string
-  technician_id: string | null
-  appliance_id: string
-  service_type: ServiceType
-  issue_description: string
-  diagnostic_notes: string | null
-  status: RepairStatus
-  priority: RepairPriority
-  estimated_cost_php: number | null
-  final_cost_php: number | null
-  scheduled_date: string
-  completed_at: string | null
-  created_at: string
-  updated_at: string
-}
-
-export interface AppointmentRow {
-  appointment_id: string
-  ticket_id: string
-  customer_id: string
-  technician_id: string | null
-  scheduled_date: string
-  time_slot: TimeSlot
-  service_address: string
-  appointment_status: AppointmentStatus
-  remarks: string | null
-  created_at: string
-  updated_at: string
-}
-
-export interface PaymentRow {
-  payment_id: string
-  ticket_id: string
-  received_by: string | null
-  payment_method: PaymentMethod
-  amount_php: number
-  installment_no: number | null
-  payment_date: string
-  reference_no: string | null
-  payment_status: PaymentStatus
-  remarks: string | null
-  created_at: string
 }
 
 export interface ActivityLogRow {

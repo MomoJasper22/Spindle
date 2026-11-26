@@ -563,6 +563,11 @@ export function AdminRepairsPanel({ repairs, users, appliances }: AdminRepairsPa
                   min={todayISO}
                   {...createForm.register('scheduled_date')}
                 />
+                {createForm.formState.errors.scheduled_date && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {createForm.formState.errors.scheduled_date.message}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -694,6 +699,11 @@ export function AdminRepairsPanel({ repairs, users, appliances }: AdminRepairsPa
                   min="0"
                   {...editForm.register('estimated_cost_php', { valueAsNumber: true })}
                 />
+                {editForm.formState.errors.estimated_cost_php && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {editForm.formState.errors.estimated_cost_php.message}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="adm-er-final">Final Cost (PHP)</Label>
@@ -706,6 +716,11 @@ export function AdminRepairsPanel({ repairs, users, appliances }: AdminRepairsPa
                     setValueAs: (v) => (v === '' || v === null ? null : Number(v)),
                   })}
                 />
+                {editForm.formState.errors.final_cost_php && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {editForm.formState.errors.final_cost_php.message}
+                  </p>
+                )}
               </div>
             </div>
 

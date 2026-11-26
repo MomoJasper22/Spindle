@@ -37,6 +37,7 @@ async function CustomerBookingsContent({
 
   return (
     <RepairsPanel
+      key={`${params.book ?? ''}:${params.appliance ?? ''}`}
       appliances={appliances}
       repairs={repairs}
       appointments={appointments}

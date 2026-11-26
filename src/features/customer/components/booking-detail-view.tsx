@@ -69,7 +69,7 @@ const PASSBOOK_STEPS = [
 ] as const
 
 function getStepIndex(status: RepairDetailView['status']) {
-  if (status === 'pending') return 0
+  if (status === 'pending' || status === 'confirmed') return 0
   if (status === 'assigned') return 1
   if (status === 'in_progress' || status === 'awaiting_payment') return 2
   if (status === 'completed') return 3
@@ -102,7 +102,7 @@ export function BookingDetailView({
   const paidTotal = Number(repair.verified_paid_php ?? 0)
   const balance = Math.max(0, targetTotal - paidTotal)
 
-  const canModify = ['pending', 'assigned'].includes(repair.status)
+  const canModify = ['pending', 'confirmed'].includes(repair.status)
   const canReschedule =
     Boolean(appointment) &&
     !['completed', 'cancelled'].includes(repair.status) &&

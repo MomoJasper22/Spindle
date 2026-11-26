@@ -49,14 +49,25 @@ const STATUS_MAP: Record<string, StatusConfig> = {
 
 const CUSTOMER_LABELS: Record<string, string> = {
   pending: 'Requested',
+  confirmed: 'Confirmed',
   requested: 'Requested',
   pending_verification: 'Checking Details',
   assigned: 'Technician Assigned',
+  in_progress: 'In Progress',
   awaiting_payment: 'Ready for Payment',
   completed: 'Done',
+  cancelled: 'Cancelled',
+  rescheduled: 'Rescheduled',
+  verified: 'Verified',
   high: 'Soon',
   low: 'Flexible',
   normal: 'Standard',
+}
+
+export function getCustomerStatusLabel(status: string): string {
+  const key = status.toLowerCase()
+  if (CUSTOMER_LABELS[key]) return CUSTOMER_LABELS[key]
+  return STATUS_MAP[key]?.label ?? status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 interface StatusBadgeProps {
@@ -78,8 +89,7 @@ export function StatusBadge({
     variant: 'slate' as const,
     icon: Clock,
   }
-  const displayLabel =
-    audience === 'customer' && CUSTOMER_LABELS[key] ? CUSTOMER_LABELS[key] : config.label
+  const displayLabel = audience === 'customer' ? getCustomerStatusLabel(key) : config.label
   const Icon = config.icon
 
   return (

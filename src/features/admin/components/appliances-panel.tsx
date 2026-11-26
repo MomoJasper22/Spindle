@@ -441,6 +441,11 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
                     <option key={b} value={b} />
                   ))}
                 </datalist>
+                {form.formState.errors.brand && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {form.formState.errors.brand.message}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="adm-app-cat">Category</Label>
@@ -469,10 +474,20 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
               <div className="space-y-1.5">
                 <Label htmlFor="adm-app-model">Model Number</Label>
                 <Input id="adm-app-model" {...form.register('model_number')} />
+                {form.formState.errors.model_number && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {form.formState.errors.model_number.message}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="adm-app-serial">Serial Number</Label>
                 <Input id="adm-app-serial" {...form.register('serial_number')} />
+                {form.formState.errors.serial_number && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {form.formState.errors.serial_number.message}
+                  </p>
+                )}
               </div>
             </div>
 

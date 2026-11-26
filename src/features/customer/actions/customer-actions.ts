@@ -4,7 +4,7 @@ import { revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/auth/session'
-import { normalizePHPhone } from '@/lib/formatters'
+import { getManilaTodayISO, normalizePHPhone } from '@/lib/formatters'
 import {
   applianceSchema,
   customerPaymentSchema,
@@ -29,12 +29,18 @@ function revalidateCustomerPortal() {
   updateTag('customer-appointments')
   updateTag('customer-payments')
   updateTag('customer-activity')
+  updateTag('technician-repairs')
+  updateTag('technician-appointments')
+  updateTag('technician-payments')
+  updateTag('technician-activity')
   updateTag('admin-appliances')
   updateTag('admin-repairs')
   updateTag('admin-appointments')
   updateTag('admin-payments')
   updateTag('admin-activity')
   revalidatePath('/customer', 'layout')
+  revalidatePath('/technician', 'layout')
+  revalidatePath('/admin', 'layout')
 }
 
 export async function createApplianceAction(input: ApplianceInput): Promise<ActionResult> {
@@ -233,10 +239,14 @@ export async function rescheduleAppointmentAction(
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Please choose a valid date and window.' }
   }
 
+  if (parsed.data.scheduled_date < getManilaTodayISO()) {
+    return { success: false, error: 'Please choose today or an upcoming date.' }
+  }
+
   const supabase = await createClient()
   const { data: appointment, error: fetchError } = await supabase
     .from('appointments')
-    .select('appointment_id, ticket_id, appointment_status')
+    .select('appointment_id, ticket_id, technician_id, appointment_status')
     .eq('appointment_id', parsed.data.appointment_id)
     .eq('customer_id', profile.user_id)
     .single()
@@ -247,6 +257,24 @@ export async function rescheduleAppointmentAction(
 
   if (['completed', 'cancelled'].includes(appointment.appointment_status)) {
     return { success: false, error: 'Finished or cancelled visits cannot be moved.' }
+  }
+
+  if (appointment.technician_id) {
+    const { count: conflictCount } = await supabase
+      .from('appointments')
+      .select('appointment_id', { count: 'exact', head: true })
+      .eq('technician_id', appointment.technician_id)
+      .eq('scheduled_date', parsed.data.scheduled_date)
+      .eq('time_slot', parsed.data.time_slot)
+      .not('appointment_status', 'in', '(cancelled,completed)')
+      .neq('appointment_id', appointment.appointment_id)
+
+    if ((conflictCount ?? 0) > 0) {
+      return {
+        success: false,
+        error: 'That time window is already taken for your assigned technician. Please choose another window or date.',
+      }
+    }
   }
 
   const { error: updateAptError } = await supabase
@@ -434,6 +462,8 @@ export async function deactivateCustomerAccountAction(): Promise<ActionResult> {
     return { success: false, error: error.message }
   }
 
+  updateTag('user-profile')
+  updateTag('admin-users')
   await supabase.auth.signOut()
   redirect('/login?error=account_inactive')
 }

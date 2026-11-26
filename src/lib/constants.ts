@@ -7,8 +7,6 @@ export const SERVICE_BRANCHES = [
   'Southern Mindanao Hub (Davao City)',
 ] as const
 
-export type ServiceBranch = (typeof SERVICE_BRANCHES)[number]
-
 export const APPLIANCE_CATEGORIES = [
   'Split-Type Aircon',
   'Window-Type Aircon',
@@ -19,9 +17,11 @@ export const APPLIANCE_CATEGORIES = [
   'Commercial Chiller / Freezer',
   'Microwave Oven',
   'Water Dispenser',
+  'Television',
+  'Clothes Dryer',
+  'Electric Fan',
+  'Water Heater',
 ] as const
-
-export type ApplianceCategory = (typeof APPLIANCE_CATEGORIES)[number]
 
 export const APPLIANCE_BRAND_SUGGESTIONS = [
   'Carrier',

@@ -96,6 +96,49 @@ export async function getCustomerActivityLogs(limit = 5): Promise<ActivityLogRow
   return (data ?? []) as ActivityLogRow[]
 }
 
+export async function getCustomerBookingDetail(
+  customerId: string,
+  ticketId: string
+): Promise<{
+  repair: RepairDetailView | null
+  appointment: AppointmentDetailView | null
+  payments: PaymentDetailView[]
+}> {
+  'use cache: private'
+  cacheTag('customer-repairs', 'customer-appointments', 'customer-payments')
+  cacheLife(PORTAL_CACHE)
+
+  const supabase = await createClient()
+  const [repairRes, appointmentRes, paymentsRes] = await Promise.all([
+    supabase
+      .from('v_repair_details')
+      .select('*')
+      .eq('ticket_id', ticketId)
+      .eq('customer_id', customerId)
+      .maybeSingle(),
+    supabase
+      .from('v_appointment_details')
+      .select('*')
+      .eq('ticket_id', ticketId)
+      .eq('customer_id', customerId)
+      .order('scheduled_date', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('v_payment_details')
+      .select('*')
+      .eq('ticket_id', ticketId)
+      .eq('customer_id', customerId)
+      .order('created_at', { ascending: false }),
+  ])
+
+  return {
+    repair: (repairRes.data as RepairDetailView | null) ?? null,
+    appointment: (appointmentRes.data as AppointmentDetailView | null) ?? null,
+    payments: (paymentsRes.data ?? []) as PaymentDetailView[],
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Technician Portal Queries
 // ---------------------------------------------------------------------------

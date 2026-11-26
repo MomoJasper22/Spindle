@@ -65,6 +65,7 @@ export function PaymentsPanel({ repairs, payments, defaultTicketId }: PaymentsPa
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<CustomerPaymentInput>({
     resolver: zodResolver(customerPaymentSchema),
@@ -313,7 +314,18 @@ export function PaymentsPanel({ repairs, payments, defaultTicketId }: PaymentsPa
                 name="ticket_id"
                 control={control}
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    value={field.value}
+                    onValueChange={(nextTicketId) => {
+                      field.onChange(nextTicketId)
+                      const target = payableTickets.find((t) => t.ticket_id === nextTicketId)
+                      if (target) {
+                        const targetCost = target.final_cost_php ?? target.estimated_cost_php ?? 0
+                        const balance = Math.max(0, Number(targetCost) - Number(target.verified_paid_php ?? 0))
+                        setValue('amount_php', balance, { shouldValidate: true })
+                      }
+                    }}
+                  >
                     <SelectTrigger id="pay-ticket">
                       <SelectValue placeholder="Choose a booking" />
                     </SelectTrigger>
@@ -384,8 +396,14 @@ export function PaymentsPanel({ repairs, payments, defaultTicketId }: PaymentsPa
                 <Input
                   id="pay-reference"
                   placeholder="GCash / Maya / Bank ref #"
+                  aria-invalid={Boolean(errors.reference_no)}
                   {...register('reference_no')}
                 />
+                {errors.reference_no && (
+                  <p role="alert" className="text-xs font-medium text-destructive">
+                    {errors.reference_no.message}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">

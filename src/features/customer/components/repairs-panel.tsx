@@ -38,7 +38,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
-import { StatusBadge } from '@/components/shared/status-badge'
+import { StatusBadge, getCustomerStatusLabel } from '@/components/shared/status-badge'
 import { REPAIR_PRIORITIES, REPAIR_STATUSES, SERVICE_TYPES, TIME_SLOTS } from '@/lib/constants'
 import {
   formatManilaDate,
@@ -61,15 +61,6 @@ import {
   type RepairBookingInput,
   type RescheduleAppointmentInput,
 } from '../schemas/customer-schemas'
-
-const CUSTOMER_STATUS_LABELS: Record<string, string> = {
-  pending: 'Requested',
-  assigned: 'Technician Assigned',
-  in_progress: 'In Progress',
-  awaiting_payment: 'Ready for Payment',
-  completed: 'Done',
-  cancelled: 'Cancelled',
-}
 
 const CUSTOMER_PRIORITY_LABELS: Record<string, string> = {
   low: 'Flexible — anytime this week',
@@ -280,7 +271,7 @@ export function RepairsPanel({
               <SelectItem value="all">All Bookings</SelectItem>
               {REPAIR_STATUSES.map((status) => (
                 <SelectItem key={status} value={status}>
-                  {CUSTOMER_STATUS_LABELS[status] ?? status}
+                  {getCustomerStatusLabel(status)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -326,7 +317,7 @@ export function RepairsPanel({
             const apt = appointmentByTicket.get(repair.ticket_id)
             const totalAmount = Number(repair.final_cost_php ?? repair.estimated_cost_php ?? 0)
             const remaining = Math.max(0, totalAmount - Number(repair.verified_paid_php ?? 0))
-            const canModify = ['pending', 'assigned'].includes(repair.status)
+            const canModify = ['pending', 'confirmed'].includes(repair.status)
             const canReschedule =
               apt && !['completed', 'cancelled'].includes(repair.status) && !['completed', 'cancelled'].includes(apt.appointment_status)
             const serviceLabel =

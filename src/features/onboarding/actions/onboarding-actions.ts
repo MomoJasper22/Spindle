@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getRoleHomePath, requireAuthenticatedUser } from '@/lib/auth/session'
 import { normalizePHPhone } from '@/lib/formatters'
-import { onboardingSchema, type OnboardingInput } from '../schemas/onboarding-schemas'
+import { getOnboardingSchema, type OnboardingInput } from '../schemas/onboarding-schemas'
 
 export type OnboardingActionResult =
   | { success: true }
@@ -15,7 +15,7 @@ export async function completeOnboardingAction(
   input: OnboardingInput
 ): Promise<OnboardingActionResult> {
   const profile = await requireAuthenticatedUser({ allowUnonboarded: true })
-  const parsed = onboardingSchema.safeParse(input)
+  const parsed = getOnboardingSchema(profile.role).safeParse(input)
 
   if (!parsed.success) {
     return {
@@ -24,23 +24,40 @@ export async function completeOnboardingAction(
     }
   }
 
+  const supabase = await createClient()
+  const normalizedPhone = normalizePHPhone(parsed.data.phone)
+
+  // Persist technician credentials & proposed specializations BEFORE flipping is_onboarded = true
+  // so the post-onboarding field-lock trigger allows initial credential submission.
   if (profile.role === 'technician') {
-    if (!parsed.data.nickname?.trim() || parsed.data.nickname.trim().length < 2) {
-      return {
-        success: false,
-        error: 'Enter a nickname (at least 2 characters) for your field profile.',
-      }
+    const { data: existingTechProfile } = await supabase
+      .from('technician_profiles')
+      .select('tech_profile_id')
+      .eq('technician_id', profile.user_id)
+      .maybeSingle()
+
+    const techPayload = {
+      certification_no: parsed.data.certification_no?.trim() || null,
+      proposed_specializations: parsed.data.proposed_specializations ?? [],
     }
-    if (!parsed.data.certification_no?.trim()) {
+
+    const { error: techError } = existingTechProfile
+      ? await supabase
+          .from('technician_profiles')
+          .update(techPayload)
+          .eq('technician_id', profile.user_id)
+      : await supabase.from('technician_profiles').insert({
+          technician_id: profile.user_id,
+          ...techPayload,
+        })
+
+    if (techError) {
       return {
         success: false,
-        error: 'Enter your TESDA or technical certification number.',
+        error: techError.message || 'Failed to save technician credentials.',
       }
     }
   }
-
-  const supabase = await createClient()
-  const normalizedPhone = normalizePHPhone(parsed.data.phone)
 
   const { error: updateUserError } = await supabase
     .from('users')
@@ -61,26 +78,6 @@ export async function completeOnboardingAction(
     return {
       success: false,
       error: updateUserError.message || 'Failed to save onboarding details.',
-    }
-  }
-
-  if (profile.role === 'technician') {
-    const { error: techError } = await supabase
-      .from('technician_profiles')
-      .upsert(
-        {
-          technician_id: profile.user_id,
-          certification_no: parsed.data.certification_no?.trim() || null,
-          proposed_specializations: parsed.data.proposed_specializations ?? [],
-        },
-        { onConflict: 'technician_id' }
-      )
-
-    if (techError) {
-      return {
-        success: false,
-        error: techError.message || 'Failed to save technician credentials.',
-      }
     }
   }
 

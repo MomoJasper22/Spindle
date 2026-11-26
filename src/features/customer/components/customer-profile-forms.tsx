@@ -17,11 +17,12 @@ import {
 } from '@/components/ui/select'
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { FormBanner } from '@/components/shared/form-banner'
+import { PhilippineAddressFields } from '@/components/shared/ph-address-fields'
 import { ProfilePhotoField } from '@/components/shared/profile-photo-field'
 import { signOutAction } from '@/features/auth/actions/auth-actions'
 import { ChangePasswordCard } from '@/features/auth/components/change-password-card'
 import type { AuthenticatedUserProfile } from '@/lib/auth/session'
-import { PH_PROVINCES, SERVICE_BRANCHES } from '@/lib/constants'
+import { SERVICE_BRANCHES } from '@/lib/constants'
 import { formatFullName } from '@/lib/formatters'
 import {
   deactivateCustomerAccountAction,
@@ -171,62 +172,12 @@ export function CustomerProfileForms({ profile }: CustomerProfileFormsProps) {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="cust-street">Street, Unit, Building, or Subdivision</Label>
-              <Input id="cust-street" {...register('address_street')} />
-              {errors.address_street && (
-                <p role="alert" className="text-xs text-destructive">
-                  {errors.address_street.message}
-                </p>
-              )}
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="cust-barangay">Barangay</Label>
-                <Input id="cust-barangay" {...register('address_barangay')} />
-                {errors.address_barangay && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {errors.address_barangay.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="cust-city">City / Municipality</Label>
-                <Input id="cust-city" {...register('address_city')} />
-                {errors.address_city && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {errors.address_city.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="cust-province">Province</Label>
-                <Input id="cust-province" list="cust-provinces" {...register('address_province')} />
-                <datalist id="cust-provinces">
-                  {PH_PROVINCES.map((p) => (
-                    <option key={p} value={p} />
-                  ))}
-                </datalist>
-                {errors.address_province && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {errors.address_province.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="cust-zip">4-Digit ZIP</Label>
-                <Input id="cust-zip" maxLength={4} {...register('address_zip_code')} />
-                {errors.address_zip_code && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {errors.address_zip_code.message}
-                  </p>
-                )}
-              </div>
-            </div>
+            <PhilippineAddressFields
+              register={register}
+              errors={errors}
+              idPrefix="cust"
+              streetLabel="Street, Unit, Building, or Subdivision"
+            />
 
             <Button type="submit" disabled={isPending}>
               {isPending ? (

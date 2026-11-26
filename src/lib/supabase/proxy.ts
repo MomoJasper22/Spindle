@@ -38,6 +38,24 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     return supabaseResponse
   }
 
+  const pathname = request.nextUrl.pathname
+  const isProtectedRoleRoute =
+    pathname.startsWith('/customer') ||
+    pathname.startsWith('/technician') ||
+    pathname.startsWith('/admin')
+  const isOnboardingRoute = pathname.startsWith('/onboarding')
+  const isAuthRoute = pathname === '/login' || pathname === '/signup'
+
+  const hasAuthCookie = request.cookies.getAll().some((cookie) => cookie.name.startsWith('sb-'))
+  if (!hasAuthCookie) {
+    if (isProtectedRoleRoute || isOnboardingRoute) {
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('next', pathname)
+      return redirectWithCookies(loginUrl, supabaseResponse)
+    }
+    return supabaseResponse
+  }
+
   const supabase = createServerClient(url, publishableKey, {
     cookies: {
       getAll() {
@@ -58,14 +76,6 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   const {
     data: { user },
   } = await supabase.auth.getUser()
-
-  const pathname = request.nextUrl.pathname
-  const isProtectedRoleRoute =
-    pathname.startsWith('/customer') ||
-    pathname.startsWith('/technician') ||
-    pathname.startsWith('/admin')
-  const isOnboardingRoute = pathname.startsWith('/onboarding')
-  const isAuthRoute = pathname === '/login' || pathname === '/signup'
 
   if (!user) {
     if (isProtectedRoleRoute || isOnboardingRoute) {

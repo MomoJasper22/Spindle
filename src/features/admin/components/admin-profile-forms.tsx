@@ -17,11 +17,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { FormBanner } from '@/components/shared/form-banner'
+import { PhilippineAddressFields } from '@/components/shared/ph-address-fields'
 import { ProfilePhotoField } from '@/components/shared/profile-photo-field'
 import { signOutAction } from '@/features/auth/actions/auth-actions'
 import { ChangePasswordCard } from '@/features/auth/components/change-password-card'
 import type { AuthenticatedUserProfile } from '@/lib/auth/session'
-import { ADMIN_FEATURES, PH_PROVINCES, SERVICE_BRANCHES } from '@/lib/constants'
+import { ADMIN_FEATURES, SERVICE_BRANCHES } from '@/lib/constants'
 import { formatAddress, formatFullName, formatPHPhone } from '@/lib/formatters'
 import { updateAdminProfileAction } from '../actions/admin-actions'
 import { adminProfileSchema, type AdminProfileInput } from '../schemas/admin-schemas'
@@ -183,6 +184,11 @@ export function AdminProfileForms({ profile, canEditProfileDetails }: AdminProfi
               <div className="space-y-1.5">
                 <Label htmlFor="adm-p-last">Last name</Label>
                 <Input id="adm-p-last" {...register('last_name')} />
+                {errors.last_name && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {errors.last_name.message}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -223,34 +229,12 @@ export function AdminProfileForms({ profile, canEditProfileDetails }: AdminProfi
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="adm-p-street">Office Street Address</Label>
-              <Input id="adm-p-street" {...register('address_street')} />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-p-brgy">Barangay</Label>
-                <Input id="adm-p-brgy" {...register('address_barangay')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-p-city">City</Label>
-                <Input id="adm-p-city" {...register('address_city')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-p-prov">Province</Label>
-                <Input id="adm-p-prov" list="adm-p-provinces" {...register('address_province')} />
-                <datalist id="adm-p-provinces">
-                  {PH_PROVINCES.map((p) => (
-                    <option key={p} value={p} />
-                  ))}
-                </datalist>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-p-zip">4-Digit ZIP</Label>
-                <Input id="adm-p-zip" maxLength={4} {...register('address_zip_code')} />
-              </div>
-            </div>
+            <PhilippineAddressFields
+              register={register}
+              errors={errors}
+              idPrefix="adm-p"
+              streetLabel="Office Street Address"
+            />
 
             <Button type="submit" disabled={isPending}>
               {isPending ? (

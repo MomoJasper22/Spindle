@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, Controller, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CheckCircle2, CreditCard, Download, Loader2, Plus, Search, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -75,6 +75,8 @@ export function AdminPaymentsPanel({ payments, repairs }: AdminPaymentsPanelProp
       verify_immediately: true,
     },
   })
+
+  const selectedMethod = useWatch({ control: form.control, name: 'payment_method' })
 
   function openRecordModal() {
     const t = activeTickets[0]
@@ -404,7 +406,18 @@ export function AdminPaymentsPanel({ payments, repairs }: AdminPaymentsPanelProp
                 name="ticket_id"
                 control={form.control}
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    value={field.value}
+                    onValueChange={(nextTicketId) => {
+                      field.onChange(nextTicketId)
+                      const target = activeTickets.find((t) => t.ticket_id === nextTicketId)
+                      if (target) {
+                        const targetCost = target.final_cost_php ?? target.estimated_cost_php ?? 0
+                        const balance = Math.max(0, Number(targetCost) - Number(target.verified_paid_php ?? 0))
+                        form.setValue('amount_php', balance, { shouldValidate: true })
+                      }
+                    }}
+                  >
                     <SelectTrigger id="adm-pay-ticket">
                       <SelectValue placeholder="Select repair ticket" />
                     </SelectTrigger>
@@ -418,6 +431,11 @@ export function AdminPaymentsPanel({ payments, repairs }: AdminPaymentsPanelProp
                   </Select>
                 )}
               />
+              {form.formState.errors.ticket_id && (
+                <p role="alert" className="text-xs text-destructive">
+                  {form.formState.errors.ticket_id.message}
+                </p>
+              )}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -451,13 +469,25 @@ export function AdminPaymentsPanel({ payments, repairs }: AdminPaymentsPanelProp
                   min="1"
                   {...form.register('amount_php', { valueAsNumber: true })}
                 />
+                {form.formState.errors.amount_php && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {form.formState.errors.amount_php.message}
+                  </p>
+                )}
               </div>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="adm-pay-ref">Reference No.</Label>
+                <Label htmlFor="adm-pay-ref">
+                  Reference No. {selectedMethod !== 'Cash' && <span className="text-destructive">*</span>}
+                </Label>
                 <Input id="adm-pay-ref" {...form.register('reference_no')} />
+                {form.formState.errors.reference_no && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {form.formState.errors.reference_no.message}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="adm-pay-inst">Installment No.</Label>
@@ -469,6 +499,11 @@ export function AdminPaymentsPanel({ payments, repairs }: AdminPaymentsPanelProp
                     setValueAs: (v) => (v === '' || v === null ? null : Number(v)),
                   })}
                 />
+                {form.formState.errors.installment_no && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {form.formState.errors.installment_no.message}
+                  </p>
+                )}
               </div>
             </div>
 

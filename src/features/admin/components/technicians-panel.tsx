@@ -573,6 +573,11 @@ export function TechniciansPanel({
                   max={15}
                   {...editForm.register('max_daily_jobs', { valueAsNumber: true })}
                 />
+                {editForm.formState.errors.max_daily_jobs && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {editForm.formState.errors.max_daily_jobs.message}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -720,6 +725,11 @@ export function TechniciansPanel({
               <div className="space-y-1.5">
                 <Label htmlFor="assign-date">Scheduled Date</Label>
                 <Input id="assign-date" type="date" {...assignForm.register('scheduled_date')} />
+                {assignForm.formState.errors.scheduled_date && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {assignForm.formState.errors.scheduled_date.message}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="assign-slot">Time Slot (PHT)</Label>

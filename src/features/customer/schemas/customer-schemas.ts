@@ -30,7 +30,10 @@ export const repairBookingSchema = z.object({
     .trim()
     .min(10, 'Describe the appliance issue in at least 10 characters.')
     .max(1000),
-  scheduled_date: z.string().trim().min(1, 'Select a preferred service date.'),
+  scheduled_date: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Select a preferred service date.'),
   time_slot: z.enum(TIME_SLOTS, { message: 'Select a preferred time slot.' }),
   service_address: z
     .string()
@@ -44,33 +47,46 @@ export type RepairBookingInput = z.infer<typeof repairBookingSchema>
 
 export const rescheduleAppointmentSchema = z.object({
   appointment_id: z.string().trim().min(1),
-  scheduled_date: z.string().trim().min(1, 'Select a new date.'),
+  scheduled_date: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Select a new date.'),
   time_slot: z.enum(TIME_SLOTS, { message: 'Select a time slot.' }),
   remarks: z.string().trim().max(500).optional().or(z.literal('')),
 })
 
 export type RescheduleAppointmentInput = z.infer<typeof rescheduleAppointmentSchema>
 
-export const customerPaymentSchema = z.object({
-  ticket_id: z.string().trim().min(1, 'Select a repair ticket.'),
-  payment_method: z.enum(PAYMENT_METHODS, { message: 'Select a payment method.' }),
-  amount_php: z
-    .number({ message: 'Enter a valid PHP amount.' })
-    .positive('Payment amount must be greater than PHP 0.00.')
-    .max(1000000, 'Amount exceeds single transaction limit.'),
-  installment_no: z
-    .number({ message: 'Enter a whole installment number.' })
-    .int('Installment number must be a whole number.')
-    .min(1, 'Installment number must be at least 1.')
-    .nullable(),
-  reference_no: z
-    .string()
-    .trim()
-    .max(100, 'Reference number cannot exceed 100 characters.')
-    .optional()
-    .or(z.literal('')),
-  remarks: z.string().trim().max(500).optional().or(z.literal('')),
-})
+export const customerPaymentSchema = z
+  .object({
+    ticket_id: z.string().trim().min(1, 'Select a repair ticket.'),
+    payment_method: z.enum(PAYMENT_METHODS, { message: 'Select a payment method.' }),
+    amount_php: z
+      .number({ message: 'Enter a valid PHP amount.' })
+      .positive('Payment amount must be greater than PHP 0.00.')
+      .max(1000000, 'Amount exceeds single transaction limit.'),
+    installment_no: z
+      .number({ message: 'Enter a whole installment number.' })
+      .int('Installment number must be a whole number.')
+      .min(1, 'Installment number must be at least 1.')
+      .nullable(),
+    reference_no: z
+      .string()
+      .trim()
+      .max(100, 'Reference number cannot exceed 100 characters.')
+      .optional()
+      .or(z.literal('')),
+    remarks: z.string().trim().max(500).optional().or(z.literal('')),
+  })
+  .superRefine((data, ctx) => {
+    if (data.payment_method !== 'Cash' && !data.reference_no?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['reference_no'],
+        message: 'Enter the confirmation or reference number for your transfer.',
+      })
+    }
+  })
 
 export type CustomerPaymentInput = z.infer<typeof customerPaymentSchema>
 

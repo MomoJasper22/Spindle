@@ -22,6 +22,15 @@ const ALLOWED_TYPES: Record<string, string> = {
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024 // 2 MB
 
+function extractAvatarStoragePath(avatarUrl: string | null | undefined): string | null {
+  if (!avatarUrl) return null
+  const marker = '/storage/v1/object/public/avatars/'
+  const idx = avatarUrl.indexOf(marker)
+  if (idx === -1) return null
+  const rawPath = avatarUrl.slice(idx + marker.length).split('?')[0]
+  return rawPath ? decodeURIComponent(rawPath) : null
+}
+
 function revalidateAllPortals() {
   updateTag('user-profile')
   updateTag('admin-users')
@@ -81,6 +90,7 @@ export async function uploadAvatarAction(formData: FormData): Promise<AvatarActi
 
   const admin = createAdminClient()
   const supabase = await createClient()
+  const previousPath = extractAvatarStoragePath(profile.avatar_url)
   const objectPath = `${profile.auth_user_id}/avatar-${Date.now()}.${ext}`
   const arrayBuffer = await file.arrayBuffer()
 
@@ -107,10 +117,15 @@ export async function uploadAvatarAction(formData: FormData): Promise<AvatarActi
     .eq('user_id', profile.user_id)
 
   if (updateErr) {
+    await admin.storage.from('avatars').remove([objectPath])
     return {
       success: false,
       error: updateErr.message || 'Unable to save your profile photo.',
     }
+  }
+
+  if (previousPath && previousPath !== objectPath) {
+    await admin.storage.from('avatars').remove([previousPath])
   }
 
   await persistAvatarPositionMetadata(
@@ -170,6 +185,8 @@ export async function updateAvatarPositionAction(
 export async function removeAvatarAction(): Promise<AvatarActionResult> {
   const profile = await requireAuthenticatedUser({ allowUnonboarded: true })
   const supabase = await createClient()
+  const admin = createAdminClient()
+  const previousPath = extractAvatarStoragePath(profile.avatar_url)
 
   const { error } = await supabase
     .from('users')
@@ -178,6 +195,10 @@ export async function removeAvatarAction(): Promise<AvatarActionResult> {
 
   if (error) {
     return { success: false, error: error.message }
+  }
+
+  if (previousPath) {
+    await admin.storage.from('avatars').remove([previousPath])
   }
 
   if (profile.auth_user_id) {

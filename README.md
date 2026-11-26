@@ -1,122 +1,152 @@
 # Spindle
 
-**Spindle** is a multi-role home appliance repair and service scheduling platform built for Philippine households and regional service teams across Metro Manila, Cavite, Laguna, Cebu, and Davao.
-
-Designed around the **Tactile Service Passbook** interface system, Spindle pairs plain, everyday language on customer-facing surfaces with dedicated desktop top navigation, mobile bottom tab bars, clickable staff sidebar footers, interactive profile photo framing, and transactional Supabase scheduling and payment workflows.
+**Spindle** is a Philippine home appliance repair and service scheduling platform built with **Next.js 16**, **TypeScript**, **Tailwind CSS v4**, and **Supabase**. It connects homeowners, field technicians, and operations coordinators through three role-tailored portals backed by PostgreSQL Row-Level Security (RLS) and atomic transaction RPCs.
 
 ---
 
-## Key Features
+## Key Capabilities
 
-### Customer Portal (No Sidebar, Plain Language)
-- **Public Landing (`/`):** Clear service promise, Philippine branch directory, interactive **Brands & Appliances** showcase with plain-language care details, and a **Schedule a Visit** CTA.
-- **Auth & Onboarding (`/login`, `/signup`, `/onboarding`):** Mobile-first forms (`+63` / `09XX` mobile numbers, barangay/city/province address setup, preferred branch).
-- **Customer Home (`/customer/home`):** Greeting, next scheduled visit passbook highlight, quick summary counters, and plain-language recent updates.
-- **My Appliances (`/customer/appliances`):** Card grid for saved appliances with progressive-disclosure details drawer and add/edit forms.
-- **My Bookings (`/customer/bookings`, `/customer/bookings/[ticketId]`):** Home visit scheduling cards, 4-step progress tracker, assigned technician card, transparent PHP cost breakdown, reschedule, and cancel.
-- **My Payments (`/customer/payments`):** Separated **Service Bills** and expandable **Past Payments** receipts supporting `GCash`, `Maya`, `QR Ph`, `Bank Transfer`, `Credit/Debit Card`, and `Cash`.
-- **Profile & Settings (`/customer/profile`):** Contact details, service address, password updates, profile picture upload, and interactive **pan & zoom photo positioning**.
+### Public, Authentication & Role Onboarding
+- **Landing Showcase (`/`)**: Plain-language service overview, supported appliance categories, Philippine brand strip (`public/images/brands/`), and step-by-step booking explanation.
+- **Auth (`/login`, `/signup`)**: Email/password login and self-signup (Customer or Technician), automatic role routing, and active-account enforcement.
+- **Role-Aware Onboarding (`/onboarding`)**:
+  - **Customer**: Completes personal details and 5-part Philippine service address.
+  - **Technician**: Submits technician nickname (`nickname`), TESDA / trade certification (`certification_no`), service branch, proposed appliance specializations (`proposed_specializations`), and service address.
 
-### Technician Portal (Sidebar + Mobile Bottom Bar)
-- **Overview (`/technician/dashboard`):** Daily visit count, active jobs, monthly completions, pending collections, and today's agenda.
-- **Assigned Jobs (`/technician/jobs`):** Kanban pipeline and responsive table/card list paired with the slide-out `DiagnosticDrawer` for updating repair stages, diagnostic notes, PHP pricing, and on-site payment capture.
-- **Schedule (`/technician/schedule`):** Today / Upcoming / All dispatch slots with Confirm, Reschedule, and Complete actions.
-- **Field Collections (`/technician/collections`):** On-site payments tied to assigned repairs.
-- **Profile & Credentials (`/technician/profile`):** Accessible via the clickable bottom-left sidebar profile footer; configures TESDA certification, appliance specializations, daily capacity, availability, and avatar framing.
+### Homeowner / Customer Portal (`/customer/*`)
+- **Home (`/customer/home`)**: Upcoming visit passbook summary, quick repair booking action, registered unit count, and recent activity feed.
+- **My Appliances (`/customer/appliances`)**: Register, edit, or inspect household appliances (13 categories including air conditioners, refrigerators, washers/dryers, ranges, TVs, electric fans, and water heaters) with verification status.
+- **Bookings (`/customer/bookings`, `/customer/bookings/[ticketId]`)**: Book service visits (creating ticket + appointment atomically), track plain-language status timelines, reschedule future visits (with Manila date & technician slot conflict validation), cancel bookings, and view full visit/payment details.
+- **Payments (`/customer/payments`)**: Review bills/receipts, submit GCash/Maya/Card/Bank Transfer payment references, and track verification progress.
+- **Profile (`/customer/profile`)**: Update contact details, Philippine address, interactive focal-framed avatar (`ProfilePhotoField`), password, or deactivate account.
 
-### Admin Portal (Sidebar + Mobile Bottom Bar)
-- **Overview (`/admin/dashboard`):** Collected PHP revenue, active repairs, technician availability, pending verification queues, stage breakdown, and system-wide activity log.
-- **Operations Modules:** Focused dedicated pages for **Repairs** (`/admin/repairs`), **Appointments** (`/admin/appointments`), **Technicians** (`/admin/technicians`), **Appliances** (`/admin/appliances`), **Users** (`/admin/users`), and **Payments** (`/admin/payments`), each with mobile card views and desktop management tables.
-- **Admin Profile (`/admin/profile`):** Accessible from the clickable bottom-left sidebar footer, including profile photo upload and focal position editor.
+### Technician Portal (`/technician/*`)
+- **Dashboard (`/technician/dashboard`)**: Daily job KPIs, active queue snapshot, upcoming schedule, and self-service availability status toggle (`available`, `busy`, `on_leave`) recorded in `technician_status_logs`.
+- **Assigned Jobs (`/technician/jobs`)**: Search/filter assigned repair tickets and slide-over diagnostic & billing workbench (`DiagnosticDrawer`) to log findings, update estimated/final PHP costs, transition status, and record cash/e-wallet collections.
+- **Schedule (`/technician/schedule`)**: Inspect upcoming home visits and reschedule/update visit status with slot-conflict checks.
+- **Collections (`/technician/collections`)**: Track collected and verified payments per ticket.
+- **Profile (`/technician/profile`)**: Manage avatar focal framing, password, and inspect locked certification/specialization profile details.
+
+### Operations Admin Portal (`/admin/*`)
+Granular RBAC controlled via `users.admin_permissions`: **Super Admins** (`null`) can access every module; **Limited Admins** (`string[]` matching `ADMIN_FEATURES`) see and route exclusively within their granted modules.
+- **Executive Summary (`/admin/dashboard`)**: Operations KPIs, repair status pipeline distribution, and system-wide activity feed.
+- **Repair Tickets (`/admin/repairs`)**: Create walk-in/phone tickets atomically, assign technicians, inspect diagnostics, and update repair status/pricing.
+- **Dispatch Board (`/admin/appointments`)**: Assign technicians with slot-conflict prevention, confirm slots (`rpc_assign_technician_and_confirm_slot`), reschedule visits, and filter by branch/date/status.
+- **Payments Ledger (`/admin/payments`)**: Record and verify payments atomically (`rpc_record_and_verify_payment`), inspect outstanding balances, and export filtered CSVs.
+- **Technicians Roster (`/admin/technicians`)**: Approve specializations, set daily job capacities, toggle availability, and inspect each technician's productivity tracker (`TechnicianProductivitySheet`: lifetime completions, revenue verified, weekly output, recent tickets, status history).
+- **Appliances Registry (`/admin/appliances`)**: Verify customer-registered appliances and serial numbers.
+- **Users & Roles (`/admin/users`)**: Create accounts, assign roles/branches/admin permissions, activate/deactivate accounts, and reset passwords cleanly (`hash_password_bcrypt`).
+- **Profile (`/admin/profile`)**: Update personal admin profile, avatar framing, and password.
 
 ---
 
 ## Tech Stack
 
-- **Framework:** Next.js `16.4.6` (App Router, `cacheComponents: true`, `partialPrefetching: true`, Turbopack)
-- **Language & UI:** React `19.3.0`, TypeScript `5`, Tailwind CSS `4.3.3`, Radix UI (`Dialog`, `Select`, `Tabs`, `AlertDialog`, `Checkbox`, `Popover`), `lucide-react`
-- **Forms & Validation:** `react-hook-form` + `zod` + `@hookform/resolvers`
-- **Typography:** `Bricolage Grotesque` (headings), `Manrope` (UI/body), `JetBrains Mono` (reference IDs & tabular PHP amounts)
-- **Backend & Auth:** Supabase (`@supabase/supabase-js`, `@supabase/ssr`), PostgreSQL views & transactional RPCs, Supabase Storage (`avatars` bucket)
+| Layer | Technology |
+| --- | --- |
+| Framework | Next.js `16.4.6` (App Router, `cacheComponents: true`, `partialPrefetching: true`) |
+| UI Runtime | React `19.3.0`, TypeScript `^5` |
+| Styling | Tailwind CSS `4.3.3` + `@tailwindcss/turbopack`, Radix UI primitives, `lucide-react` |
+| Forms & Validation | `react-hook-form`, `@hookform/resolvers`, `zod` v4 |
+| Backend & Auth | Supabase (`@supabase/ssr`, `@supabase/supabase-js`) — Postgres, Auth, Storage (`avatars`) |
 
 ---
 
-## Route Map
+## Project Structure
 
-| Surface | Route | Purpose |
-| --- | --- | --- |
-| Public | `/` | Landing page & interactive appliance showcase |
-| Auth | `/login`, `/signup`, `/onboarding` | Sign in, customer registration, first-time setup |
-| Customer | `/customer/home` | Uncluttered home summary & next scheduled visit |
-| Customer | `/customer/appliances` | Saved appliances cards & detail sheet |
-| Customer | `/customer/bookings` | Home visit cards & booking modal |
-| Customer | `/customer/bookings/[ticketId]` | 4-step visit tracker, technician card & cost summary |
-| Customer | `/customer/payments` | Bills due & expandable payment receipts |
-| Customer | `/customer/profile` | Contact info, address, avatar position & password |
-| Technician | `/technician/dashboard` | KPIs, today's agenda & active repair queue |
-| Technician | `/technician/jobs` | Pipeline/table queue + `DiagnosticDrawer` |
-| Technician | `/technician/schedule` | Dispatch schedule management |
-| Technician | `/technician/collections` | On-site PHP collections |
-| Technician | `/technician/profile` | TESDA credentials, specializations & avatar position |
-| Admin | `/admin/dashboard` | Executive KPIs, verification shortcuts & audit feed |
-| Admin | `/admin/repairs` | Master repair tickets & walk-in intake |
-| Admin | `/admin/appointments` | Dispatch scheduling & technician assignment |
-| Admin | `/admin/technicians` | Technician roster, workload & credentials |
-| Admin | `/admin/appliances` | Appliance registration verification |
-| Admin | `/admin/users` | Customer, technician & admin directory |
-| Admin | `/admin/payments` | Payment verification & walk-in ledger |
-| Admin | `/admin/profile` | Admin profile, managed branch & avatar position |
+```text
+src/
+├── proxy.ts                        # Next.js 16 request proxy (delegates to updateSession)
+├── app/
+│   ├── layout.tsx                  # Root layout (Manrope, Bricolage Grotesque, JetBrains Mono)
+│   ├── globals.css                 # Tactile Service Passbook theme tokens & utility classes
+│   ├── icon.svg                    # App icon
+│   ├── (public)/page.tsx           # Marketing & service overview landing page
+│   ├── (auth)/                     # /login and /signup routes
+│   ├── onboarding/page.tsx         # Role-aware customer/technician onboarding
+│   ├── customer/                   # Customer portal pages + layout + loading
+│   ├── technician/                 # Technician portal pages + layout + loading
+│   └── admin/                      # Admin portal pages + layout + loading
+├── components/
+│   ├── shared/                     # CustomerShell, PortalShell, PhilippineAddressFields,
+│   │                               # ProfilePhotoField, UserAvatar, StatusBadge, etc.
+│   └── ui/                         # Radix + Tailwind primitives
+├── features/
+│   ├── landing/                    # Landing showcase components
+│   ├── auth/                       # Login/signup/password/avatar forms, schemas & actions
+│   ├── onboarding/                 # Onboarding form, dynamic role schema & action
+│   ├── customer/                   # Home, appliances, bookings, payments, profile modules
+│   ├── technician/                 # Overview, pipeline, diagnostic drawer, schedule, collections
+│   └── admin/                      # Executive summary, repairs, dispatch, payments,
+│                                   # technicians, productivity sheet, appliances, users
+├── lib/
+│   ├── auth/session.ts             # requireRole, getCurrentUserProfile, getRoleHomePath
+│   ├── data/portal-data.ts         # Private cached per-portal data loaders
+│   ├── supabase/                   # client, server, admin, and proxy helpers
+│   ├── avatar.ts                   # Non-destructive { x, y, zoom } avatar framing helpers
+│   ├── constants.ts                # Branches, 13 appliance categories, slots, statuses, RBAC keys
+│   ├── formatters.ts               # PHP currency, Manila dates/times, initials, name helpers
+│   └── utils.ts                    # cn() class merging helper
+└── types/database.ts               # Database table & view TypeScript contracts
+
+supabase/migrations/
+├── 001_schema_and_alphanumeric_ids.sql
+├── 002_rls_policies.sql
+├── 003_transactions_and_locking_rpcs.sql
+├── 004_user_avatar_and_storage.sql
+└── 005_nickname_status_logs_and_admin_permissions.sql
+```
+
+Design tokens, typography, color contrast rules, and component aesthetics are documented in [DESIGN.md](./DESIGN.md). Agent engineering contracts live in [AGENTS.md](./AGENTS.md).
+
+---
+
+## Database & Security Architecture
+
+All domain tables use human-readable alphanumeric IDs (`USR-*`, `TCP-*`, `TSL-*`, `APL-*`, `TKT-*`, `APT-*`, `PAY-*`, `LOG-*`) generated by `public.generate_alphanumeric_id`:
+
+- **Tables**: `user_types`, `users`, `technician_profiles`, `technician_status_logs`, `customer_appliances`, `repair`, `appointments`, `payments`, `activity_logs`
+- **Views (`security_invoker = true`)**: `v_repair_details`, `v_appointment_details`, `v_payment_details`
+- **Atomic RPCs (`003`)**:
+  - `rpc_create_repair_with_appointment`: creates repair ticket + scheduled appointment atomically
+  - `rpc_assign_technician_and_confirm_slot`: locks technician time slot and confirms appointment
+  - `rpc_record_and_verify_payment`: records and/or verifies customer or technician payments consistently
+- **Triggers & Locks (`005`)**: `enforce_technician_user_field_locks` and `enforce_technician_profile_locks` restrict self-service edits on verified technician profile fields once onboarding completes.
+- **Storage (`004`)**: Public `avatars` bucket (2 MB cap, JPEG/PNG/WebP) with RLS restricting writes/deletes to the owner's `auth.uid()` folder prefix.
 
 ---
 
 ## Getting Started
 
 ### 1. Environment Variables
-Copy `.env.example` to `.env.local` and provide your Supabase project credentials:
+Copy `.env.example` to `.env.local` and configure your Supabase project values:
 
 ```bash
-SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_publishable_key
-SUPABASE_SECRET_KEY=sb_secret_your_secret_key
-SUPABASE_JWKS_URL=https://your-project-ref.supabase.co/auth/v1/.well-known/jwks.json
-
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_publishable_key
+cp .env.example .env.local
 ```
 
-### 2. Supabase Database Migrations
-Run the SQL migrations in `supabase/migrations/` in numeric order against your Supabase project:
-1. `001_schema_and_alphanumeric_ids.sql` — Core tables (`users`, `user_types`, `technician_profiles`, `customer_appliances`, `repair`, `appointments`, `payments`, `activity_logs`), views (`v_repair_details`, `v_appointment_details`, `v_payment_details`), and custom alphanumeric ID generators.
-2. `002_rls_policies.sql` — Row-level security policies per role.
-3. `003_transactions_and_locking_rpcs.sql` — Atomic RPCs (`rpc_create_repair_with_appointment`, `rpc_assign_technician_and_confirm_slot`, `rpc_record_and_verify_payment`).
-4. `004_user_avatar_and_storage.sql` — Profile `avatar_url` and `avatar_position` (`{ x, y, zoom }` JSONB) columns plus Supabase Storage policies for the `avatars` bucket (framing also syncs to Supabase Auth `user_metadata` for graceful backwards compatibility).
+Required variables (see `.env.example`):
+- `SUPABASE_URL` & `NEXT_PUBLIC_SUPABASE_URL`
+- `SUPABASE_PUBLISHABLE_KEY` & `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SECRET_KEY` (used server-side in `src/lib/supabase/admin.ts`)
+- `SUPABASE_JWKS_URL`
 
-### 3. Install Dependencies & Run
+### 2. Apply Supabase Migrations
+Run the SQL files in `supabase/migrations/` in numeric order (`001` -> `005`) in your Supabase SQL Editor or via the Supabase CLI.
+
+### 3. Install & Run Locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000).
 
----
+### 4. Verification Commands
 
-## Available Scripts
-
-| Script | Command | Description |
-| --- | --- | --- |
-| Development server | `npm run dev` | Runs Next.js dev server with Turbopack |
-| Production build | `npm run build` | Builds the Next.js production bundle & verifies types/routes |
-| Production server | `npm run start` | Starts the built production server |
-| Linter | `npm run lint` | Runs ESLint (`eslint-config-next`) |
-| TypeScript check | `npx tsc --noEmit` | Strict TypeScript validation |
-
----
-
-## Architecture & Conventions
-
-- **Next.js 16 `cacheComponents: true`:** Server components that call `requireRole()` or read `searchParams` / `params` (via `Promise`) are wrapped inside `<Suspense fallback={<PageSkeleton />}>`.
-- **Route Proxy Guard:** Role-based access checks and onboarding redirects are handled in `src/proxy.ts` and `src/lib/supabase/proxy.ts`.
-- **Feature Modules:** Business logic, Zod schemas, Server Actions, and UI components are organized under `src/features/{landing,auth,onboarding,customer,technician,admin}`.
-- **Shared Design Documentation:** Visual tokens, component specs, and the **Tactile Service Passbook** direction rules live in `DESIGN.md` and `.impeccable/design.json`.
+```bash
+npx tsc --noEmit   # TypeScript typecheck
+npm run lint       # ESLint checks
+npm run build      # Production build & route verification
+```

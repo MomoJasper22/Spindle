@@ -54,9 +54,11 @@ const TECH_ALLOWED_STATUSES = [
 ] as const
 
 export function DiagnosticDrawer({ ticket, open, onOpenChange }: DiagnosticDrawerProps) {
-  const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
-    null
-  )
+  const [feedback, setFeedback] = React.useState<{
+    ticketId: string
+    type: 'error' | 'success'
+    message: string
+  } | null>(null)
   const [isPending, startTransition] = React.useTransition()
 
   const safeStatus =
@@ -97,14 +99,45 @@ export function DiagnosticDrawer({ ticket, open, onOpenChange }: DiagnosticDrawe
 
   const selectedMethod = useWatch({ control: paymentForm.control, name: 'payment_method' })
 
+  React.useEffect(() => {
+    if (!ticket) return
+    const nextStatus = TECH_ALLOWED_STATUSES.includes(
+      ticket.status as (typeof TECH_ALLOWED_STATUSES)[number]
+    )
+      ? (ticket.status as TechnicianRepairUpdateInput['status'])
+      : 'assigned'
+    const nextTargetCost = ticket.final_cost_php ?? ticket.estimated_cost_php ?? 0
+    const nextBalance = Math.max(0, Number(nextTargetCost) - Number(ticket.verified_paid_php ?? 0))
+
+    repairForm.reset({
+      ticket_id: ticket.ticket_id,
+      status: nextStatus,
+      diagnostic_notes: ticket.diagnostic_notes ?? '',
+      estimated_cost_php: Number(ticket.estimated_cost_php ?? 0),
+      final_cost_php:
+        ticket.final_cost_php !== null && ticket.final_cost_php !== undefined
+          ? Number(ticket.final_cost_php)
+          : null,
+    })
+
+    paymentForm.reset({
+      ticket_id: ticket.ticket_id,
+      payment_method: 'Cash',
+      amount_php: nextBalance,
+      installment_no: null,
+      reference_no: '',
+      remarks: '',
+    })
+  }, [ticket, open, repairForm, paymentForm])
+
   function onRepairSubmit(values: TechnicianRepairUpdateInput) {
     setFeedback(null)
     startTransition(async () => {
       const result = await updateTechnicianRepairAction(values)
       if (result.success) {
-        setFeedback({ type: 'success', message: result.message })
+        setFeedback({ ticketId: values.ticket_id, type: 'success', message: result.message })
       } else {
-        setFeedback({ type: 'error', message: result.error })
+        setFeedback({ ticketId: values.ticket_id, type: 'error', message: result.error })
       }
     })
   }
@@ -114,16 +147,23 @@ export function DiagnosticDrawer({ ticket, open, onOpenChange }: DiagnosticDrawe
     startTransition(async () => {
       const result = await recordOnsitePaymentAction(values)
       if (result.success) {
-        setFeedback({ type: 'success', message: result.message })
+        setFeedback({ ticketId: values.ticket_id, type: 'success', message: result.message })
         paymentForm.setValue('reference_no', '')
         paymentForm.setValue('remarks', '')
       } else {
-        setFeedback({ type: 'error', message: result.error })
+        setFeedback({ ticketId: values.ticket_id, type: 'error', message: result.error })
       }
     })
   }
 
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) setFeedback(null)
+    onOpenChange(nextOpen)
+  }
+
   if (!ticket) return null
+
+  const visibleFeedback = feedback && feedback.ticketId === ticket.ticket_id ? feedback : null
 
   const customerAddress = formatAddress({
     street: ticket.customer_address_street,
@@ -134,7 +174,7 @@ export function DiagnosticDrawer({ ticket, open, onOpenChange }: DiagnosticDrawe
   })
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent side="right" className="w-[min(36rem,96dvw)] space-y-5">
         <SheetHeader>
           <div className="flex flex-wrap items-center gap-2">
@@ -151,7 +191,7 @@ export function DiagnosticDrawer({ ticket, open, onOpenChange }: DiagnosticDrawe
           </SheetDescription>
         </SheetHeader>
 
-        {feedback && <FormBanner type={feedback.type} message={feedback.message} />}
+        {visibleFeedback && <FormBanner type={visibleFeedback.type} message={visibleFeedback.message} />}
 
         {/* Customer & Issue Context */}
         <div className="rounded-lg border border-border bg-slate-50 p-4 space-y-2 text-sm">

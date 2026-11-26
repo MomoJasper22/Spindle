@@ -3,6 +3,7 @@
 import { revalidatePath, updateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/auth/session'
+import { getManilaTodayISO } from '@/lib/formatters'
 import {
   technicianAppointmentActionSchema,
   technicianAvailabilitySchema,
@@ -20,6 +21,30 @@ export type TechActionResult =
   | { success: true; message: string }
   | { success: false; error: string }
 
+function revalidateTechPortals(extraTags: string[] = []) {
+  const tags = new Set([
+    'technician-repairs',
+    'technician-appointments',
+    'technician-payments',
+    'technician-activity',
+    'admin-repairs',
+    'admin-appointments',
+    'admin-payments',
+    'admin-activity',
+    'customer-repairs',
+    'customer-appointments',
+    'customer-payments',
+    'customer-activity',
+    ...extraTags,
+  ])
+  for (const tag of tags) {
+    updateTag(tag)
+  }
+  revalidatePath('/technician', 'layout')
+  revalidatePath('/customer', 'layout')
+  revalidatePath('/admin', 'layout')
+}
+
 export async function updateTechnicianRepairAction(
   input: TechnicianRepairUpdateInput
 ): Promise<TechActionResult> {
@@ -34,7 +59,17 @@ export async function updateTechnicianRepairAction(
   }
 
   const supabase = await createClient()
-  const completedAt = parsed.data.status === 'completed' ? new Date().toISOString() : null
+  const { data: existingRepair } = await supabase
+    .from('repair')
+    .select('completed_at')
+    .eq('ticket_id', parsed.data.ticket_id)
+    .eq('technician_id', profile.user_id)
+    .maybeSingle()
+
+  const completedAt =
+    parsed.data.status === 'completed'
+      ? (existingRepair?.completed_at ?? new Date().toISOString())
+      : null
 
   const { error } = await supabase
     .from('repair')
@@ -43,7 +78,7 @@ export async function updateTechnicianRepairAction(
       diagnostic_notes: parsed.data.diagnostic_notes || null,
       estimated_cost_php: parsed.data.estimated_cost_php,
       final_cost_php: parsed.data.final_cost_php,
-      ...(completedAt ? { completed_at: completedAt } : {}),
+      completed_at: completedAt,
     })
     .eq('ticket_id', parsed.data.ticket_id)
     .eq('technician_id', profile.user_id)
@@ -69,15 +104,7 @@ export async function updateTechnicianRepairAction(
     description: `Technician ${profile.first_name} ${profile.last_name} updated ${parsed.data.ticket_id} to ${parsed.data.status.replace('_', ' ')}.`,
   })
 
-  updateTag('technician-repairs')
-  updateTag('technician-appointments')
-  updateTag('technician-payments')
-  updateTag('technician-activity')
-  updateTag('admin-repairs')
-  updateTag('admin-appointments')
-  updateTag('admin-payments')
-  updateTag('admin-activity')
-  revalidatePath('/technician', 'layout')
+  revalidateTechPortals()
   return {
     success: true,
     message: `Ticket ${parsed.data.ticket_id} updated successfully.`,
@@ -120,15 +147,7 @@ export async function recordOnsitePaymentAction(
     return { success: false, error: error.message }
   }
 
-  updateTag('technician-repairs')
-  updateTag('technician-appointments')
-  updateTag('technician-payments')
-  updateTag('technician-activity')
-  updateTag('admin-repairs')
-  updateTag('admin-appointments')
-  updateTag('admin-payments')
-  updateTag('admin-activity')
-  revalidatePath('/technician', 'layout')
+  revalidateTechPortals()
   return {
     success: true,
     message: 'On-site payment recorded and queued for admin verification.',
@@ -151,13 +170,39 @@ export async function updateTechnicianAppointmentAction(
   const supabase = await createClient()
   const { data: apt, error: fetchError } = await supabase
     .from('appointments')
-    .select('appointment_id, ticket_id')
+    .select('appointment_id, ticket_id, appointment_status, scheduled_date, time_slot')
     .eq('appointment_id', parsed.data.appointment_id)
     .eq('technician_id', profile.user_id)
     .single()
 
   if (fetchError || !apt) {
     return { success: false, error: 'Assigned appointment not found.' }
+  }
+
+  if (['completed', 'cancelled'].includes(apt.appointment_status)) {
+    return { success: false, error: 'Completed or cancelled appointments cannot be modified.' }
+  }
+
+  if (parsed.data.appointment_status === 'rescheduled') {
+    if (parsed.data.scheduled_date < getManilaTodayISO()) {
+      return { success: false, error: 'Rescheduled date cannot be in the past.' }
+    }
+
+    const { count: conflictCount } = await supabase
+      .from('appointments')
+      .select('appointment_id', { count: 'exact', head: true })
+      .eq('technician_id', profile.user_id)
+      .eq('scheduled_date', parsed.data.scheduled_date)
+      .eq('time_slot', parsed.data.time_slot)
+      .not('appointment_status', 'in', '(cancelled,completed)')
+      .neq('appointment_id', apt.appointment_id)
+
+    if ((conflictCount ?? 0) > 0) {
+      return {
+        success: false,
+        error: 'Double-booking conflict: you already have another appointment in that time slot.',
+      }
+    }
   }
 
   const { error } = await supabase
@@ -191,15 +236,7 @@ export async function updateTechnicianAppointmentAction(
     description: `Technician updated appointment ${apt.appointment_id} to ${parsed.data.appointment_status} (${parsed.data.scheduled_date} · ${parsed.data.time_slot}).`,
   })
 
-  updateTag('technician-repairs')
-  updateTag('technician-appointments')
-  updateTag('technician-payments')
-  updateTag('technician-activity')
-  updateTag('admin-repairs')
-  updateTag('admin-appointments')
-  updateTag('admin-payments')
-  updateTag('admin-activity')
-  revalidatePath('/technician', 'layout')
+  revalidateTechPortals()
   return {
     success: true,
     message: `Appointment ${apt.appointment_id} marked ${parsed.data.appointment_status}.`,
@@ -241,23 +278,12 @@ export async function updateTechnicianNicknameAction(
       : 'Technician cleared their display nickname.',
   })
 
-  updateTag('technician-repairs')
-  updateTag('technician-appointments')
-  updateTag('technician-payments')
-  updateTag('technician-activity')
-  updateTag('admin-repairs')
-  updateTag('admin-appointments')
-  updateTag('admin-payments')
-  updateTag('admin-activity')
-  updateTag('user-profile')
-  updateTag('technician-activity')
-  updateTag('admin-users')
-  updateTag('admin-tech-profiles')
-  updateTag('admin-status-logs')
-  updateTag('admin-activity')
-  revalidatePath('/technician', 'layout')
-  revalidatePath('/admin/technicians')
-  revalidatePath('/admin/users')
+  revalidateTechPortals([
+    'user-profile',
+    'admin-users',
+    'admin-tech-profiles',
+    'admin-status-logs',
+  ])
   return { success: true, message: 'Nickname saved.' }
 }
 
@@ -309,22 +335,11 @@ export async function updateTechnicianAvailabilityAction(
     })
   }
 
-  updateTag('technician-repairs')
-  updateTag('technician-appointments')
-  updateTag('technician-payments')
-  updateTag('technician-activity')
-  updateTag('admin-repairs')
-  updateTag('admin-appointments')
-  updateTag('admin-payments')
-  updateTag('admin-activity')
-  updateTag('user-profile')
-  updateTag('technician-activity')
-  updateTag('admin-tech-profiles')
-  updateTag('admin-status-logs')
-  updateTag('admin-activity')
-  revalidatePath('/technician', 'layout')
-  revalidatePath('/admin/technicians')
-  revalidatePath('/admin/dashboard')
+  revalidateTechPortals([
+    'user-profile',
+    'admin-tech-profiles',
+    'admin-status-logs',
+  ])
   return {
     success: true,
     message: `Status updated to ${nextStatus.replace('_', ' ')}.`,
