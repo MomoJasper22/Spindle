@@ -17,8 +17,8 @@ import {
 const LANDING_LINKS = [
   { label: 'How It Works', href: '#how-it-works' },
   { label: 'Appliances', href: '#repair' },
-  { label: 'Brands', href: '#brands' },
   { label: 'Service Areas', href: '#service-areas' },
+  { label: 'Brands', href: '#brands' },
 ] as const
 
 export function LandingHeader() {

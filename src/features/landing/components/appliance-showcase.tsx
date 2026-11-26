@@ -1,5 +1,8 @@
+'use client'
+
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
+import { MarqueeTrack } from './marquee-track'
 
 export { ApplianceRepairSection } from './appliance-repair-section'
 
@@ -101,7 +104,7 @@ const BRAND_LOGOS: BrandLogoItem[] = [
 export function SupportedBrandsSection() {
   return (
     <section id="brands" className="border-t border-border bg-background py-12 sm:py-16">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 space-y-8">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="space-y-1.5">
           <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             Brands We Work With
@@ -110,24 +113,29 @@ export function SupportedBrandsSection() {
             Experienced repair care across trusted home and business appliance brands.
           </p>
         </div>
+      </div>
 
-        <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-          {BRAND_LOGOS.map((brand) => (
-            <div
-              key={brand.name}
-              className="flex h-22 sm:h-24 items-center justify-center rounded-2xl border border-border bg-card px-5 py-4 shadow-2xs transition-colors hover:border-primary/40"
-            >
+      <div className="mt-8">
+        <MarqueeTrack
+          items={BRAND_LOGOS}
+          getItemKey={(brand) => brand.name}
+          speedPxPerSec={44}
+          ariaLabel="Brands we work with"
+          setSpacingClassName="gap-3.5 pr-3.5 sm:gap-4 sm:pr-4"
+          renderItem={(brand) => (
+            <div className="flex h-22 w-44 shrink-0 items-center justify-center rounded-2xl border border-border bg-card px-5 py-4 shadow-2xs transition-colors hover:border-primary/40 sm:h-24 sm:w-52">
               <Image
                 src={brand.logoSrc}
                 alt={`${brand.name} logo`}
                 width={brand.width}
                 height={brand.height}
+                draggable={false}
                 unoptimized
-                className={cn('w-full object-contain', brand.sizeClass)}
+                className={cn('pointer-events-none w-full object-contain', brand.sizeClass)}
               />
             </div>
-          ))}
-        </div>
+          )}
+        />
       </div>
     </section>
   )

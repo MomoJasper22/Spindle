@@ -148,9 +148,6 @@ export default function LandingPage() {
         {/* Appliances We Care For */}
         <ApplianceRepairSection />
 
-        {/* Brands We Work With */}
-        <SupportedBrandsSection />
-
         {/* Plain-Language Care Promises */}
         <section id="services" className="relative overflow-hidden border-t border-border bg-[#141B29] py-12 sm:py-16">
           <Image
@@ -225,6 +222,9 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* Brands We Work With */}
+        <SupportedBrandsSection />
       </main>
 
       {/* Clean Minimal Footer */}
@@ -243,11 +243,11 @@ export default function LandingPage() {
             <a href="#repair" className="hover:text-foreground">
               Appliances
             </a>
-            <a href="#brands" className="hover:text-foreground">
-              Brands
-            </a>
             <a href="#service-areas" className="hover:text-foreground">
               Service Areas
+            </a>
+            <a href="#brands" className="hover:text-foreground">
+              Brands
             </a>
             <Link href="/login" className="hover:text-foreground">
               Sign In

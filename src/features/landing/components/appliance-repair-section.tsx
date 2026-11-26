@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { MarqueeTrack } from './marquee-track'
 
 interface ApplianceCategory {
   id: string
@@ -442,33 +443,6 @@ export function ApplianceRepairSection() {
     [selectedId],
   )
 
-  function renderApplianceCard(item: ApplianceCategory, isDuplicate = false) {
-    const isSelected = selectedId === item.id
-    return (
-      <button
-        key={isDuplicate ? `${item.id}-dup` : item.id}
-        type="button"
-        tabIndex={isDuplicate ? -1 : undefined}
-        aria-hidden={isDuplicate ? true : undefined}
-        aria-haspopup="dialog"
-        onClick={() => setSelectedId(item.id)}
-        className={cn(
-          'appliance-card group relative flex w-40 sm:w-48 shrink-0 aspect-square flex-col items-center justify-between rounded-2xl border px-3 py-5 sm:px-4 sm:py-6 text-center transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-          isSelected
-            ? 'border-primary bg-primary text-white shadow-md -translate-y-0.5'
-            : 'border-border bg-background text-foreground shadow-2xs hover:border-primary/50 hover:bg-primary-tint/45 hover:-translate-y-0.5',
-        )}
-      >
-        <span className="flex flex-1 items-center justify-center transition-transform duration-200 group-hover:scale-105">
-          {item.renderIllustration(isSelected)}
-        </span>
-        <span className="mt-2 font-heading text-xs font-semibold sm:text-sm">
-          {item.shortLabel}
-        </span>
-      </button>
-    )
-  }
-
   return (
     <section id="repair" className="border-t border-border bg-card py-12 sm:py-16">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -477,25 +451,46 @@ export function ApplianceRepairSection() {
             Appliances We Care For
           </h2>
           <p className="text-sm text-muted-foreground sm:text-base">
-            Tap any appliance to see how we can help get it working smoothly again.
+            Drag to browse or tap any appliance to see how we can help get it working smoothly again.
           </p>
         </div>
       </div>
 
-      <div className="appliance-marquee-viewport mt-8">
-        <div className="appliance-marquee-track">
-          <div className="appliance-marquee-group">
-            {APPLIANCE_CATEGORIES.map((item) => renderApplianceCard(item))}
-          </div>
-          <div className="appliance-marquee-group-duplicate" aria-hidden="true">
-            {APPLIANCE_CATEGORIES.map((item) => renderApplianceCard(item, true))}
-          </div>
-        </div>
+      <div className="mt-8">
+        <MarqueeTrack
+          items={APPLIANCE_CATEGORIES}
+          getItemKey={(item) => item.id}
+          speedPxPerSec={22}
+          ariaLabel="Appliances we care for"
+          setSpacingClassName="gap-3.5 pr-3.5 sm:gap-5 sm:pr-5"
+          renderItem={(item, { isClone }) => {
+            const isSelected = selectedId === item.id
+            return (
+              <button
+                type="button"
+                tabIndex={isClone ? -1 : undefined}
+                aria-haspopup="dialog"
+                onClick={() => setSelectedId(item.id)}
+                className={cn(
+                  'group relative flex aspect-square w-44 shrink-0 flex-col items-center justify-between rounded-2xl border px-3 py-5 text-center transition-[transform,border-color,background-color,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-52 sm:px-4 sm:py-6',
+                  isSelected
+                    ? 'border-primary bg-primary text-white shadow-md -translate-y-0.5'
+                    : 'border-border bg-background text-foreground shadow-2xs hover:border-primary/50 hover:bg-primary-tint/45 hover:-translate-y-0.5',
+                )}
+              >
+                <span className="flex flex-1 items-center justify-center transition-transform duration-200 group-hover:scale-105">
+                  {item.renderIllustration(isSelected)}
+                </span>
+                <span className="mt-2 font-heading text-xs font-semibold sm:text-sm">
+                  {item.shortLabel}
+                </span>
+              </button>
+            )
+          }}
+        />
       </div>
 
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
-
-        <Dialog
+      <Dialog
           open={selectedItem !== null}
           onOpenChange={(open) => {
             if (!open) setSelectedId(null)
@@ -562,7 +557,6 @@ export function ApplianceRepairSection() {
             )}
           </DialogContent>
         </Dialog>
-      </div>
     </section>
   )
 }
