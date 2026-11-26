@@ -148,6 +148,34 @@ export default function LandingPage() {
         {/* Appliances We Care For */}
         <ApplianceRepairSection />
 
+        {/* Supported Service Hubs */}
+        <section id="service-areas" className="border-t border-border bg-background">
+          <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-1.5">
+                <h2 className="font-heading text-xl font-bold text-foreground sm:text-2xl">
+                  Where We Come to You
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Book home and storefront visits across Metro Manila, Laguna, Cebu, and Davao.
+                </p>
+              </div>
+
+              <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                {SERVICE_BRANCHES.map((branch) => (
+                  <div
+                    key={branch}
+                    className="flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2.5 text-xs font-medium text-foreground shadow-2xs"
+                  >
+                    <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+                    <span>{branch}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Plain-Language Care Promises */}
         <section id="services" className="relative overflow-hidden border-t border-border bg-[#141B29] py-12 sm:py-16">
           <Image
@@ -193,32 +221,6 @@ export default function LandingPage() {
                   </div>
                 )
               })}
-            </div>
-          </div>
-        </section>
-
-        {/* Supported Service Hubs */}
-        <section id="service-areas" className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-1.5">
-              <h2 className="font-heading text-xl font-bold text-foreground sm:text-2xl">
-                Where We Come to You
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Book home and storefront visits across Metro Manila, Laguna, Cebu, and Davao.
-              </p>
-            </div>
-
-            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-              {SERVICE_BRANCHES.map((branch) => (
-                <div
-                  key={branch}
-                  className="flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2.5 text-xs font-medium text-foreground shadow-2xs"
-                >
-                  <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
-                  <span>{branch}</span>
-                </div>
-              ))}
             </div>
           </div>
         </section>

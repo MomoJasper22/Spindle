@@ -3,7 +3,12 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 
+export interface MarqueeTrackHandle {
+  step: (direction: 'prev' | 'next') => void
+}
+
 interface MarqueeTrackProps<T> {
+  ref?: React.Ref<MarqueeTrackHandle>
   items: readonly T[]
   getItemKey: (item: T) => string
   renderItem: (item: T, options: { isClone: boolean }) => React.ReactNode
@@ -41,6 +46,7 @@ function wrapOffset(value: number, setWidth: number): number {
 }
 
 export function MarqueeTrack<T>({
+  ref,
   items,
   getItemKey,
   renderItem,
@@ -58,6 +64,7 @@ export function MarqueeTrack<T>({
   const isHoveredRef = React.useRef(false)
   const isDraggingRef = React.useRef(false)
   const velocityRef = React.useRef(0)
+  const stepRemainingRef = React.useRef(0)
   const reducedMotionRef = React.useRef(false)
   const dragStateRef = React.useRef<DragState | null>(null)
   const suppressClickRef = React.useRef(false)
@@ -69,6 +76,34 @@ export function MarqueeTrack<T>({
     if (!trackRef.current) return
     trackRef.current.style.transform = `translate3d(${offsetRef.current}px, 0, 0)`
   }, [])
+
+  React.useImperativeHandle(
+    ref,
+    () => ({
+      step: (direction) => {
+        const firstSet = firstSetRef.current
+        if (!firstSet || setWidthRef.current <= 0) return
+
+        const firstChild = firstSet.children[0]
+        const secondChild = firstSet.children[1]
+        const stepDistance =
+          firstChild && secondChild
+            ? Math.max(
+                1,
+                secondChild.getBoundingClientRect().left -
+                  firstChild.getBoundingClientRect().left,
+              )
+            : firstChild
+              ? firstChild.getBoundingClientRect().width
+              : 220
+
+        velocityRef.current = 0
+        stepRemainingRef.current +=
+          direction === 'next' ? -stepDistance : stepDistance
+      },
+    }),
+    [],
+  )
 
   // Measure one complete set (including its trailing gap) and react to responsive resizes.
   React.useEffect(() => {
@@ -121,6 +156,18 @@ export function MarqueeTrack<T>({
           velocityRef.current *= Math.exp(-MOMENTUM_DECAY_PER_SEC * dt)
         } else {
           velocityRef.current = 0
+        }
+
+        const stepRemaining = stepRemainingRef.current
+        if (Math.abs(stepRemaining) > 0.25) {
+          const stepDelta = reducedMotionRef.current
+            ? stepRemaining
+            : stepRemaining * (1 - Math.exp(-12 * dt))
+          stepRemainingRef.current -= stepDelta
+          delta += stepDelta
+        } else if (stepRemaining !== 0) {
+          delta += stepRemaining
+          stepRemainingRef.current = 0
         }
 
         if (!isPaused) {
@@ -179,6 +226,7 @@ export function MarqueeTrack<T>({
     }
     suppressClickRef.current = false
     velocityRef.current = 0
+    stepRemainingRef.current = 0
 
     dragStateRef.current = {
       pointerId: e.pointerId,

@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { ArrowRight, CheckCircle2 } from 'lucide-react'
+import { ArrowRight, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { MarqueeTrack } from './marquee-track'
+import { MarqueeTrack, type MarqueeTrackHandle } from './marquee-track'
 
 interface ApplianceCategory {
   id: string
@@ -437,6 +437,7 @@ const APPLIANCE_CATEGORIES: ApplianceCategory[] = [
 
 export function ApplianceRepairSection() {
   const [selectedId, setSelectedId] = React.useState<string | null>(null)
+  const marqueeRef = React.useRef<MarqueeTrackHandle>(null)
 
   const selectedItem = React.useMemo(
     () => APPLIANCE_CATEGORIES.find((item) => item.id === selectedId) ?? null,
@@ -458,6 +459,7 @@ export function ApplianceRepairSection() {
 
       <div className="mt-8">
         <MarqueeTrack
+          ref={marqueeRef}
           items={APPLIANCE_CATEGORIES}
           getItemKey={(item) => item.id}
           speedPxPerSec={22}
@@ -488,6 +490,29 @@ export function ApplianceRepairSection() {
             )
           }}
         />
+
+        <div className="mt-5 flex items-center justify-center gap-3 px-4">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Previous appliance"
+            onClick={() => marqueeRef.current?.step('prev')}
+            className="h-11 w-11 rounded-full border-border bg-background shadow-2xs transition-[transform,border-color,background-color,color] active:scale-95 hover:border-primary/50 hover:bg-primary-tint/50 hover:text-primary"
+          >
+            <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Next appliance"
+            onClick={() => marqueeRef.current?.step('next')}
+            className="h-11 w-11 rounded-full border-border bg-background shadow-2xs transition-[transform,border-color,background-color,color] active:scale-95 hover:border-primary/50 hover:bg-primary-tint/50 hover:text-primary"
+          >
+            <ChevronRight className="h-5 w-5" aria-hidden="true" />
+          </Button>
+        </div>
       </div>
 
       <Dialog
