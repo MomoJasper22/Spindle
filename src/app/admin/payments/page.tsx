@@ -1,28 +1,20 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
-import { requireRole } from '@/lib/auth/session'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdminFeature } from '@/lib/auth/session'
+import { getAdminPayments, getAdminRepairs } from '@/lib/data/portal-data'
 import { AdminPaymentsPanel } from '@/features/admin/components/payments-panel'
-import { PageSkeleton } from '@/components/shared/page-skeleton'
-import type { PaymentDetailView, RepairDetailView } from '@/types/database'
+import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
 
 export const metadata: Metadata = {
   title: 'Payment Ledger',
 }
 
 async function AdminPaymentsContent() {
-  await requireRole('admin')
-  const supabase = await createClient()
+  await requireAdminFeature('payments')
 
-  const [paymentsRes, repairsRes] = await Promise.all([
-    supabase
-      .from('v_payment_details')
-      .select('*')
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('v_repair_details')
-      .select('*')
-      .order('created_at', { ascending: false }),
+  const [payments, repairs] = await Promise.all([
+    getAdminPayments(),
+    getAdminRepairs(),
   ])
 
   return (
@@ -36,17 +28,14 @@ async function AdminPaymentsContent() {
         </p>
       </div>
 
-      <AdminPaymentsPanel
-        payments={(paymentsRes.data ?? []) as PaymentDetailView[]}
-        repairs={(repairsRes.data ?? []) as RepairDetailView[]}
-      />
+      <AdminPaymentsPanel payments={payments} repairs={repairs} />
     </div>
   )
 }
 
 export default function AdminPaymentsPage() {
   return (
-    <Suspense fallback={<PageSkeleton />}>
+    <Suspense fallback={<PortalContentSkeleton />}>
       <AdminPaymentsContent />
     </Suspense>
   )

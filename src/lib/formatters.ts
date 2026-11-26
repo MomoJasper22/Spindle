@@ -108,6 +108,13 @@ export function formatFullName(parts: {
     .join(' ') || '—'
 }
 
+export function formatTechnicianGreetingName(parts: {
+  nickname?: string | null
+  first_name?: string | null
+}): string {
+  return parts.nickname?.trim() || parts.first_name?.trim() || 'Technician'
+}
+
 export function humanizeLabel(value: string | null | undefined): string {
   if (!value) return '—'
   return value

@@ -41,9 +41,17 @@ const CardDescription = React.forwardRef<
 ))
 CardDescription.displayName = 'CardDescription'
 
-const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('p-5 pt-0 sm:p-6 sm:pt-0', className)} {...props} />
+interface CardContentProps extends React.HTMLAttributes<HTMLDivElement> {
+  standalone?: boolean
+}
+
+const CardContent = React.forwardRef<HTMLDivElement, CardContentProps>(
+  ({ className, standalone = false, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(standalone ? 'p-5 sm:p-6' : 'p-5 pt-0 sm:p-6 sm:pt-0', className)}
+      {...props}
+    />
   )
 )
 CardContent.displayName = 'CardContent'

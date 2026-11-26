@@ -1,11 +1,9 @@
 import { z } from 'zod'
 import {
   PAYMENT_METHODS,
-  SERVICE_BRANCHES,
   TECH_AVAILABILITY_STATUSES,
   TIME_SLOTS,
 } from '@/lib/constants'
-import { validatePHPhone } from '@/lib/formatters'
 
 export const technicianRepairUpdateSchema = z.object({
   ticket_id: z.string().trim().min(1),
@@ -52,28 +50,19 @@ export const technicianAppointmentActionSchema = z.object({
 
 export type TechnicianAppointmentActionInput = z.infer<typeof technicianAppointmentActionSchema>
 
-export const technicianProfileSchema = z.object({
-  first_name: z.string().trim().min(2, 'First name is required.').max(100),
-  middle_name: z.string().trim().max(100).optional().or(z.literal('')),
-  last_name: z.string().trim().min(2, 'Last name is required.').max(100),
-  phone: z
+export const technicianNicknameSchema = z.object({
+  nickname: z
     .string()
     .trim()
-    .refine(validatePHPhone, 'Enter a valid Philippine phone number (+63 9XX XXX XXXX or 09XX XXX XXXX).'),
-  branch_location: z.enum(SERVICE_BRANCHES, { message: 'Select assigned branch.' }),
-  address_street: z.string().trim().min(3, 'Street address is required.').max(150),
-  address_barangay: z.string().trim().min(2, 'Barangay is required.').max(100),
-  address_city: z.string().trim().min(2, 'City is required.').max(100),
-  address_province: z.string().trim().min(2, 'Province is required.').max(100),
-  address_zip_code: z.string().trim().regex(/^\d{4}$/, 'Enter a valid 4-digit ZIP code.'),
-  specializations: z.array(z.string()).min(1, 'Select at least one appliance specialization.'),
-  certification_no: z.string().trim().min(2, 'Certification number is required.').max(100),
-  max_daily_jobs: z
-    .number({ message: 'Enter daily job capacity.' })
-    .int()
-    .min(1, 'Minimum 1 job/day.')
-    .max(15, 'Maximum 15 jobs/day.'),
+    .max(60, 'Nickname cannot exceed 60 characters.')
+    .optional()
+    .or(z.literal('')),
+})
+
+export type TechnicianNicknameInput = z.infer<typeof technicianNicknameSchema>
+
+export const technicianAvailabilitySchema = z.object({
   availability_status: z.enum(TECH_AVAILABILITY_STATUSES),
 })
 
-export type TechnicianProfileInput = z.infer<typeof technicianProfileSchema>
+export type TechnicianAvailabilityInput = z.infer<typeof technicianAvailabilitySchema>

@@ -1,5 +1,6 @@
 'use server'
 
+import { updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -61,6 +62,8 @@ export async function signInAction(input: LoginInput): Promise<AuthActionResult>
   const role = Array.isArray(profile.user_types)
     ? profile.user_types[0]?.type_name
     : (profile.user_types as { type_name?: UserRole } | null)?.type_name
+
+  updateTag('user-profile')
 
   if (!profile.is_onboarded) {
     redirect('/onboarding')
@@ -167,11 +170,13 @@ export async function signUpAction(input: SignupInput): Promise<AuthActionResult
     redirect('/login')
   }
 
+  updateTag('user-profile')
   redirect('/onboarding')
 }
 
 export async function signOutAction(): Promise<void> {
   const supabase = await createClient()
   await supabase.auth.signOut()
+  updateTag('user-profile')
   redirect('/login')
 }

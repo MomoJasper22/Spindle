@@ -1,10 +1,9 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { requireRole } from '@/lib/auth/session'
-import { createClient } from '@/lib/supabase/server'
+import { getCustomerAppliances } from '@/lib/data/portal-data'
 import { AppliancesPanel } from '@/features/customer/components/appliances-panel'
-import { PageSkeleton } from '@/components/shared/page-skeleton'
-import type { CustomerApplianceRow } from '@/types/database'
+import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
 
 export const metadata: Metadata = {
   title: 'My Appliances',
@@ -16,17 +15,11 @@ async function CustomerAppliancesContent({
   searchParams: Promise<{ add?: string }>
 }) {
   const [profile, params] = await Promise.all([requireRole('customer'), searchParams])
-  const supabase = await createClient()
-
-  const { data } = await supabase
-    .from('customer_appliances')
-    .select('*')
-    .eq('customer_id', profile.user_id)
-    .order('created_at', { ascending: false })
+  const appliances = await getCustomerAppliances(profile.user_id)
 
   return (
     <AppliancesPanel
-      appliances={(data ?? []) as CustomerApplianceRow[]}
+      appliances={appliances}
       openAddByDefault={params.add === '1'}
     />
   )
@@ -38,7 +31,7 @@ export default function CustomerAppliancesPage({
   searchParams: Promise<{ add?: string }>
 }) {
   return (
-    <Suspense fallback={<PageSkeleton />}>
+    <Suspense fallback={<PortalContentSkeleton />}>
       <CustomerAppliancesContent searchParams={searchParams} />
     </Suspense>
   )

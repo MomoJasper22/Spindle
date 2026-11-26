@@ -1,10 +1,9 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { requireRole } from '@/lib/auth/session'
-import { createClient } from '@/lib/supabase/server'
+import { getTechnicianRepairs } from '@/lib/data/portal-data'
 import { TechnicianJobsView } from '@/features/technician/components/technician-jobs-view'
-import { PageSkeleton } from '@/components/shared/page-skeleton'
-import type { RepairDetailView } from '@/types/database'
+import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
 
 export const metadata: Metadata = {
   title: 'Assigned Jobs',
@@ -12,20 +11,14 @@ export const metadata: Metadata = {
 
 async function TechnicianJobsContent() {
   const profile = await requireRole('technician')
-  const supabase = await createClient()
+  const repairs = await getTechnicianRepairs(profile.user_id)
 
-  const { data } = await supabase
-    .from('v_repair_details')
-    .select('*')
-    .eq('technician_id', profile.user_id)
-    .order('scheduled_date', { ascending: true })
-
-  return <TechnicianJobsView repairs={(data ?? []) as RepairDetailView[]} />
+  return <TechnicianJobsView repairs={repairs} />
 }
 
 export default function TechnicianJobsPage() {
   return (
-    <Suspense fallback={<PageSkeleton />}>
+    <Suspense fallback={<PortalContentSkeleton />}>
       <TechnicianJobsContent />
     </Suspense>
   )

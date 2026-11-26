@@ -1,28 +1,20 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
-import { requireRole } from '@/lib/auth/session'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdminFeature } from '@/lib/auth/session'
+import { getAdminAppliances, getAdminUsers } from '@/lib/data/portal-data'
 import { AdminAppliancesPanel } from '@/features/admin/components/appliances-panel'
-import { PageSkeleton } from '@/components/shared/page-skeleton'
-import type { CustomerApplianceRow, UserWithRole } from '@/types/database'
+import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
 
 export const metadata: Metadata = {
   title: 'Appliances Registry',
 }
 
 async function AdminAppliancesContent() {
-  await requireRole('admin')
-  const supabase = await createClient()
+  await requireAdminFeature('appliances')
 
-  const [appliancesRes, usersRes] = await Promise.all([
-    supabase
-      .from('customer_appliances')
-      .select('*')
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('users')
-      .select('*, user_types(type_name, description)')
-      .order('created_at', { ascending: false }),
+  const [appliances, users] = await Promise.all([
+    getAdminAppliances(),
+    getAdminUsers(),
   ])
 
   return (
@@ -36,17 +28,14 @@ async function AdminAppliancesContent() {
         </p>
       </div>
 
-      <AdminAppliancesPanel
-        appliances={(appliancesRes.data ?? []) as CustomerApplianceRow[]}
-        users={(usersRes.data ?? []) as UserWithRole[]}
-      />
+      <AdminAppliancesPanel appliances={appliances} users={users} />
     </div>
   )
 }
 
 export default function AdminAppliancesPage() {
   return (
-    <Suspense fallback={<PageSkeleton />}>
+    <Suspense fallback={<PortalContentSkeleton />}>
       <AdminAppliancesContent />
     </Suspense>
   )

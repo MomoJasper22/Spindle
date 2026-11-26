@@ -84,7 +84,7 @@ export function LoginForm({ initialError }: LoginFormProps) {
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
               placeholder="Enter your password"
-              className="pr-11"
+              className="pr-12"
               aria-invalid={Boolean(errors.password)}
               aria-describedby={errors.password ? 'login-password-error' : undefined}
               {...register('password')}
@@ -93,7 +93,7 @@ export function LoginForm({ initialError }: LoginFormProps) {
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               {showPassword ? (
                 <EyeOff className="h-4 w-4" aria-hidden="true" />
@@ -126,7 +126,10 @@ export function LoginForm({ initialError }: LoginFormProps) {
 
       <p className="text-center text-sm text-muted-foreground">
         New to Spindle?{' '}
-        <Link href="/signup" className="font-semibold text-primary hover:underline">
+        <Link
+          href="/signup"
+          className="inline-flex min-h-[44px] items-center font-semibold text-primary hover:underline"
+        >
           Create an account
         </Link>
       </p>

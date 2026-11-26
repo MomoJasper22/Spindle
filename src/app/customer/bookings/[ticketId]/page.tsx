@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { requireRole } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { BookingDetailView } from '@/features/customer/components/booking-detail-view'
-import { PageSkeleton } from '@/components/shared/page-skeleton'
+import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
 import type {
   AppointmentDetailView,
   PaymentDetailView,
@@ -65,7 +65,7 @@ export default function CustomerBookingDetailPage({
   params: Promise<{ ticketId: string }>
 }) {
   return (
-    <Suspense fallback={<PageSkeleton />}>
+    <Suspense fallback={<PortalContentSkeleton />}>
       <BookingDetailContent params={params} />
     </Suspense>
   )

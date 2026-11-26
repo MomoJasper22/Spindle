@@ -1,5 +1,6 @@
 import type { AvatarPosition } from '@/lib/avatar'
 import type {
+  AdminFeatureKey,
   AppointmentStatus,
   PaymentMethod,
   PaymentStatus,
@@ -25,12 +26,14 @@ export interface UserRow {
   first_name: string
   last_name: string
   middle_name: string | null
+  nickname?: string | null
   email: string
   phone: string | null
   user_type_id: string
   branch_location: string | null
   avatar_url?: string | null
   avatar_position?: AvatarPosition | null
+  admin_permissions?: AdminFeatureKey[] | null
   address_street: string | null
   address_barangay: string | null
   address_city: string | null
@@ -53,11 +56,21 @@ export interface TechnicianProfileRow {
   tech_profile_id: string
   technician_id: string
   specializations: string[]
+  proposed_specializations?: string[]
   certification_no: string | null
   availability_status: TechAvailabilityStatus
   max_daily_jobs: number
   created_at: string
   updated_at: string
+}
+
+export interface TechnicianStatusLogRow {
+  log_id: string
+  technician_id: string
+  previous_status: TechAvailabilityStatus | null
+  new_status: TechAvailabilityStatus
+  changed_by: string | null
+  changed_at: string
 }
 
 export interface CustomerApplianceRow {

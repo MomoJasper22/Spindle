@@ -1,17 +1,18 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/auth/session'
-import { normalizePHPhone } from '@/lib/formatters'
 import {
   technicianAppointmentActionSchema,
+  technicianAvailabilitySchema,
+  technicianNicknameSchema,
   technicianPaymentSchema,
-  technicianProfileSchema,
   technicianRepairUpdateSchema,
   type TechnicianAppointmentActionInput,
+  type TechnicianAvailabilityInput,
+  type TechnicianNicknameInput,
   type TechnicianPaymentInput,
-  type TechnicianProfileInput,
   type TechnicianRepairUpdateInput,
 } from '../schemas/technician-schemas'
 
@@ -68,6 +69,14 @@ export async function updateTechnicianRepairAction(
     description: `Technician ${profile.first_name} ${profile.last_name} updated ${parsed.data.ticket_id} to ${parsed.data.status.replace('_', ' ')}.`,
   })
 
+  updateTag('technician-repairs')
+  updateTag('technician-appointments')
+  updateTag('technician-payments')
+  updateTag('technician-activity')
+  updateTag('admin-repairs')
+  updateTag('admin-appointments')
+  updateTag('admin-payments')
+  updateTag('admin-activity')
   revalidatePath('/technician', 'layout')
   return {
     success: true,
@@ -111,6 +120,14 @@ export async function recordOnsitePaymentAction(
     return { success: false, error: error.message }
   }
 
+  updateTag('technician-repairs')
+  updateTag('technician-appointments')
+  updateTag('technician-payments')
+  updateTag('technician-activity')
+  updateTag('admin-repairs')
+  updateTag('admin-appointments')
+  updateTag('admin-payments')
+  updateTag('admin-activity')
   revalidatePath('/technician', 'layout')
   return {
     success: true,
@@ -174,6 +191,14 @@ export async function updateTechnicianAppointmentAction(
     description: `Technician updated appointment ${apt.appointment_id} to ${parsed.data.appointment_status} (${parsed.data.scheduled_date} · ${parsed.data.time_slot}).`,
   })
 
+  updateTag('technician-repairs')
+  updateTag('technician-appointments')
+  updateTag('technician-payments')
+  updateTag('technician-activity')
+  updateTag('admin-repairs')
+  updateTag('admin-appointments')
+  updateTag('admin-payments')
+  updateTag('admin-activity')
   revalidatePath('/technician', 'layout')
   return {
     success: true,
@@ -181,50 +206,84 @@ export async function updateTechnicianAppointmentAction(
   }
 }
 
-export async function updateTechnicianProfileAction(
-  input: TechnicianProfileInput
+export async function updateTechnicianNicknameAction(
+  input: TechnicianNicknameInput
 ): Promise<TechActionResult> {
   const profile = await requireRole('technician')
-  const parsed = technicianProfileSchema.safeParse(input)
+  const parsed = technicianNicknameSchema.safeParse(input)
 
   if (!parsed.success) {
     return {
       success: false,
-      error: parsed.error.issues[0]?.message ?? 'Invalid technician profile fields.',
+      error: parsed.error.issues[0]?.message ?? 'Invalid nickname.',
+    }
+  }
+
+  const cleanNickname = parsed.data.nickname?.trim() || null
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('users')
+    .update({ nickname: cleanNickname })
+    .eq('user_id', profile.user_id)
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  await supabase.from('activity_logs').insert({
+    actor_id: profile.user_id,
+    entity_type: 'technician',
+    entity_id: profile.user_id,
+    action: 'technician_nickname_updated',
+    description: cleanNickname
+      ? `Technician set display nickname to "${cleanNickname}".`
+      : 'Technician cleared their display nickname.',
+  })
+
+  updateTag('technician-repairs')
+  updateTag('technician-appointments')
+  updateTag('technician-payments')
+  updateTag('technician-activity')
+  updateTag('admin-repairs')
+  updateTag('admin-appointments')
+  updateTag('admin-payments')
+  updateTag('admin-activity')
+  updateTag('user-profile')
+  updateTag('technician-activity')
+  updateTag('admin-users')
+  updateTag('admin-tech-profiles')
+  updateTag('admin-status-logs')
+  updateTag('admin-activity')
+  revalidatePath('/technician', 'layout')
+  revalidatePath('/admin/technicians')
+  revalidatePath('/admin/users')
+  return { success: true, message: 'Nickname saved.' }
+}
+
+export async function updateTechnicianAvailabilityAction(
+  input: TechnicianAvailabilityInput
+): Promise<TechActionResult> {
+  const profile = await requireRole('technician')
+  const parsed = technicianAvailabilitySchema.safeParse(input)
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? 'Invalid availability status.',
     }
   }
 
   const supabase = await createClient()
-
-  const { error: userError } = await supabase
-    .from('users')
-    .update({
-      first_name: parsed.data.first_name,
-      middle_name: parsed.data.middle_name || null,
-      last_name: parsed.data.last_name,
-      phone: normalizePHPhone(parsed.data.phone),
-      branch_location: parsed.data.branch_location,
-      address_street: parsed.data.address_street,
-      address_barangay: parsed.data.address_barangay,
-      address_city: parsed.data.address_city,
-      address_province: parsed.data.address_province,
-      address_zip_code: parsed.data.address_zip_code,
-    })
-    .eq('user_id', profile.user_id)
-
-  if (userError) {
-    return { success: false, error: userError.message }
-  }
+  const previousStatus = profile.technician_profile?.availability_status ?? null
+  const nextStatus = parsed.data.availability_status
 
   const { error: techError } = await supabase
     .from('technician_profiles')
     .upsert(
       {
         technician_id: profile.user_id,
-        specializations: parsed.data.specializations,
-        certification_no: parsed.data.certification_no,
-        max_daily_jobs: parsed.data.max_daily_jobs,
-        availability_status: parsed.data.availability_status,
+        availability_status: nextStatus,
       },
       { onConflict: 'technician_id' }
     )
@@ -233,14 +292,41 @@ export async function updateTechnicianProfileAction(
     return { success: false, error: techError.message }
   }
 
-  await supabase.from('activity_logs').insert({
-    actor_id: profile.user_id,
-    entity_type: 'technician',
-    entity_id: profile.user_id,
-    action: 'technician_profile_updated',
-    description: `Technician updated credentials & availability (${parsed.data.availability_status}).`,
-  })
+  if (previousStatus !== nextStatus) {
+    await supabase.from('technician_status_logs').insert({
+      technician_id: profile.user_id,
+      previous_status: previousStatus,
+      new_status: nextStatus,
+      changed_by: profile.user_id,
+    })
 
+    await supabase.from('activity_logs').insert({
+      actor_id: profile.user_id,
+      entity_type: 'technician',
+      entity_id: profile.user_id,
+      action: 'availability_changed',
+      description: `Technician changed availability status from ${previousStatus ?? 'unset'} to ${nextStatus}.`,
+    })
+  }
+
+  updateTag('technician-repairs')
+  updateTag('technician-appointments')
+  updateTag('technician-payments')
+  updateTag('technician-activity')
+  updateTag('admin-repairs')
+  updateTag('admin-appointments')
+  updateTag('admin-payments')
+  updateTag('admin-activity')
+  updateTag('user-profile')
+  updateTag('technician-activity')
+  updateTag('admin-tech-profiles')
+  updateTag('admin-status-logs')
+  updateTag('admin-activity')
   revalidatePath('/technician', 'layout')
-  return { success: true, message: 'Technician profile and field credentials saved.' }
+  revalidatePath('/admin/technicians')
+  revalidatePath('/admin/dashboard')
+  return {
+    success: true,
+    message: `Status updated to ${nextStatus.replace('_', ' ')}.`,
+  }
 }

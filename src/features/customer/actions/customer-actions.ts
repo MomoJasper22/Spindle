@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/auth/session'
@@ -23,6 +23,17 @@ export type ActionResult<T = void> =
   | { success: false; error: string }
 
 function revalidateCustomerPortal() {
+  updateTag('user-profile')
+  updateTag('customer-appliances')
+  updateTag('customer-repairs')
+  updateTag('customer-appointments')
+  updateTag('customer-payments')
+  updateTag('customer-activity')
+  updateTag('admin-appliances')
+  updateTag('admin-repairs')
+  updateTag('admin-appointments')
+  updateTag('admin-payments')
+  updateTag('admin-activity')
   revalidatePath('/customer', 'layout')
 }
 

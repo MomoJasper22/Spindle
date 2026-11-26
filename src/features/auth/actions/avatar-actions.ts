@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAuthenticatedUser } from '@/lib/auth/session'
@@ -23,6 +23,8 @@ const ALLOWED_TYPES: Record<string, string> = {
 const MAX_FILE_BYTES = 2 * 1024 * 1024 // 2 MB
 
 function revalidateAllPortals() {
+  updateTag('user-profile')
+  updateTag('admin-users')
   revalidatePath('/customer', 'layout')
   revalidatePath('/technician', 'layout')
   revalidatePath('/admin', 'layout')
@@ -57,7 +59,7 @@ async function persistAvatarPositionMetadata(
 }
 
 export async function uploadAvatarAction(formData: FormData): Promise<AvatarActionResult> {
-  const profile = await requireAuthenticatedUser()
+  const profile = await requireAuthenticatedUser({ allowUnonboarded: true })
   const file = formData.get('avatar')
 
   if (!(file instanceof File) || file.size === 0) {
@@ -137,7 +139,7 @@ export async function uploadAvatarAction(formData: FormData): Promise<AvatarActi
 export async function updateAvatarPositionAction(
   positionInput: AvatarPosition
 ): Promise<AvatarActionResult> {
-  const profile = await requireAuthenticatedUser()
+  const profile = await requireAuthenticatedUser({ allowUnonboarded: true })
   if (!profile.auth_user_id) {
     return { success: false, error: 'Please sign in again before saving your photo position.' }
   }
@@ -166,7 +168,7 @@ export async function updateAvatarPositionAction(
 }
 
 export async function removeAvatarAction(): Promise<AvatarActionResult> {
-  const profile = await requireAuthenticatedUser()
+  const profile = await requireAuthenticatedUser({ allowUnonboarded: true })
   const supabase = await createClient()
 
   const { error } = await supabase

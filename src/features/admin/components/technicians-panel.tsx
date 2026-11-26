@@ -1,9 +1,10 @@
 'use client'
 
 import * as React from 'react'
+import dynamic from 'next/dynamic'
 import { useForm, Controller, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, Pencil, UserCheck, Wrench } from 'lucide-react'
+import { BarChart3, Loader2, Pencil, Sparkles, UserCheck, Wrench } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -37,6 +38,7 @@ import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
 import { StatusBadge } from '@/components/shared/status-badge'
+import { UserAvatar } from '@/components/shared/user-avatar'
 import {
   APPLIANCE_CATEGORIES,
   SERVICE_BRANCHES,
@@ -45,7 +47,14 @@ import {
 } from '@/lib/constants'
 import { formatFullName, formatPHPhone, getManilaTodayISO, humanizeLabel } from '@/lib/formatters'
 import { cn } from '@/lib/utils'
-import type { RepairDetailView, TechnicianProfileRow, UserWithRole } from '@/types/database'
+import type {
+  AppointmentDetailView,
+  PaymentDetailView,
+  RepairDetailView,
+  TechnicianProfileRow,
+  TechnicianStatusLogRow,
+  UserWithRole,
+} from '@/types/database'
 import {
   adminAssignTechnicianAction,
   adminToggleUserActiveAction,
@@ -58,13 +67,34 @@ import {
   type AdminTechProfileInput,
 } from '../schemas/admin-schemas'
 
+const TechnicianProductivitySheet = dynamic(
+  () =>
+    import('./technician-productivity-sheet').then(
+      (m) => m.TechnicianProductivitySheet
+    ),
+  { ssr: false }
+)
+
 interface TechniciansPanelProps {
   users: UserWithRole[]
   techProfiles: TechnicianProfileRow[]
   repairs: RepairDetailView[]
+  appointments: AppointmentDetailView[]
+  payments: PaymentDetailView[]
+  statusLogs: TechnicianStatusLogRow[]
 }
 
-export function TechniciansPanel({ users, techProfiles, repairs }: TechniciansPanelProps) {
+export function TechniciansPanel({
+  users,
+  techProfiles,
+  repairs,
+  appointments,
+  payments,
+  statusLogs,
+}: TechniciansPanelProps) {
+  const [selectedTechForTracker, setSelectedTechForTracker] = React.useState<UserWithRole | null>(
+    null
+  )
   const [editingTech, setEditingTech] = React.useState<{
     user: UserWithRole
     profile: TechnicianProfileRow | null
@@ -169,6 +199,7 @@ export function TechniciansPanel({ users, techProfiles, repairs }: TechniciansPa
   }
 
   const selectedSpecs = useWatch({ control: editForm.control, name: 'specializations' }) ?? []
+  const proposedSpecsForEdit = editingTech?.profile?.proposed_specializations ?? []
 
   return (
     <Card>
@@ -176,7 +207,7 @@ export function TechniciansPanel({ users, techProfiles, repairs }: TechniciansPa
         <div>
           <CardTitle>Technician Roster &amp; Dispatch Allocation</CardTitle>
           <CardDescription>
-            Monitor technician daily workloads, manage TESDA credentials, and assign tickets using row-locked slot validation.
+            Click any technician to open their productivity &amp; availability tracker, assign specializations and daily capacity (1–15), or dispatch tickets.
           </CardDescription>
         </div>
         <Button
@@ -210,22 +241,66 @@ export function TechniciansPanel({ users, techProfiles, repairs }: TechniciansPa
                     !['completed', 'cancelled'].includes(r.status)
                 ).length
                 const maxJobs = tp?.max_daily_jobs ?? 4
+                const fullName = formatFullName(tech)
+                const proposedCount = tp?.proposed_specializations?.length ?? 0
 
                 return (
-                  <div key={tech.user_id} className="rounded-xl border border-border bg-card p-4 space-y-3">
+                  <div
+                    key={tech.user_id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedTechForTracker(tech)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setSelectedTechForTracker(tech)
+                      }
+                    }}
+                    className="rounded-xl border border-border bg-card p-4 space-y-3 cursor-pointer transition-colors hover:border-primary/50"
+                  >
                     <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-semibold text-foreground">{formatFullName(tech)}</p>
-                        <p className="font-mono text-xs text-muted-foreground">
-                          {tech.branch_location || 'Unassigned'} &middot; {formatPHPhone(tech.phone)}
-                        </p>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <UserAvatar
+                          avatarUrl={tech.avatar_url}
+                          avatarPosition={tech.avatar_position}
+                          name={fullName}
+                          size="md"
+                        />
+                        <div className="min-w-0">
+                          <p className="font-semibold text-foreground truncate">{fullName}</p>
+                          {tech.nickname && (
+                            <p className="text-xs text-primary font-medium">aka {tech.nickname}</p>
+                          )}
+                          <p className="font-mono text-xs text-muted-foreground truncate">
+                            {tech.branch_location || 'Unassigned'} &middot; {formatPHPhone(tech.phone)}
+                          </p>
+                        </div>
                       </div>
                       <StatusBadge status={tp?.availability_status ?? 'available'} />
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Load: <span className="font-semibold text-foreground">{activeJobs}</span> / {maxJobs} max daily
-                    </p>
-                    <div className="flex flex-wrap gap-1.5 border-t border-border pt-2.5">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span>
+                        Load: <span className="font-semibold text-foreground">{activeJobs}</span> / {maxJobs} max daily
+                      </span>
+                      {proposedCount > 0 && (
+                        <Badge variant="amber" className="text-[10px]">
+                          {proposedCount} proposed
+                        </Badge>
+                      )}
+                    </div>
+                    <div
+                      className="flex flex-wrap gap-1.5 border-t border-border pt-2.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedTechForTracker(tech)}
+                      >
+                        <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>Tracker</span>
+                      </Button>
                       {tech.is_active && assignableRepairs.length > 0 && (
                         <Button type="button" size="sm" variant="outline" onClick={() => openAssignModal(tech.user_id)}>
                           Dispatch
@@ -262,14 +337,37 @@ export function TechniciansPanel({ users, techProfiles, repairs }: TechniciansPa
                         !['completed', 'cancelled'].includes(r.status)
                     ).length
                     const maxJobs = tp?.max_daily_jobs ?? 4
+                    const fullName = formatFullName(tech)
+                    const proposedCount = tp?.proposed_specializations?.length ?? 0
 
                     return (
-                      <TableRow key={tech.user_id}>
+                      <TableRow
+                        key={tech.user_id}
+                        onClick={() => setSelectedTechForTracker(tech)}
+                        className="cursor-pointer transition-colors hover:bg-muted/40"
+                      >
                         <TableCell>
-                          <p className="font-semibold text-foreground">{formatFullName(tech)}</p>
-                          <p className="font-mono text-xs text-muted-foreground">
-                            {tech.user_id} &middot; {formatPHPhone(tech.phone)}
-                          </p>
+                          <div className="flex items-center gap-3">
+                            <UserAvatar
+                              avatarUrl={tech.avatar_url}
+                              avatarPosition={tech.avatar_position}
+                              name={fullName}
+                              size="sm"
+                            />
+                            <div className="min-w-0">
+                              <p className="font-semibold text-foreground">
+                                {fullName}
+                                {tech.nickname && (
+                                  <span className="ml-1.5 text-xs font-medium text-primary">
+                                    ({tech.nickname})
+                                  </span>
+                                )}
+                              </p>
+                              <p className="font-mono text-xs text-muted-foreground">
+                                {tech.user_id} &middot; {formatPHPhone(tech.phone)}
+                              </p>
+                            </div>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <p className="text-xs font-medium">{tech.branch_location || 'Unassigned'}</p>
@@ -286,11 +384,16 @@ export function TechniciansPanel({ users, techProfiles, repairs }: TechniciansPa
                                 </Badge>
                               ))
                             ) : (
-                              <span className="text-xs text-muted-foreground">None listed</span>
+                              <span className="text-xs text-muted-foreground">None assigned</span>
                             )}
                             {tp && tp.specializations.length > 3 && (
                               <Badge variant="slate" className="text-[11px]">
                                 +{tp.specializations.length - 3}
+                              </Badge>
+                            )}
+                            {proposedCount > 0 && (
+                              <Badge variant="amber" className="text-[10px]">
+                                {proposedCount} proposed
                               </Badge>
                             )}
                           </div>
@@ -305,8 +408,17 @@ export function TechniciansPanel({ users, techProfiles, repairs }: TechniciansPa
                             {!tech.is_active && <StatusBadge status="inactive" showIcon={false} />}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="inline-flex items-center justify-end gap-1.5">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setSelectedTechForTracker(tech)}
+                              aria-label={`View productivity for ${tech.user_id}`}
+                            >
+                              <BarChart3 className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                            </Button>
                             {tech.is_active && assignableRepairs.length > 0 && (
                               <Button
                                 type="button"
@@ -357,6 +469,25 @@ export function TechniciansPanel({ users, techProfiles, repairs }: TechniciansPa
         )}
       </CardContent>
 
+      {/* Productivity Tracker Sheet (shown only when a specific technician is clicked) */}
+      <TechnicianProductivitySheet
+        technician={selectedTechForTracker}
+        techProfile={
+          selectedTechForTracker ? techProfileById.get(selectedTechForTracker.user_id) ?? null : null
+        }
+        repairs={repairs}
+        appointments={appointments}
+        payments={payments}
+        statusLogs={statusLogs}
+        open={Boolean(selectedTechForTracker)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedTechForTracker(null)
+        }}
+        onEditCredentials={(tech) => openEditTech(tech)}
+        onDispatchTicket={(techId) => openAssignModal(techId)}
+        canDispatch={assignableRepairs.length > 0}
+      />
+
       {/* Edit Technician Credentials Modal */}
       <Dialog
         open={Boolean(editingTech)}
@@ -370,7 +501,7 @@ export function TechniciansPanel({ users, techProfiles, repairs }: TechniciansPa
               Technician Credentials ({editingTech ? formatFullName(editingTech.user) : ''})
             </DialogTitle>
             <DialogDescription>
-              Manage branch assignment, specializations, capacity, and field availability.
+              Assign branch, appliance specializations, max daily jobs (1–15), TESDA credentials, and availability.
             </DialogDescription>
           </DialogHeader>
 
@@ -434,7 +565,7 @@ export function TechniciansPanel({ users, techProfiles, repairs }: TechniciansPa
                 )}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="tp-cap">Max Daily Jobs</Label>
+                <Label htmlFor="tp-cap">Max Daily Jobs (1–15)</Label>
                 <Input
                   id="tp-cap"
                   type="number"
@@ -445,8 +576,39 @@ export function TechniciansPanel({ users, techProfiles, repairs }: TechniciansPa
               </div>
             </div>
 
+            {proposedSpecsForEdit.length > 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-semibold text-amber-ink">
+                    Proposed by Technician for Review:
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const merged = Array.from(
+                        new Set([...selectedSpecs, ...proposedSpecsForEdit])
+                      )
+                      editForm.setValue('specializations', merged, { shouldValidate: true })
+                    }}
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-amber-ink" aria-hidden="true" />
+                    <span>Apply Proposed</span>
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {proposedSpecsForEdit.map((spec) => (
+                    <Badge key={spec} variant="amber" className="text-[11px]">
+                      {spec}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
-              <Label>Specializations</Label>
+              <Label>Assigned Appliance Specializations</Label>
               <div className="grid gap-2 sm:grid-cols-2">
                 {APPLIANCE_CATEGORIES.map((cat) => {
                   const checked = selectedSpecs.includes(cat)

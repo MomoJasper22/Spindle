@@ -1,10 +1,9 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { requireRole } from '@/lib/auth/session'
-import { createClient } from '@/lib/supabase/server'
+import { getTechnicianAppointments } from '@/lib/data/portal-data'
 import { SchedulePanel } from '@/features/technician/components/schedule-panel'
-import { PageSkeleton } from '@/components/shared/page-skeleton'
-import type { AppointmentDetailView } from '@/types/database'
+import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
 
 export const metadata: Metadata = {
   title: 'Schedule & Agenda',
@@ -12,13 +11,7 @@ export const metadata: Metadata = {
 
 async function TechnicianScheduleContent() {
   const profile = await requireRole('technician')
-  const supabase = await createClient()
-
-  const { data } = await supabase
-    .from('v_appointment_details')
-    .select('*')
-    .eq('technician_id', profile.user_id)
-    .order('scheduled_date', { ascending: true })
+  const appointments = await getTechnicianAppointments(profile.user_id)
 
   return (
     <div className="space-y-6">
@@ -30,14 +23,14 @@ async function TechnicianScheduleContent() {
           Confirm dispatched slots, reschedule home visits, or mark appointments completed.
         </p>
       </div>
-      <SchedulePanel appointments={(data ?? []) as AppointmentDetailView[]} />
+      <SchedulePanel appointments={appointments} />
     </div>
   )
 }
 
 export default function TechnicianSchedulePage() {
   return (
-    <Suspense fallback={<PageSkeleton />}>
+    <Suspense fallback={<PortalContentSkeleton />}>
       <TechnicianScheduleContent />
     </Suspense>
   )

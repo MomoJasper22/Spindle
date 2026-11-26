@@ -1,9 +1,14 @@
 'use client'
 
 import * as React from 'react'
+import dynamic from 'next/dynamic'
 import type { RepairDetailView } from '@/types/database'
-import { DiagnosticDrawer } from './diagnostic-drawer'
 import { PipelinePanel } from './pipeline-panel'
+
+const DiagnosticDrawer = dynamic(
+  () => import('./diagnostic-drawer').then((m) => m.DiagnosticDrawer),
+  { ssr: false }
+)
 
 interface TechnicianJobsViewProps {
   repairs: RepairDetailView[]

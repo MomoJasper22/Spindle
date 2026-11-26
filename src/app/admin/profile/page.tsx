@@ -1,8 +1,8 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
-import { requireRole } from '@/lib/auth/session'
+import { isFullAdmin, requireRole } from '@/lib/auth/session'
 import { AdminProfileForms } from '@/features/admin/components/admin-profile-forms'
-import { PageSkeleton } from '@/components/shared/page-skeleton'
+import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
 import { Badge } from '@/components/ui/badge'
 
 export const metadata: Metadata = {
@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 
 async function AdminProfileContent() {
   const profile = await requireRole('admin')
+  const fullAdmin = isFullAdmin(profile)
 
   return (
     <div className="space-y-6">
@@ -20,22 +21,24 @@ async function AdminProfileContent() {
             Administrator Profile &amp; Security
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Configure your managed Philippine service branch, contact details, and administrative credentials.
+            {fullAdmin
+              ? 'Configure your managed Philippine service branch, contact details, and administrative credentials.'
+              : 'Update your profile photo and password. Profile details and branch assignment are managed by a full administrator.'}
           </p>
         </div>
         <Badge variant="default" className="font-mono">
-          {profile.user_id} &middot; Admin
+          {profile.user_id} &middot; {fullAdmin ? 'Full Admin' : 'Limited Admin'}
         </Badge>
       </div>
 
-      <AdminProfileForms profile={profile} />
+      <AdminProfileForms profile={profile} canEditProfileDetails={fullAdmin} />
     </div>
   )
 }
 
 export default function AdminProfilePage() {
   return (
-    <Suspense fallback={<PageSkeleton />}>
+    <Suspense fallback={<PortalContentSkeleton />}>
       <AdminProfileContent />
     </Suspense>
   )

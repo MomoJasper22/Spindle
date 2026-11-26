@@ -1,19 +1,20 @@
 import * as React from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle2, ShieldCheck, Wrench } from 'lucide-react'
 import { SpindleLogo } from '@/components/shared/spindle-logo'
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh grid grid-cols-1 lg:grid-cols-2 bg-background">
+    <div className="flex min-h-dvh flex-col bg-background lg:grid lg:grid-cols-2">
       {/* Mobile Compact Header so the Form Leads Immediately */}
-      <header className="flex items-center justify-between border-b border-border bg-card px-4 py-3.5 lg:hidden">
-        <Link href="/" aria-label="Back to Spindle home">
+      <header className="sticky top-0 z-20 flex shrink-0 items-center justify-between border-b border-border bg-card/95 px-4 py-2.5 backdrop-blur-xs lg:hidden">
+        <Link href="/" aria-label="Back to Spindle home" className="inline-flex min-h-[44px] items-center">
           <SpindleLogo variant="dark" size="sm" />
         </Link>
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+          className="inline-flex min-h-[44px] items-center gap-1.5 px-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           <span>Home</span>
@@ -22,12 +23,14 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
       {/* Desktop Left Showcase Panel */}
       <aside className="relative hidden lg:flex flex-col justify-between overflow-hidden bg-[#141B29] px-12 py-12 text-[#F8F7F4]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/images/auth-showcase.jpg"
+        <Image
+          src="/images/auth-left-showcase.jpg"
           alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+          fill
+          priority
+          sizes="(min-width: 1024px) 50vw, 100vw"
+          className="pointer-events-none object-cover object-center"
         />
 
         <div
@@ -76,7 +79,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <main
         id="main-content"
         tabIndex={-1}
-        className="flex flex-col justify-center bg-card px-5 py-8 sm:px-12 lg:px-16"
+        className="flex flex-1 flex-col justify-start bg-card px-4 py-6 pb-safe sm:justify-center sm:px-12 sm:py-10 lg:px-16"
       >
         <div className="mx-auto w-full max-w-md">{children}</div>
       </main>

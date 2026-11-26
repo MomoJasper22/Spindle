@@ -1,36 +1,21 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
-import { requireRole } from '@/lib/auth/session'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdminFeature } from '@/lib/auth/session'
+import { getAdminAppliances, getAdminRepairs, getAdminUsers } from '@/lib/data/portal-data'
 import { AdminRepairsPanel } from '@/features/admin/components/repairs-panel'
-import { PageSkeleton } from '@/components/shared/page-skeleton'
-import type {
-  CustomerApplianceRow,
-  RepairDetailView,
-  UserWithRole,
-} from '@/types/database'
+import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
 
 export const metadata: Metadata = {
   title: 'Repair Tickets',
 }
 
 async function AdminRepairsContent() {
-  await requireRole('admin')
-  const supabase = await createClient()
+  await requireAdminFeature('repairs')
 
-  const [repairsRes, usersRes, appliancesRes] = await Promise.all([
-    supabase
-      .from('v_repair_details')
-      .select('*')
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('users')
-      .select('*, user_types(type_name, description)')
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('customer_appliances')
-      .select('*')
-      .order('created_at', { ascending: false }),
+  const [repairs, users, appliances] = await Promise.all([
+    getAdminRepairs(),
+    getAdminUsers(),
+    getAdminAppliances(),
   ])
 
   return (
@@ -44,18 +29,14 @@ async function AdminRepairsContent() {
         </p>
       </div>
 
-      <AdminRepairsPanel
-        repairs={(repairsRes.data ?? []) as RepairDetailView[]}
-        users={(usersRes.data ?? []) as UserWithRole[]}
-        appliances={(appliancesRes.data ?? []) as CustomerApplianceRow[]}
-      />
+      <AdminRepairsPanel repairs={repairs} users={users} appliances={appliances} />
     </div>
   )
 }
 
 export default function AdminRepairsPage() {
   return (
-    <Suspense fallback={<PageSkeleton />}>
+    <Suspense fallback={<PortalContentSkeleton />}>
       <AdminRepairsContent />
     </Suspense>
   )

@@ -17,6 +17,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { FormBanner } from '@/components/shared/form-banner'
+import { ProfilePhotoField } from '@/components/shared/profile-photo-field'
+import { Badge } from '@/components/ui/badge'
+import type { AvatarPosition } from '@/lib/avatar'
 import { APPLIANCE_CATEGORIES, PH_PROVINCES, SERVICE_BRANCHES, type UserRole } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { completeOnboardingAction } from '../actions/onboarding-actions'
@@ -24,11 +27,23 @@ import { onboardingSchema, type OnboardingInput } from '../schemas/onboarding-sc
 
 interface OnboardingFormProps {
   firstName: string
+  fullName: string
   role: UserRole
+  avatarUrl?: string | null
+  avatarPosition?: AvatarPosition | null
+  assignedSpecializations?: string[]
   initialValues?: Partial<OnboardingInput>
 }
 
-export function OnboardingForm({ firstName, role, initialValues }: OnboardingFormProps) {
+export function OnboardingForm({
+  firstName,
+  fullName,
+  role,
+  avatarUrl,
+  avatarPosition,
+  assignedSpecializations = [],
+  initialValues,
+}: OnboardingFormProps) {
   const isTechnician = role === 'technician'
   const totalSteps = isTechnician ? 3 : 2
   const [step, setStep] = React.useState(1)
@@ -53,12 +68,13 @@ export function OnboardingForm({ firstName, role, initialValues }: OnboardingFor
       address_city: initialValues?.address_city ?? '',
       address_province: initialValues?.address_province ?? 'Metro Manila',
       address_zip_code: initialValues?.address_zip_code ?? '',
-      specializations: initialValues?.specializations ?? [],
+      nickname: initialValues?.nickname ?? '',
+      proposed_specializations: initialValues?.proposed_specializations ?? [],
       certification_no: initialValues?.certification_no ?? '',
     },
   })
 
-  const selectedSpecializations = useWatch({ control, name: 'specializations' }) ?? []
+  const proposedSpecializations = useWatch({ control, name: 'proposed_specializations' }) ?? []
 
   async function handleNextStep() {
     setServerError(null)
@@ -79,11 +95,11 @@ export function OnboardingForm({ firstName, role, initialValues }: OnboardingFor
     }
   }
 
-  function toggleSpecialization(category: string, checked: boolean) {
+  function toggleProposedSpecialization(category: string, checked: boolean) {
     const next = checked
-      ? [...selectedSpecializations, category]
-      : selectedSpecializations.filter((item) => item !== category)
-    setValue('specializations', next, { shouldValidate: true })
+      ? [...proposedSpecializations, category]
+      : proposedSpecializations.filter((item) => item !== category)
+    setValue('proposed_specializations', next, { shouldValidate: true })
   }
 
   function onSubmit(values: OnboardingInput) {
@@ -99,7 +115,7 @@ export function OnboardingForm({ firstName, role, initialValues }: OnboardingFor
   const stepsMeta = [
     { id: 1, title: isTechnician ? 'Contact & Branch' : 'Phone & Area', icon: Phone },
     { id: 2, title: isTechnician ? 'Base Address' : 'Home Address', icon: MapPin },
-    ...(isTechnician ? [{ id: 3, title: 'Field Credentials', icon: Wrench }] : []),
+    ...(isTechnician ? [{ id: 3, title: 'Credentials, Nickname & Photo', icon: Wrench }] : []),
   ]
 
   return (
@@ -320,16 +336,74 @@ export function OnboardingForm({ firstName, role, initialValues }: OnboardingFor
 
           {step === 3 && isTechnician && (
             <div className="space-y-5">
+              <ProfilePhotoField
+                currentAvatarUrl={avatarUrl}
+                currentAvatarPosition={avatarPosition}
+                fullName={fullName}
+              />
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="onboard-nickname">
+                    Display Nickname <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="onboard-nickname"
+                    placeholder="e.g. Kuya Jun, Tech Rico"
+                    aria-invalid={Boolean(errors.nickname)}
+                    {...register('nickname')}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Your nickname is shown on your overview and stays editable anytime.
+                  </p>
+                  {errors.nickname && (
+                    <p role="alert" className="text-xs font-medium text-destructive">
+                      {errors.nickname.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="onboard-cert">
+                    TESDA / Technical Certification No. <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="onboard-cert"
+                    placeholder="e.g. TESDA-RAC-NCII-2026-0842"
+                    aria-invalid={Boolean(errors.certification_no)}
+                    {...register('certification_no')}
+                  />
+                  {errors.certification_no && (
+                    <p role="alert" className="text-xs font-medium text-destructive">
+                      {errors.certification_no.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {assignedSpecializations.length > 0 && (
+                <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-3.5">
+                  <p className="text-xs font-semibold text-foreground">
+                    Already Assigned by Admin
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {assignedSpecializations.map((spec) => (
+                      <Badge key={spec} variant="outline">
+                        {spec}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
-                <Label>
-                  Appliance Specializations <span className="text-destructive">*</span>
-                </Label>
+                <Label>Propose Appliance Specializations (for Admin Review)</Label>
                 <p className="text-xs text-muted-foreground">
-                  Select every appliance category you are certified to service in the field.
+                  Select appliance categories you want your administrator to review and assign to your profile.
                 </p>
                 <div className="grid gap-2.5 sm:grid-cols-2 pt-1">
                   {APPLIANCE_CATEGORIES.map((cat) => {
-                    const checked = selectedSpecializations.includes(cat)
+                    const checked = proposedSpecializations.includes(cat)
                     const checkboxId = `spec-${cat.toLowerCase().replace(/[^a-z0-9]/g, '-')}`
                     return (
                       <label
@@ -345,30 +419,13 @@ export function OnboardingForm({ firstName, role, initialValues }: OnboardingFor
                         <Checkbox
                           id={checkboxId}
                           checked={checked}
-                          onCheckedChange={(val) => toggleSpecialization(cat, val === true)}
+                          onCheckedChange={(val) => toggleProposedSpecialization(cat, val === true)}
                         />
                         <span>{cat}</span>
                       </label>
                     )
                   })}
                 </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="onboard-cert">
-                  TESDA / Technical Certification No. <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="onboard-cert"
-                  placeholder="e.g. TESDA-RAC-NCII-2026-0842"
-                  aria-invalid={Boolean(errors.certification_no)}
-                  {...register('certification_no')}
-                />
-                {errors.certification_no && (
-                  <p role="alert" className="text-xs font-medium text-destructive">
-                    {errors.certification_no.message}
-                  </p>
-                )}
               </div>
             </div>
           )}

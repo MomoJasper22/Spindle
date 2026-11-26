@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import {
+  ADMIN_FEATURE_KEYS,
   APPLIANCE_CATEGORIES,
   PAYMENT_METHODS,
   REPAIR_PRIORITIES,
@@ -9,6 +10,8 @@ import {
   TIME_SLOTS,
 } from '@/lib/constants'
 import { validatePHPhone } from '@/lib/formatters'
+
+const adminFeatureEnum = z.enum(ADMIN_FEATURE_KEYS)
 
 export const adminCreateUserSchema = z.object({
   first_name: z.string().trim().min(2, 'First name is required.').max(100),
@@ -34,6 +37,7 @@ export const adminCreateUserSchema = z.object({
   specializations: z.array(z.string()).optional(),
   certification_no: z.string().trim().max(100).optional().or(z.literal('')),
   max_daily_jobs: z.number().int().min(1).max(15).optional(),
+  admin_permissions: z.array(adminFeatureEnum).nullable().optional(),
 })
 
 export type AdminCreateUserInput = z.infer<typeof adminCreateUserSchema>
@@ -55,6 +59,7 @@ export const adminUpdateUserSchema = z.object({
   address_province: z.string().trim().min(2).max(100),
   address_zip_code: z.string().trim().regex(/^\d{4}$/),
   is_active: z.boolean(),
+  admin_permissions: z.array(adminFeatureEnum).nullable().optional(),
 })
 
 export type AdminUpdateUserInput = z.infer<typeof adminUpdateUserSchema>

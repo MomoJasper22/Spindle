@@ -68,6 +68,7 @@ export interface PortalNavItem {
 
 interface PortalShellProps {
   role: UserRole
+  roleBadgeLabel?: string
   userName: string
   userEmail: string
   avatarUrl?: string | null
@@ -85,6 +86,7 @@ const ROLE_LABELS: Partial<Record<UserRole, string>> = {
 
 export function PortalShell({
   role,
+  roleBadgeLabel,
   userName,
   userEmail,
   avatarUrl,
@@ -96,7 +98,7 @@ export function PortalShell({
 }: PortalShellProps) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = React.useState(false)
-  const roleLabel = ROLE_LABELS[role]
+  const roleLabel = roleBadgeLabel ?? ROLE_LABELS[role]
 
   function isLinkActive(href: string) {
     return pathname === href || pathname.startsWith(`${href}/`)

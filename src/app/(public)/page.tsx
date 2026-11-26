@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import {
   ArrowRight,
@@ -67,12 +68,14 @@ export default function LandingPage() {
       <main id="main-content" tabIndex={-1} className="flex-1">
         {/* Tactile Service Passbook Hero (Single Primary CTA, Zero Track Ticket Button) */}
         <section id="how-it-works" className="relative overflow-hidden bg-[#F8F7F4]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src="/images/care-appliances-bg.jpg"
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+            fill
+            priority
+            sizes="100vw"
+            className="pointer-events-none object-cover object-center"
           />
           <div
             aria-hidden="true"
@@ -150,12 +153,13 @@ export default function LandingPage() {
 
         {/* Plain-Language Care Promises */}
         <section id="services" className="relative overflow-hidden border-t border-border bg-[#141B29] py-12 sm:py-16">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src="/images/auth-showcase.jpg"
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+            fill
+            sizes="100vw"
+            className="pointer-events-none object-cover object-center"
           />
           <div
             aria-hidden="true"
@@ -233,6 +237,9 @@ export default function LandingPage() {
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-5 text-xs font-semibold text-muted-foreground">
+            <a href="#how-it-works" className="hover:text-foreground">
+              How It Works
+            </a>
             <a href="#repair" className="hover:text-foreground">
               Appliances
             </a>

@@ -130,7 +130,10 @@ export function CustomerHomeView({
         </div>
       ) : (
         <Card className="bg-primary-tint/40 border-teal-200">
-          <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <CardContent
+            standalone
+            className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+          >
             <div className="space-y-1">
               <h2 className="font-heading text-lg font-bold text-foreground">
                 No home visits booked right now

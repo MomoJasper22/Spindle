@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { requireRole } from '@/lib/auth/session'
 import { CustomerProfileForms } from '@/features/customer/components/customer-profile-forms'
-import { PageSkeleton } from '@/components/shared/page-skeleton'
+import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
 
 export const metadata: Metadata = {
   title: 'Profile & Settings',
@@ -29,7 +29,7 @@ async function CustomerProfileContent() {
 
 export default function CustomerProfilePage() {
   return (
-    <Suspense fallback={<PageSkeleton />}>
+    <Suspense fallback={<PortalContentSkeleton />}>
       <CustomerProfileContent />
     </Suspense>
   )

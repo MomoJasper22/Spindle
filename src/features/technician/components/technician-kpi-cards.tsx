@@ -52,21 +52,21 @@ export function TechnicianKpiCards({
       {cards.map((item) => {
         const Icon = item.icon
         return (
-          <Card key={item.label}>
-            <CardContent className="p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1 min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {item.label}
-                  </p>
+          <Card key={item.label} className="h-full">
+            <CardContent standalone className="flex h-full items-start justify-between gap-3">
+              <div className="flex h-full min-w-0 flex-col justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {item.label}
+                </p>
+                <div className="space-y-1">
                   <p className="font-heading text-2xl font-bold text-foreground tabular-nums truncate">
                     {item.value}
                   </p>
                   <p className="text-xs text-muted-foreground">{item.sub}</p>
                 </div>
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${item.accent}`}>
-                  <Icon className="h-5 w-5" aria-hidden="true" />
-                </div>
+              </div>
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${item.accent}`}>
+                <Icon className="h-5 w-5" aria-hidden="true" />
               </div>
             </CardContent>
           </Card>

@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, LogOut, Save, ShieldCheck } from 'lucide-react'
+import { Loader2, Lock, LogOut, Save, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,16 +21,17 @@ import { ProfilePhotoField } from '@/components/shared/profile-photo-field'
 import { signOutAction } from '@/features/auth/actions/auth-actions'
 import { ChangePasswordCard } from '@/features/auth/components/change-password-card'
 import type { AuthenticatedUserProfile } from '@/lib/auth/session'
-import { PH_PROVINCES, SERVICE_BRANCHES } from '@/lib/constants'
-import { formatFullName } from '@/lib/formatters'
+import { ADMIN_FEATURES, PH_PROVINCES, SERVICE_BRANCHES } from '@/lib/constants'
+import { formatAddress, formatFullName, formatPHPhone } from '@/lib/formatters'
 import { updateAdminProfileAction } from '../actions/admin-actions'
 import { adminProfileSchema, type AdminProfileInput } from '../schemas/admin-schemas'
 
 interface AdminProfileFormsProps {
   profile: AuthenticatedUserProfile
+  canEditProfileDetails: boolean
 }
 
-export function AdminProfileForms({ profile }: AdminProfileFormsProps) {
+export function AdminProfileForms({ profile, canEditProfileDetails }: AdminProfileFormsProps) {
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
     null
   )
@@ -90,7 +91,9 @@ export function AdminProfileForms({ profile }: AdminProfileFormsProps) {
             </div>
           </div>
           <CardDescription>
-            Manage your operations contact profile, primary Philippine branch hub, and office address.
+            {canEditProfileDetails
+              ? 'Manage your operations contact profile, primary Philippine branch hub, and office address.'
+              : 'Your administrator account has limited access. You can update your profile photo and password, while profile and branch details are managed by a full administrator.'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -102,7 +105,67 @@ export function AdminProfileForms({ profile }: AdminProfileFormsProps) {
 
           {feedback && <FormBanner type={feedback.type} message={feedback.message} />}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+          {!canEditProfileDetails ? (
+            <div className="space-y-4 rounded-xl border border-border bg-muted/30 p-4 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+                <div className="flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  <h3 className="font-heading text-sm font-semibold text-foreground">
+                    Administrator Profile &amp; Managed Branch
+                  </h3>
+                </div>
+                <Badge variant="slate">Read-only (Limited Admin)</Badge>
+              </div>
+
+              <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                <div>
+                  <dt className="text-xs font-medium text-muted-foreground">Full Name</dt>
+                  <dd className="mt-0.5 font-semibold text-foreground">{formatFullName(profile)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-muted-foreground">Email</dt>
+                  <dd className="mt-0.5 font-medium text-foreground">{profile.email}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-muted-foreground">Phone (+63)</dt>
+                  <dd className="mt-0.5 font-medium text-foreground">{formatPHPhone(profile.phone)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-muted-foreground">Primary Managed Branch</dt>
+                  <dd className="mt-0.5 font-medium text-foreground">
+                    {profile.branch_location || 'Unassigned'}
+                  </dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-xs font-medium text-muted-foreground">Office Address</dt>
+                  <dd className="mt-0.5 text-foreground">
+                    {formatAddress({
+                      street: profile.address_street,
+                      barangay: profile.address_barangay,
+                      city: profile.address_city,
+                      province: profile.address_province,
+                      zip: profile.address_zip_code,
+                    })}
+                  </dd>
+                </div>
+              </dl>
+
+              <div className="space-y-2 border-t border-border pt-3">
+                <p className="text-xs font-medium text-muted-foreground">Permitted Admin Features</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(profile.admin_permissions ?? []).map((key) => {
+                    const feature = ADMIN_FEATURES.find((f) => f.key === key)
+                    return (
+                      <Badge key={key} variant="outline">
+                        {feature?.label ?? key}
+                      </Badge>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-1.5">
                 <Label htmlFor="adm-p-first">First name</Label>
@@ -198,6 +261,7 @@ export function AdminProfileForms({ profile }: AdminProfileFormsProps) {
               <span>Save Administrator Profile</span>
             </Button>
           </form>
+          )}
         </CardContent>
       </Card>
 

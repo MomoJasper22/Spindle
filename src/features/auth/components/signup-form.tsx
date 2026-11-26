@@ -148,7 +148,7 @@ export function SignupForm() {
               type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
               placeholder="Create a strong password"
-              className="pr-11"
+              className="pr-12"
               aria-invalid={Boolean(errors.password)}
               aria-describedby={
                 errors.password
@@ -161,7 +161,7 @@ export function SignupForm() {
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               {showPassword ? (
                 <EyeOff className="h-4 w-4" aria-hidden="true" />
@@ -187,7 +187,7 @@ export function SignupForm() {
               type={showConfirmPassword ? 'text' : 'password'}
               autoComplete="new-password"
               placeholder="Re-enter your password"
-              className="pr-11"
+              className="pr-12"
               aria-invalid={Boolean(errors.confirm_password)}
               aria-describedby={errors.confirm_password ? 'signup-confirm-error' : undefined}
               {...register('confirm_password')}
@@ -196,7 +196,7 @@ export function SignupForm() {
               type="button"
               onClick={() => setShowConfirmPassword((prev) => !prev)}
               aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               {showConfirmPassword ? (
                 <EyeOff className="h-4 w-4" aria-hidden="true" />
@@ -229,7 +229,10 @@ export function SignupForm() {
 
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{' '}
-        <Link href="/login" className="font-semibold text-primary hover:underline">
+        <Link
+          href="/login"
+          className="inline-flex min-h-[44px] items-center font-semibold text-primary hover:underline"
+        >
           Sign in
         </Link>
       </p>

@@ -1,5 +1,6 @@
 'use server'
 
+import { updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getRoleHomePath, requireAuthenticatedUser } from '@/lib/auth/session'
@@ -24,10 +25,10 @@ export async function completeOnboardingAction(
   }
 
   if (profile.role === 'technician') {
-    if (!parsed.data.specializations || parsed.data.specializations.length === 0) {
+    if (!parsed.data.nickname?.trim() || parsed.data.nickname.trim().length < 2) {
       return {
         success: false,
-        error: 'Select at least one appliance specialization.',
+        error: 'Enter a nickname (at least 2 characters) for your field profile.',
       }
     }
     if (!parsed.data.certification_no?.trim()) {
@@ -51,6 +52,7 @@ export async function completeOnboardingAction(
       address_city: parsed.data.address_city,
       address_province: parsed.data.address_province,
       address_zip_code: parsed.data.address_zip_code,
+      ...(profile.role === 'technician' ? { nickname: parsed.data.nickname?.trim() || null } : {}),
       is_onboarded: true,
     })
     .eq('user_id', profile.user_id)
@@ -68,8 +70,8 @@ export async function completeOnboardingAction(
       .upsert(
         {
           technician_id: profile.user_id,
-          specializations: parsed.data.specializations ?? [],
           certification_no: parsed.data.certification_no?.trim() || null,
+          proposed_specializations: parsed.data.proposed_specializations ?? [],
         },
         { onConflict: 'technician_id' }
       )
@@ -90,5 +92,8 @@ export async function completeOnboardingAction(
     description: `${profile.first_name} ${profile.last_name} completed workspace onboarding (${parsed.data.branch_location}).`,
   })
 
-  redirect(getRoleHomePath(profile.role))
+  updateTag('user-profile')
+  updateTag('admin-users')
+  updateTag('admin-tech-profiles')
+  redirect(getRoleHomePath(profile.role, profile))
 }

@@ -212,7 +212,7 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
               key={item.appliance_id}
               className="transition-colors hover:border-primary/40"
             >
-              <CardContent className="p-5 flex h-full flex-col justify-between gap-4">
+              <CardContent standalone className="flex h-full flex-col justify-between gap-4">
                 <div className="space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div>

@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { requireRole } from '@/lib/auth/session'
 import { TechnicianProfileForms } from '@/features/technician/components/technician-profile-forms'
-import { PageSkeleton } from '@/components/shared/page-skeleton'
+import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
 import { Badge } from '@/components/ui/badge'
 
 export const metadata: Metadata = {
@@ -20,7 +20,7 @@ async function TechnicianProfileContent() {
             Technician Profile &amp; Credentials
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Configure your Philippine branch, appliance specializations, TESDA certification, and daily job capacity.
+            Update your profile photo, display nickname, and password. Field credentials and specializations are managed by Admin.
           </p>
         </div>
         <Badge variant="secondary" className="font-mono">
@@ -35,7 +35,7 @@ async function TechnicianProfileContent() {
 
 export default function TechnicianProfilePage() {
   return (
-    <Suspense fallback={<PageSkeleton />}>
+    <Suspense fallback={<PortalContentSkeleton />}>
       <TechnicianProfileContent />
     </Suspense>
   )

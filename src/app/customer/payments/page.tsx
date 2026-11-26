@@ -1,10 +1,9 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { requireRole } from '@/lib/auth/session'
-import { createClient } from '@/lib/supabase/server'
+import { getCustomerPayments, getCustomerRepairs } from '@/lib/data/portal-data'
 import { PaymentsPanel } from '@/features/customer/components/payments-panel'
-import { PageSkeleton } from '@/components/shared/page-skeleton'
-import type { PaymentDetailView, RepairDetailView } from '@/types/database'
+import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
 
 export const metadata: Metadata = {
   title: 'My Payments',
@@ -16,25 +15,16 @@ async function CustomerPaymentsContent({
   searchParams: Promise<{ ticket?: string }>
 }) {
   const [profile, params] = await Promise.all([requireRole('customer'), searchParams])
-  const supabase = await createClient()
 
-  const [repairsRes, paymentsRes] = await Promise.all([
-    supabase
-      .from('v_repair_details')
-      .select('*')
-      .eq('customer_id', profile.user_id)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('v_payment_details')
-      .select('*')
-      .eq('customer_id', profile.user_id)
-      .order('created_at', { ascending: false }),
+  const [repairs, payments] = await Promise.all([
+    getCustomerRepairs(profile.user_id),
+    getCustomerPayments(profile.user_id),
   ])
 
   return (
     <PaymentsPanel
-      repairs={(repairsRes.data ?? []) as RepairDetailView[]}
-      payments={(paymentsRes.data ?? []) as PaymentDetailView[]}
+      repairs={repairs}
+      payments={payments}
       defaultTicketId={params.ticket}
     />
   )
@@ -46,7 +36,7 @@ export default function CustomerPaymentsPage({
   searchParams: Promise<{ ticket?: string }>
 }) {
   return (
-    <Suspense fallback={<PageSkeleton />}>
+    <Suspense fallback={<PortalContentSkeleton />}>
       <CustomerPaymentsContent searchParams={searchParams} />
     </Suspense>
   )

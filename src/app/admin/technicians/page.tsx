@@ -1,33 +1,31 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
-import { requireRole } from '@/lib/auth/session'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdminFeature } from '@/lib/auth/session'
+import {
+  getAdminAppointments,
+  getAdminPayments,
+  getAdminRepairs,
+  getAdminStatusLogs,
+  getAdminTechProfiles,
+  getAdminUsers,
+} from '@/lib/data/portal-data'
 import { TechniciansPanel } from '@/features/admin/components/technicians-panel'
-import { PageSkeleton } from '@/components/shared/page-skeleton'
-import type {
-  RepairDetailView,
-  TechnicianProfileRow,
-  UserWithRole,
-} from '@/types/database'
+import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
 
 export const metadata: Metadata = {
   title: 'Technician Roster',
 }
 
 async function AdminTechniciansContent() {
-  await requireRole('admin')
-  const supabase = await createClient()
+  await requireAdminFeature('technicians')
 
-  const [usersRes, techProfilesRes, repairsRes] = await Promise.all([
-    supabase
-      .from('users')
-      .select('*, user_types(type_name, description)')
-      .order('created_at', { ascending: false }),
-    supabase.from('technician_profiles').select('*'),
-    supabase
-      .from('v_repair_details')
-      .select('*')
-      .order('created_at', { ascending: false }),
+  const [users, techProfiles, repairs, appointments, payments, statusLogs] = await Promise.all([
+    getAdminUsers(),
+    getAdminTechProfiles(),
+    getAdminRepairs(),
+    getAdminAppointments(),
+    getAdminPayments(),
+    getAdminStatusLogs(500),
   ])
 
   return (
@@ -37,14 +35,17 @@ async function AdminTechniciansContent() {
           Technician Roster
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Monitor field workload, TESDA credentials, specializations, and branch dispatch availability.
+          Monitor field workload, click a technician to inspect productivity, and assign specializations or daily job limits.
         </p>
       </div>
 
       <TechniciansPanel
-        users={(usersRes.data ?? []) as UserWithRole[]}
-        techProfiles={(techProfilesRes.data ?? []) as TechnicianProfileRow[]}
-        repairs={(repairsRes.data ?? []) as RepairDetailView[]}
+        users={users}
+        techProfiles={techProfiles}
+        repairs={repairs}
+        appointments={appointments}
+        payments={payments}
+        statusLogs={statusLogs}
       />
     </div>
   )
@@ -52,7 +53,7 @@ async function AdminTechniciansContent() {
 
 export default function AdminTechniciansPage() {
   return (
-    <Suspense fallback={<PageSkeleton />}>
+    <Suspense fallback={<PortalContentSkeleton />}>
       <AdminTechniciansContent />
     </Suspense>
   )

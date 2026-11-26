@@ -1,51 +1,32 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
-import { requireRole } from '@/lib/auth/session'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdminFeature } from '@/lib/auth/session'
+import {
+  getAdminActivityLogs,
+  getAdminAppliances,
+  getAdminPayments,
+  getAdminRepairs,
+  getAdminTechProfiles,
+  getAdminUsers,
+} from '@/lib/data/portal-data'
 import { ExecutiveSummaryPanel } from '@/features/admin/components/executive-summary-panel'
-import { PageSkeleton } from '@/components/shared/page-skeleton'
-import type {
-  ActivityLogRow,
-  CustomerApplianceRow,
-  PaymentDetailView,
-  RepairDetailView,
-  TechnicianProfileRow,
-  UserWithRole,
-} from '@/types/database'
+import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
 
 export const metadata: Metadata = {
   title: 'Admin Overview',
 }
 
 async function AdminDashboardContent() {
-  const profile = await requireRole('admin')
-  const supabase = await createClient()
+  const profile = await requireAdminFeature('dashboard')
 
-  const [usersRes, techProfilesRes, appliancesRes, repairsRes, paymentsRes, logsRes] =
-    await Promise.all([
-      supabase
-        .from('users')
-        .select('*, user_types(type_name, description)')
-        .order('created_at', { ascending: false }),
-      supabase.from('technician_profiles').select('*'),
-      supabase
-        .from('customer_appliances')
-        .select('*')
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('v_repair_details')
-        .select('*')
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('v_payment_details')
-        .select('*')
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('activity_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(20),
-    ])
+  const [users, techProfiles, appliances, repairs, payments, activityLogs] = await Promise.all([
+    getAdminUsers(),
+    getAdminTechProfiles(),
+    getAdminAppliances(),
+    getAdminRepairs(),
+    getAdminPayments(),
+    getAdminActivityLogs(20),
+  ])
 
   return (
     <div className="space-y-6">
@@ -59,12 +40,12 @@ async function AdminDashboardContent() {
       </div>
 
       <ExecutiveSummaryPanel
-        users={(usersRes.data ?? []) as UserWithRole[]}
-        techProfiles={(techProfilesRes.data ?? []) as TechnicianProfileRow[]}
-        appliances={(appliancesRes.data ?? []) as CustomerApplianceRow[]}
-        repairs={(repairsRes.data ?? []) as RepairDetailView[]}
-        payments={(paymentsRes.data ?? []) as PaymentDetailView[]}
-        activityLogs={(logsRes.data ?? []) as ActivityLogRow[]}
+        users={users}
+        techProfiles={techProfiles}
+        appliances={appliances}
+        repairs={repairs}
+        payments={payments}
+        activityLogs={activityLogs}
       />
     </div>
   )
@@ -72,7 +53,7 @@ async function AdminDashboardContent() {
 
 export default function AdminDashboardPage() {
   return (
-    <Suspense fallback={<PageSkeleton />}>
+    <Suspense fallback={<PortalContentSkeleton />}>
       <AdminDashboardContent />
     </Suspense>
   )

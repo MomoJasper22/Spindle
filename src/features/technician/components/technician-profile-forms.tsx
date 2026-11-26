@@ -1,39 +1,25 @@
 'use client'
 
 import * as React from 'react'
-import { useForm, Controller, useWatch } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, LogOut, Save, Wrench } from 'lucide-react'
+import { Lock, Loader2, LogOut, Save, Wrench } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { FormBanner } from '@/components/shared/form-banner'
 import { ProfilePhotoField } from '@/components/shared/profile-photo-field'
 import { signOutAction } from '@/features/auth/actions/auth-actions'
 import { ChangePasswordCard } from '@/features/auth/components/change-password-card'
 import type { AuthenticatedUserProfile } from '@/lib/auth/session'
-import {
-  APPLIANCE_CATEGORIES,
-  PH_PROVINCES,
-  SERVICE_BRANCHES,
-  TECH_AVAILABILITY_STATUSES,
-} from '@/lib/constants'
-import { formatFullName, humanizeLabel } from '@/lib/formatters'
-import { cn } from '@/lib/utils'
+import { formatAddress, formatFullName, formatPHPhone } from '@/lib/formatters'
 import type { TechnicianProfileRow } from '@/types/database'
-import { updateTechnicianProfileAction } from '../actions/technician-actions'
+import { updateTechnicianNicknameAction } from '../actions/technician-actions'
 import {
-  technicianProfileSchema,
-  type TechnicianProfileInput,
+  technicianNicknameSchema,
+  type TechnicianNicknameInput,
 } from '../schemas/technician-schemas'
 
 interface TechnicianProfileFormsProps {
@@ -49,46 +35,20 @@ export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfi
 
   const {
     register,
-    control,
     handleSubmit,
-    setValue,
     formState: { errors },
-  } = useForm<TechnicianProfileInput>({
-    resolver: zodResolver(technicianProfileSchema),
+  } = useForm<TechnicianNicknameInput>({
+    resolver: zodResolver(technicianNicknameSchema),
     mode: 'onBlur',
     defaultValues: {
-      first_name: profile.first_name,
-      middle_name: profile.middle_name ?? '',
-      last_name: profile.last_name,
-      phone: profile.phone ?? '',
-      branch_location:
-        (profile.branch_location as TechnicianProfileInput['branch_location']) ??
-        SERVICE_BRANCHES[0],
-      address_street: profile.address_street ?? '',
-      address_barangay: profile.address_barangay ?? '',
-      address_city: profile.address_city ?? '',
-      address_province: profile.address_province ?? 'Metro Manila',
-      address_zip_code: profile.address_zip_code ?? '',
-      specializations: techProfile?.specializations ?? [],
-      certification_no: techProfile?.certification_no ?? '',
-      max_daily_jobs: techProfile?.max_daily_jobs ?? 4,
-      availability_status: techProfile?.availability_status ?? 'available',
+      nickname: profile.nickname ?? '',
     },
   })
 
-  const selectedSpecs = useWatch({ control, name: 'specializations' }) ?? []
-
-  function toggleSpec(cat: string, checked: boolean) {
-    const next = checked
-      ? [...selectedSpecs, cat]
-      : selectedSpecs.filter((item) => item !== cat)
-    setValue('specializations', next, { shouldValidate: true })
-  }
-
-  function onSubmit(values: TechnicianProfileInput) {
+  function onSubmit(values: TechnicianNicknameInput) {
     setFeedback(null)
     startTransition(async () => {
-      const result = await updateTechnicianProfileAction(values)
+      const result = await updateTechnicianNicknameAction(values)
       if (result.success) {
         setFeedback({ type: 'success', message: result.message })
       } else {
@@ -96,6 +56,16 @@ export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfi
       }
     })
   }
+
+  const assignedSpecializations = techProfile?.specializations ?? []
+  const proposedSpecializations = techProfile?.proposed_specializations ?? []
+  const fullAddress = formatAddress({
+    street: profile.address_street,
+    barangay: profile.address_barangay,
+    city: profile.address_city,
+    province: profile.address_province,
+    zip: profile.address_zip_code,
+  })
 
   return (
     <div className="space-y-6">
@@ -106,7 +76,7 @@ export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfi
             <span>Technician Identity &amp; Field Credentials</span>
           </CardTitle>
           <CardDescription>
-            Update your contact details, branch assignment, TESDA certification, daily job limit, and availability.
+            Update your profile photo and nickname. Personal details, assigned branch, specializations, and daily job capacity are managed by your administrator.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -118,193 +88,123 @@ export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfi
 
           {feedback && <FormBanner type={feedback.type} message={feedback.message} />}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="tech-first">First name</Label>
-                <Input id="tech-first" {...register('first_name')} />
-                {errors.first_name && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {errors.first_name.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="tech-middle">Middle name</Label>
-                <Input id="tech-middle" {...register('middle_name')} />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="tech-last">Last name</Label>
-                <Input id="tech-last" {...register('last_name')} />
-                {errors.last_name && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {errors.last_name.message}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="tech-email">Email</Label>
-                <Input id="tech-email" value={profile.email} readOnly className="bg-muted" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="tech-phone">Phone (+63)</Label>
-                <Input id="tech-phone" type="tel" {...register('phone')} />
-                {errors.phone && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {errors.phone.message}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="tech-branch">Assigned Branch</Label>
-                <Controller
-                  name="branch_location"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="tech-branch">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SERVICE_BRANCHES.map((b) => (
-                          <SelectItem key={b} value={b}>
-                            {b}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="tech-street">Philippine Base Street Address</Label>
-              <Input id="tech-street" {...register('address_street')} />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="tech-barangay">Barangay</Label>
-                <Input id="tech-barangay" {...register('address_barangay')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="tech-city">City / Municipality</Label>
-                <Input id="tech-city" {...register('address_city')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="tech-province">Province</Label>
-                <Input id="tech-province" list="tech-provinces" {...register('address_province')} />
-                <datalist id="tech-provinces">
-                  {PH_PROVINCES.map((p) => (
-                    <option key={p} value={p} />
-                  ))}
-                </datalist>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="tech-zip">4-Digit ZIP</Label>
-                <Input id="tech-zip" maxLength={4} {...register('address_zip_code')} />
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3 border-t border-border pt-5">
-              <div className="space-y-1.5">
-                <Label htmlFor="tech-cert">TESDA / Certification No.</Label>
-                <Input id="tech-cert" {...register('certification_no')} />
-                {errors.certification_no && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {errors.certification_no.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="tech-capacity">Max Daily Jobs (1–15)</Label>
+          {/* Editable Nickname Form (Only freely editable profile detail) */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 rounded-xl border border-border bg-muted/30 p-4" noValidate>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex-1 space-y-1.5">
+                <Label htmlFor="tech-nickname">Display Nickname</Label>
+                <p id="tech-nickname-hint" className="text-xs text-muted-foreground">
+                  This is the only personal detail you can freely edit (e.g. Kuya Jun, Tech Rico).
+                </p>
                 <Input
-                  id="tech-capacity"
-                  type="number"
-                  min={1}
-                  max={15}
-                  {...register('max_daily_jobs', { valueAsNumber: true })}
+                  id="tech-nickname"
+                  placeholder="Enter a nickname or preferred name"
+                  aria-describedby={
+                    errors.nickname ? 'tech-nickname-hint tech-nickname-error' : 'tech-nickname-hint'
+                  }
+                  {...register('nickname')}
                 />
-                {errors.max_daily_jobs && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {errors.max_daily_jobs.message}
+                {errors.nickname && (
+                  <p id="tech-nickname-error" role="alert" className="text-xs text-destructive">
+                    {errors.nickname.message}
                   </p>
                 )}
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="tech-availability">Availability Status</Label>
-                <Controller
-                  name="availability_status"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="tech-availability">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TECH_AVAILABILITY_STATUSES.map((status) => (
-                          <SelectItem key={status} value={status}>
-                            {humanizeLabel(status)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
+              <Button type="submit" disabled={isPending} className="w-full sm:w-auto shrink-0">
+                {isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Save className="h-4 w-4" aria-hidden="true" />
+                )}
+                <span>Save Nickname</span>
+              </Button>
+            </div>
+          </form>
+
+          {/* Read-only Admin-Managed Details */}
+          <div className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <Lock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                <h3 className="font-heading text-sm font-semibold text-foreground">
+                  Admin-Managed Personal &amp; Dispatch Details
+                </h3>
               </div>
+              <Badge variant="slate">Read-only</Badge>
             </div>
 
-            <div className="space-y-2">
-              <Label>Appliance Specializations</Label>
-              <div className="grid gap-2.5 sm:grid-cols-3">
-                {APPLIANCE_CATEGORIES.map((cat) => {
-                  const checked = selectedSpecs.includes(cat)
-                  const id = `tech-spec-${cat.toLowerCase().replace(/[^a-z0-9]/g, '-')}`
-                  return (
-                    <label
-                      key={cat}
-                      htmlFor={id}
-                      className={cn(
-                        'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium cursor-pointer transition-colors',
-                        checked
-                          ? 'border-primary bg-primary-tint/70 text-foreground'
-                          : 'border-border bg-card hover:bg-muted/50'
-                      )}
-                    >
-                      <Checkbox
-                        id={id}
-                        checked={checked}
-                        onCheckedChange={(v) => toggleSpec(cat, v === true)}
-                      />
-                      <span>{cat}</span>
-                    </label>
-                  )
-                })}
+            <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <dt className="text-xs font-medium text-muted-foreground">Full Name</dt>
+                <dd className="mt-0.5 font-semibold text-foreground">{formatFullName(profile)}</dd>
               </div>
-              {errors.specializations && (
-                <p role="alert" className="text-xs text-destructive">
-                  {errors.specializations.message}
+              <div>
+                <dt className="text-xs font-medium text-muted-foreground">Email Address</dt>
+                <dd className="mt-0.5 font-medium text-foreground">{profile.email}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium text-muted-foreground">Phone (+63)</dt>
+                <dd className="mt-0.5 font-medium text-foreground">{formatPHPhone(profile.phone)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium text-muted-foreground">Assigned Branch</dt>
+                <dd className="mt-0.5 font-medium text-foreground">
+                  {profile.branch_location || 'Unassigned'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium text-muted-foreground">TESDA / Certification No.</dt>
+                <dd className="mt-0.5 font-mono text-xs font-semibold text-foreground">
+                  {techProfile?.certification_no || 'Not on file'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium text-muted-foreground">Max Daily Jobs (1–15)</dt>
+                <dd className="mt-0.5 font-semibold tabular-nums text-foreground">
+                  {techProfile?.max_daily_jobs ?? 4} jobs / day
+                </dd>
+              </div>
+              <div className="sm:col-span-2 lg:col-span-3">
+                <dt className="text-xs font-medium text-muted-foreground">Base Address</dt>
+                <dd className="mt-0.5 text-foreground">{fullAddress}</dd>
+              </div>
+            </dl>
+
+            <div className="space-y-2 border-t border-border pt-3">
+              <p className="text-xs font-medium text-muted-foreground">
+                Assigned Appliance Specializations
+              </p>
+              {assignedSpecializations.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {assignedSpecializations.map((spec) => (
+                    <Badge key={spec} variant="outline">
+                      {spec}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Pending administrator assignment.
                 </p>
               )}
-            </div>
 
-            <Button type="submit" disabled={isPending}>
-              {isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Save className="h-4 w-4" aria-hidden="true" />
+              {proposedSpecializations.length > 0 && (
+                <div className="pt-2">
+                  <p className="text-xs font-medium text-amber-ink">
+                    Proposed Specializations (Awaiting Admin Review)
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {proposedSpecializations.map((spec) => (
+                      <Badge key={spec} variant="amber">
+                        {spec}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               )}
-              <span>Save Technician Profile</span>
-            </Button>
-          </form>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

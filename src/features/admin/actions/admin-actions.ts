@@ -1,10 +1,21 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireRole } from '@/lib/auth/session'
-import { USER_TYPE_IDS, type AppointmentStatus, type RegistrationStatus, type TimeSlot } from '@/lib/constants'
+import {
+  hasAdminPermission,
+  isFullAdmin,
+  requireAdminFeature,
+  requireRole,
+} from '@/lib/auth/session'
+import {
+  USER_TYPE_IDS,
+  type AdminFeatureKey,
+  type AppointmentStatus,
+  type RegistrationStatus,
+  type TimeSlot,
+} from '@/lib/constants'
 import { normalizePHPhone } from '@/lib/formatters'
 import {
   adminApplianceSchema,
@@ -32,18 +43,85 @@ export type AdminActionResult =
   | { success: false; error: string }
 
 function revalidateAdminPaths() {
+  updateTag('user-profile')
+  updateTag('admin-users')
+  updateTag('admin-tech-profiles')
+  updateTag('admin-repairs')
+  updateTag('admin-appointments')
+  updateTag('admin-payments')
+  updateTag('admin-appliances')
+  updateTag('admin-status-logs')
+  updateTag('admin-activity')
+  updateTag('technician-repairs')
+  updateTag('technician-appointments')
+  updateTag('technician-payments')
+  updateTag('technician-activity')
+  updateTag('customer-appliances')
+  updateTag('customer-repairs')
+  updateTag('customer-appointments')
+  updateTag('customer-payments')
+  updateTag('customer-activity')
   revalidatePath('/admin', 'layout')
   revalidatePath('/technician', 'layout')
   revalidatePath('/customer', 'layout')
 }
 
+function validateAdminPermissionsInput(
+  actingAdmin: { role: 'customer' | 'technician' | 'admin'; admin_permissions: AdminFeatureKey[] | null },
+  targetRole: string,
+  requestedPermissions: AdminFeatureKey[] | null | undefined
+): { ok: true; value: AdminFeatureKey[] | null } | { ok: false; error: string } {
+  if (targetRole !== 'admin') {
+    return { ok: true, value: null }
+  }
+
+  if (requestedPermissions === null || requestedPermissions === undefined) {
+    if (!isFullAdmin(actingAdmin)) {
+      return {
+        ok: false,
+        error: 'Only full-access administrators can grant unrestricted admin access.',
+      }
+    }
+    return { ok: true, value: null }
+  }
+
+  if (requestedPermissions.length === 0) {
+    return {
+      ok: false,
+      error: 'Select at least one admin feature when assigning limited admin access.',
+    }
+  }
+
+  const deduped = Array.from(new Set(requestedPermissions))
+  if (!isFullAdmin(actingAdmin)) {
+    const disallowed = deduped.filter((perm) => !hasAdminPermission(actingAdmin, perm))
+    if (disallowed.length > 0) {
+      return {
+        ok: false,
+        error: 'You cannot grant admin features that your own account does not have access to.',
+      }
+    }
+  }
+
+  return { ok: true, value: deduped }
+}
+
 export async function adminCreateUserAction(
   input: AdminCreateUserInput
 ): Promise<AdminActionResult> {
-  const adminProfile = await requireRole('admin')
+  const adminProfile = await requireAdminFeature('users')
   const parsed = adminCreateUserSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid user details.' }
+  }
+
+  const permCheck = validateAdminPermissionsInput(
+    adminProfile,
+    parsed.data.role,
+    parsed.data.admin_permissions
+  )
+  if (!permCheck.ok) {
+    return { success: false, error: permCheck.error }
   }
 
   const admin = createAdminClient()
@@ -82,6 +160,9 @@ export async function adminCreateUserAction(
     return { success: false, error: 'Failed to hash account password.' }
   }
 
+  // Newly created technicians complete onboarding (credentials, nickname, profile photo) on first login.
+  const initialOnboarded = parsed.data.role !== 'technician'
+
   const { data: insertedUser, error: insertErr } = await admin
     .from('users')
     .insert({
@@ -94,12 +175,13 @@ export async function adminCreateUserAction(
       phone: normalizePHPhone(parsed.data.phone),
       user_type_id: USER_TYPE_IDS[parsed.data.role],
       branch_location: parsed.data.branch_location,
+      admin_permissions: permCheck.value,
       address_street: parsed.data.address_street,
       address_barangay: parsed.data.address_barangay,
       address_city: parsed.data.address_city,
       address_province: parsed.data.address_province,
       address_zip_code: parsed.data.address_zip_code,
-      is_onboarded: true,
+      is_onboarded: initialOnboarded,
       is_active: true,
     })
     .select('user_id')
@@ -138,14 +220,32 @@ export async function adminCreateUserAction(
 export async function adminUpdateUserAction(
   input: AdminUpdateUserInput
 ): Promise<AdminActionResult> {
-  const adminProfile = await requireRole('admin')
+  const adminProfile = await requireAdminFeature('users')
   const parsed = adminUpdateUserSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid user fields.' }
   }
 
-  if (parsed.data.user_id === adminProfile.user_id && !parsed.data.is_active) {
+  const isSelf = parsed.data.user_id === adminProfile.user_id
+
+  if (isSelf && !parsed.data.is_active) {
     return { success: false, error: 'You cannot deactivate your own active administrator session.' }
+  }
+
+  if (isSelf && parsed.data.role !== 'admin') {
+    return { success: false, error: 'You cannot change your own administrator role.' }
+  }
+
+  const permCheck = isSelf
+    ? { ok: true as const, value: adminProfile.admin_permissions }
+    : validateAdminPermissionsInput(
+        adminProfile,
+        parsed.data.role,
+        parsed.data.admin_permissions
+      )
+
+  if (!permCheck.ok) {
+    return { success: false, error: permCheck.error }
   }
 
   const supabase = await createClient()
@@ -158,6 +258,7 @@ export async function adminUpdateUserAction(
       user_type_id: USER_TYPE_IDS[parsed.data.role],
       phone: normalizePHPhone(parsed.data.phone),
       branch_location: parsed.data.branch_location,
+      admin_permissions: permCheck.value,
       address_street: parsed.data.address_street,
       address_barangay: parsed.data.address_barangay,
       address_city: parsed.data.address_city,
@@ -197,6 +298,13 @@ export async function adminToggleUserActiveAction(
   nextActive: boolean
 ): Promise<AdminActionResult> {
   const adminProfile = await requireRole('admin')
+  if (
+    !hasAdminPermission(adminProfile, 'users') &&
+    !hasAdminPermission(adminProfile, 'technicians')
+  ) {
+    return { success: false, error: 'You do not have permission to change account activation.' }
+  }
+
   if (userId === adminProfile.user_id && !nextActive) {
     return { success: false, error: 'Cannot deactivate your own administrator account.' }
   }
@@ -225,7 +333,7 @@ export async function adminToggleUserActiveAction(
 }
 
 export async function adminDeleteUserAction(userId: string): Promise<AdminActionResult> {
-  const adminProfile = await requireRole('admin')
+  const adminProfile = await requireAdminFeature('users')
   if (userId === adminProfile.user_id) {
     return { success: false, error: 'You cannot delete your own active account.' }
   }
@@ -267,13 +375,20 @@ export async function adminDeleteUserAction(userId: string): Promise<AdminAction
 export async function adminUpdateTechProfileAction(
   input: AdminTechProfileInput
 ): Promise<AdminActionResult> {
-  const adminProfile = await requireRole('admin')
+  const adminProfile = await requireAdminFeature('technicians')
   const parsed = adminTechProfileSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid technician fields.' }
   }
 
   const supabase = await createClient()
+
+  const { data: existingTp } = await supabase
+    .from('technician_profiles')
+    .select('availability_status')
+    .eq('technician_id', parsed.data.technician_id)
+    .maybeSingle()
+
   const { error: userErr } = await supabase
     .from('users')
     .update({ branch_location: parsed.data.branch_location })
@@ -285,6 +400,7 @@ export async function adminUpdateTechProfileAction(
     {
       technician_id: parsed.data.technician_id,
       specializations: parsed.data.specializations,
+      proposed_specializations: [],
       certification_no: parsed.data.certification_no,
       availability_status: parsed.data.availability_status,
       max_daily_jobs: parsed.data.max_daily_jobs,
@@ -294,12 +410,21 @@ export async function adminUpdateTechProfileAction(
 
   if (tpErr) return { success: false, error: tpErr.message }
 
+  if (existingTp?.availability_status !== parsed.data.availability_status) {
+    await supabase.from('technician_status_logs').insert({
+      technician_id: parsed.data.technician_id,
+      previous_status: existingTp?.availability_status ?? null,
+      new_status: parsed.data.availability_status,
+      changed_by: adminProfile.user_id,
+    })
+  }
+
   await supabase.from('activity_logs').insert({
     actor_id: adminProfile.user_id,
     entity_type: 'technician',
     entity_id: parsed.data.technician_id,
     action: 'technician_updated_by_admin',
-    description: `Admin updated technician ${parsed.data.technician_id} (${parsed.data.branch_location}, ${parsed.data.availability_status}).`,
+    description: `Admin updated technician ${parsed.data.technician_id} (${parsed.data.branch_location}, ${parsed.data.availability_status}, max ${parsed.data.max_daily_jobs}/day).`,
   })
 
   revalidateAdminPaths()
@@ -309,7 +434,14 @@ export async function adminUpdateTechProfileAction(
 export async function adminAssignTechnicianAction(
   input: AdminAssignTechInput
 ): Promise<AdminActionResult> {
-  await requireRole('admin')
+  const profile = await requireRole('admin')
+  if (
+    !hasAdminPermission(profile, 'technicians') &&
+    !hasAdminPermission(profile, 'appointments')
+  ) {
+    return { success: false, error: 'You do not have permission to assign technicians.' }
+  }
+
   const parsed = adminAssignTechSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid assignment fields.' }
@@ -338,7 +470,7 @@ export async function adminUpsertApplianceAction(
   input: AdminApplianceInput,
   applianceId?: string
 ): Promise<AdminActionResult> {
-  const adminProfile = await requireRole('admin')
+  const adminProfile = await requireAdminFeature('appliances')
   const parsed = adminApplianceSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid appliance fields.' }
@@ -409,7 +541,7 @@ export async function adminSetApplianceStatusAction(
   applianceId: string,
   status: RegistrationStatus
 ): Promise<AdminActionResult> {
-  const adminProfile = await requireRole('admin')
+  const adminProfile = await requireAdminFeature('appliances')
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -432,7 +564,7 @@ export async function adminSetApplianceStatusAction(
 }
 
 export async function adminDeleteApplianceAction(applianceId: string): Promise<AdminActionResult> {
-  const adminProfile = await requireRole('admin')
+  const adminProfile = await requireAdminFeature('appliances')
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -462,7 +594,7 @@ export async function adminDeleteApplianceAction(applianceId: string): Promise<A
 export async function adminCreateRepairAction(
   input: AdminCreateRepairInput
 ): Promise<AdminActionResult> {
-  await requireRole('admin')
+  await requireAdminFeature('repairs')
   const parsed = adminCreateRepairSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid repair ticket fields.' }
@@ -494,7 +626,7 @@ export async function adminCreateRepairAction(
 export async function adminUpdateRepairAction(
   input: AdminUpdateRepairInput
 ): Promise<AdminActionResult> {
-  const adminProfile = await requireRole('admin')
+  const adminProfile = await requireAdminFeature('repairs')
   const parsed = adminUpdateRepairSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid repair update.' }
@@ -547,7 +679,7 @@ export async function adminUpdateAppointmentAction(input: {
   time_slot: TimeSlot
   remarks?: string
 }): Promise<AdminActionResult> {
-  const adminProfile = await requireRole('admin')
+  const adminProfile = await requireAdminFeature('appointments')
   const supabase = await createClient()
 
   const { data: apt, error: fetchErr } = await supabase
@@ -592,7 +724,7 @@ export async function adminVerifyPaymentAction(
   paymentId: string,
   remarks?: string
 ): Promise<AdminActionResult> {
-  await requireRole('admin')
+  await requireAdminFeature('payments')
   const supabase = await createClient()
 
   const { data, error } = await supabase.rpc('rpc_record_and_verify_payment', {
@@ -622,7 +754,7 @@ export async function adminVerifyPaymentAction(
 export async function adminRecordPaymentAction(
   input: AdminRecordPaymentInput
 ): Promise<AdminActionResult> {
-  await requireRole('admin')
+  await requireAdminFeature('payments')
   const parsed = adminRecordPaymentSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid payment data.' }
@@ -650,7 +782,7 @@ export async function adminCancelPaymentAction(
   paymentId: string,
   remarks?: string
 ): Promise<AdminActionResult> {
-  const adminProfile = await requireRole('admin')
+  const adminProfile = await requireAdminFeature('payments')
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -679,6 +811,14 @@ export async function updateAdminProfileAction(
   input: AdminProfileInput
 ): Promise<AdminActionResult> {
   const profile = await requireRole('admin')
+
+  if (!isFullAdmin(profile)) {
+    return {
+      success: false,
+      error: 'Limited administrators can only update their profile photo and password.',
+    }
+  }
+
   const parsed = adminProfileSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid profile data.' }

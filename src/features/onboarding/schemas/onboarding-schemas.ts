@@ -34,7 +34,13 @@ export const onboardingSchema = z.object({
     .string()
     .trim()
     .regex(/^\d{4}$/, 'Enter a valid 4-digit Philippine ZIP code.'),
-  specializations: z.array(z.string()).optional(),
+  nickname: z
+    .string()
+    .trim()
+    .max(60, 'Nickname cannot exceed 60 characters.')
+    .optional()
+    .or(z.literal('')),
+  proposed_specializations: z.array(z.string()).optional(),
   certification_no: z
     .string()
     .trim()

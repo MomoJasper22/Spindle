@@ -15,9 +15,9 @@ import {
 } from '@/components/ui/sheet'
 
 const LANDING_LINKS = [
+  { label: 'How It Works', href: '#how-it-works' },
   { label: 'Appliances', href: '#repair' },
   { label: 'Brands', href: '#brands' },
-  { label: 'How It Works', href: '#how-it-works' },
   { label: 'Service Areas', href: '#service-areas' },
 ] as const
 

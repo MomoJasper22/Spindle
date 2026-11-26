@@ -1,15 +1,14 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { requireRole } from '@/lib/auth/session'
-import { createClient } from '@/lib/supabase/server'
+import {
+  getCustomerAppliances,
+  getCustomerAppointments,
+  getCustomerRepairs,
+} from '@/lib/data/portal-data'
 import { formatAddress } from '@/lib/formatters'
 import { RepairsPanel } from '@/features/customer/components/repairs-panel'
-import { PageSkeleton } from '@/components/shared/page-skeleton'
-import type {
-  AppointmentDetailView,
-  CustomerApplianceRow,
-  RepairDetailView,
-} from '@/types/database'
+import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
 
 export const metadata: Metadata = {
   title: 'My Bookings',
@@ -21,24 +20,11 @@ async function CustomerBookingsContent({
   searchParams: Promise<{ book?: string; appliance?: string }>
 }) {
   const [profile, params] = await Promise.all([requireRole('customer'), searchParams])
-  const supabase = await createClient()
 
-  const [appliancesRes, repairsRes, appointmentsRes] = await Promise.all([
-    supabase
-      .from('customer_appliances')
-      .select('*')
-      .eq('customer_id', profile.user_id)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('v_repair_details')
-      .select('*')
-      .eq('customer_id', profile.user_id)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('v_appointment_details')
-      .select('*')
-      .eq('customer_id', profile.user_id)
-      .order('scheduled_date', { ascending: true }),
+  const [appliances, repairs, appointments] = await Promise.all([
+    getCustomerAppliances(profile.user_id),
+    getCustomerRepairs(profile.user_id),
+    getCustomerAppointments(profile.user_id),
   ])
 
   const defaultServiceAddress = formatAddress({
@@ -51,9 +37,9 @@ async function CustomerBookingsContent({
 
   return (
     <RepairsPanel
-      appliances={(appliancesRes.data ?? []) as CustomerApplianceRow[]}
-      repairs={(repairsRes.data ?? []) as RepairDetailView[]}
-      appointments={(appointmentsRes.data ?? []) as AppointmentDetailView[]}
+      appliances={appliances}
+      repairs={repairs}
+      appointments={appointments}
       defaultServiceAddress={defaultServiceAddress}
       defaultOpen={params.book === '1'}
       defaultApplianceId={params.appliance}
@@ -67,7 +53,7 @@ export default function CustomerBookingsPage({
   searchParams: Promise<{ book?: string; appliance?: string }>
 }) {
   return (
-    <Suspense fallback={<PageSkeleton />}>
+    <Suspense fallback={<PortalContentSkeleton />}>
       <CustomerBookingsContent searchParams={searchParams} />
     </Suspense>
   )

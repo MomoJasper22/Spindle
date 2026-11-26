@@ -125,6 +125,55 @@ export const USER_TYPE_IDS = {
 
 export type UserRole = keyof typeof USER_TYPE_IDS
 
+export const ADMIN_FEATURES = [
+  {
+    key: 'dashboard',
+    label: 'Executive Summary',
+    description: 'Operations KPIs, lifecycle distribution, and system activity log',
+    href: '/admin/dashboard',
+  },
+  {
+    key: 'repairs',
+    label: 'Repair Tickets',
+    description: 'Create walk-in tickets, update costs, and manage repair progress',
+    href: '/admin/repairs',
+  },
+  {
+    key: 'appointments',
+    label: 'Dispatch Board',
+    description: 'Schedule home visits, assign technicians, and lock time slots',
+    href: '/admin/appointments',
+  },
+  {
+    key: 'payments',
+    label: 'Payments Ledger',
+    description: 'Verify payments, record collections, and export payment CSVs',
+    href: '/admin/payments',
+  },
+  {
+    key: 'technicians',
+    label: 'Technicians Roster',
+    description: 'Assign specializations, daily job capacity, and review productivity',
+    href: '/admin/technicians',
+  },
+  {
+    key: 'appliances',
+    label: 'Appliances Registry',
+    description: 'Verify customer-registered units and serial numbers',
+    href: '/admin/appliances',
+  },
+  {
+    key: 'users',
+    label: 'Users & Roles',
+    description: 'Create accounts, configure roles, and manage admin access',
+    href: '/admin/users',
+  },
+] as const
+
+export type AdminFeatureKey = (typeof ADMIN_FEATURES)[number]['key']
+
+export const ADMIN_FEATURE_KEYS = ADMIN_FEATURES.map((f) => f.key) as readonly AdminFeatureKey[]
+
 export const PH_PROVINCES = [
   'Metro Manila',
   'Cavite',

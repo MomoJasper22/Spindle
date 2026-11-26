@@ -1,15 +1,21 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import type { UserRole } from '@/lib/constants'
+import { ADMIN_FEATURES, type AdminFeatureKey, type UserRole } from '@/lib/constants'
 
-function getRoleHomePath(role: UserRole): string {
+function getAdminDefaultPath(permissions: AdminFeatureKey[] | null | undefined): string {
+  if (!permissions) return '/admin/dashboard'
+  const first = ADMIN_FEATURES.find((f) => permissions.includes(f.key))
+  return first ? first.href : '/admin/profile'
+}
+
+function getRoleHomePath(role: UserRole, adminPermissions?: AdminFeatureKey[] | null): string {
   switch (role) {
     case 'customer':
       return '/customer/home'
     case 'technician':
       return '/technician/dashboard'
     case 'admin':
-      return '/admin/dashboard'
+      return getAdminDefaultPath(adminPermissions)
   }
 }
 
@@ -76,7 +82,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
 
   const { data: profile } = await supabase
     .from('users')
-    .select('user_id, is_onboarded, is_active, user_types(type_name)')
+    .select('user_id, is_onboarded, is_active, admin_permissions, user_types(type_name)')
     .eq('auth_user_id', user.id)
     .maybeSingle()
 
@@ -103,7 +109,10 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     return supabaseResponse
   }
 
-  const roleHome = getRoleHomePath(rawRole)
+  const adminPermissions = Array.isArray(profile.admin_permissions)
+    ? (profile.admin_permissions as AdminFeatureKey[])
+    : null
+  const roleHome = getRoleHomePath(rawRole, adminPermissions)
 
   if (isOnboardingRoute || isAuthRoute) {
     return redirectWithCookies(new URL(roleHome, request.url), supabaseResponse)
@@ -117,6 +126,14 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   }
   if (pathname.startsWith('/admin') && rawRole !== 'admin') {
     return redirectWithCookies(new URL(roleHome, request.url), supabaseResponse)
+  }
+  if (rawRole === 'admin' && adminPermissions) {
+    const matchedFeature = ADMIN_FEATURES.find(
+      (f) => pathname === f.href || pathname.startsWith(`${f.href}/`)
+    )
+    if (matchedFeature && !adminPermissions.includes(matchedFeature.key)) {
+      return redirectWithCookies(new URL(roleHome, request.url), supabaseResponse)
+    }
   }
 
   return supabaseResponse

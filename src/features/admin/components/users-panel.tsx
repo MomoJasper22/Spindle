@@ -3,9 +3,11 @@
 import * as React from 'react'
 import { useForm, Controller, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, Pencil, Plus, Power, Search, Trash2, Users } from 'lucide-react'
+import { Loader2, Pencil, Plus, Power, Search, ShieldCheck, Trash2, Users } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -35,8 +37,18 @@ import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
 import { StatusBadge } from '@/components/shared/status-badge'
-import { PH_PROVINCES, SERVICE_BRANCHES, type UserRole } from '@/lib/constants'
+import { UserAvatar } from '@/components/shared/user-avatar'
+import {
+  ADMIN_FEATURES,
+  ADMIN_FEATURE_KEYS,
+  APPLIANCE_CATEGORIES,
+  PH_PROVINCES,
+  SERVICE_BRANCHES,
+  type AdminFeatureKey,
+  type UserRole,
+} from '@/lib/constants'
 import { formatFullName, formatPHPhone } from '@/lib/formatters'
+import { cn } from '@/lib/utils'
 import type { UserWithRole } from '@/types/database'
 import {
   adminCreateUserAction,
@@ -54,17 +66,46 @@ import {
 interface UsersPanelProps {
   users: UserWithRole[]
   currentAdminId: string
+  currentAdminPermissions: AdminFeatureKey[] | null
 }
 
-export function UsersPanel({ users, currentAdminId }: UsersPanelProps) {
+function getAdminScopeBadge(user: UserWithRole) {
+  const role = user.user_types?.type_name
+  if (role !== 'admin') return null
+  if (!user.admin_permissions || user.admin_permissions.length === 0) {
+    return (
+      <Badge variant="emerald" className="text-[10px]">
+        Full Access
+      </Badge>
+    )
+  }
+  return (
+    <Badge variant="amber" className="text-[10px]">
+      Limited ({user.admin_permissions.length}/{ADMIN_FEATURE_KEYS.length})
+    </Badge>
+  )
+}
+
+export function UsersPanel({
+  users,
+  currentAdminId,
+  currentAdminPermissions,
+}: UsersPanelProps) {
   const [search, setSearch] = React.useState('')
   const [roleFilter, setRoleFilter] = React.useState<string>('all')
   const [createOpen, setCreateOpen] = React.useState(false)
   const [editingUser, setEditingUser] = React.useState<UserWithRole | null>(null)
+  const [createAccessMode, setCreateAccessMode] = React.useState<'full' | 'limited'>('full')
+  const [editAccessMode, setEditAccessMode] = React.useState<'full' | 'limited'>('full')
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
     null
   )
   const [isPending, startTransition] = React.useTransition()
+
+  const isActingFullAdmin = currentAdminPermissions === null
+  const grantableFeatures = isActingFullAdmin
+    ? ADMIN_FEATURES
+    : ADMIN_FEATURES.filter((f) => currentAdminPermissions.includes(f.key))
 
   const createForm = useForm<AdminCreateUserInput>({
     resolver: zodResolver(adminCreateUserSchema),
@@ -83,8 +124,10 @@ export function UsersPanel({ users, currentAdminId }: UsersPanelProps) {
       address_city: '',
       address_province: 'Metro Manila',
       address_zip_code: '',
+      specializations: [],
       certification_no: '',
       max_daily_jobs: 4,
+      admin_permissions: null,
     },
   })
 
@@ -105,12 +148,20 @@ export function UsersPanel({ users, currentAdminId }: UsersPanelProps) {
       address_province: 'Metro Manila',
       address_zip_code: '',
       is_active: true,
+      admin_permissions: null,
     },
   })
 
   const createRole = useWatch({ control: createForm.control, name: 'role' })
+  const createSpecs = useWatch({ control: createForm.control, name: 'specializations' }) ?? []
+  const createPerms = useWatch({ control: createForm.control, name: 'admin_permissions' }) ?? []
+
+  const editRole = useWatch({ control: editForm.control, name: 'role' })
+  const editPerms = useWatch({ control: editForm.control, name: 'admin_permissions' }) ?? []
 
   function openCreate() {
+    const initialMode = isActingFullAdmin ? 'full' : 'limited'
+    setCreateAccessMode(initialMode)
     createForm.reset({
       first_name: '',
       middle_name: '',
@@ -125,8 +176,10 @@ export function UsersPanel({ users, currentAdminId }: UsersPanelProps) {
       address_city: '',
       address_province: 'Metro Manila',
       address_zip_code: '',
+      specializations: [],
       certification_no: '',
       max_daily_jobs: 4,
+      admin_permissions: initialMode === 'full' ? null : grantableFeatures.slice(0, 1).map((f) => f.key),
     })
     setFeedback(null)
     setCreateOpen(true)
@@ -134,6 +187,8 @@ export function UsersPanel({ users, currentAdminId }: UsersPanelProps) {
 
   function openEdit(user: UserWithRole) {
     const role = user.user_types?.type_name ?? 'customer'
+    const isLimited = role === 'admin' && Array.isArray(user.admin_permissions)
+    setEditAccessMode(isLimited ? 'limited' : 'full')
     setEditingUser(user)
     editForm.reset({
       user_id: user.user_id,
@@ -149,14 +204,28 @@ export function UsersPanel({ users, currentAdminId }: UsersPanelProps) {
       address_province: user.address_province ?? 'Metro Manila',
       address_zip_code: user.address_zip_code ?? '1100',
       is_active: user.is_active,
+      admin_permissions: isLimited ? user.admin_permissions : null,
     })
     setFeedback(null)
   }
 
   function onCreateSubmit(values: AdminCreateUserInput) {
     setFeedback(null)
+    const payload: AdminCreateUserInput = {
+      ...values,
+      admin_permissions:
+        values.role === 'admin'
+          ? createAccessMode === 'full'
+            ? null
+            : values.admin_permissions ?? []
+          : null,
+    }
+    if (payload.role === 'admin' && createAccessMode === 'limited' && (!payload.admin_permissions || payload.admin_permissions.length === 0)) {
+      setFeedback({ type: 'error', message: 'Select at least one admin feature for a limited admin.' })
+      return
+    }
     startTransition(async () => {
-      const result = await adminCreateUserAction(values)
+      const result = await adminCreateUserAction(payload)
       if (result.success) {
         setCreateOpen(false)
         setFeedback({ type: 'success', message: result.message })
@@ -168,8 +237,29 @@ export function UsersPanel({ users, currentAdminId }: UsersPanelProps) {
 
   function onEditSubmit(values: AdminUpdateUserInput) {
     setFeedback(null)
+    const isSelf = editingUser?.user_id === currentAdminId
+    const payload: AdminUpdateUserInput = {
+      ...values,
+      admin_permissions:
+        values.role === 'admin'
+          ? isSelf
+            ? editingUser?.admin_permissions ?? null
+            : editAccessMode === 'full'
+              ? null
+              : values.admin_permissions ?? []
+          : null,
+    }
+    if (
+      !isSelf &&
+      payload.role === 'admin' &&
+      editAccessMode === 'limited' &&
+      (!payload.admin_permissions || payload.admin_permissions.length === 0)
+    ) {
+      setFeedback({ type: 'error', message: 'Select at least one admin feature for a limited admin.' })
+      return
+    }
     startTransition(async () => {
-      const result = await adminUpdateUserAction(values)
+      const result = await adminUpdateUserAction(payload)
       if (result.success) {
         setEditingUser(null)
         setFeedback({ type: 'success', message: result.message })
@@ -212,9 +302,107 @@ export function UsersPanel({ users, currentAdminId }: UsersPanelProps) {
       u.user_id.toLowerCase().includes(q) ||
       u.email.toLowerCase().includes(q) ||
       formatFullName(u).toLowerCase().includes(q) ||
+      (u.nickname ?? '').toLowerCase().includes(q) ||
       (u.branch_location ?? '').toLowerCase().includes(q)
     )
   })
+
+  function renderPermissionSelector(params: {
+    mode: 'full' | 'limited'
+    onModeChange: (next: 'full' | 'limited') => void
+    selected: AdminFeatureKey[]
+    onToggle: (key: AdminFeatureKey, checked: boolean) => void
+    idPrefix: string
+    disabled?: boolean
+  }) {
+    return (
+      <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" aria-hidden="true" />
+            <Label className="text-sm font-semibold">Admin Feature Access</Label>
+          </div>
+
+          <div className="inline-flex rounded-lg border border-border bg-card p-0.5">
+            {isActingFullAdmin && (
+              <button
+                type="button"
+                disabled={params.disabled}
+                onClick={() => params.onModeChange('full')}
+                className={cn(
+                  'rounded-md px-3 py-1 text-xs font-semibold transition-colors',
+                  params.mode === 'full'
+                    ? 'bg-primary text-white'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Full Access
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={params.disabled}
+              onClick={() => params.onModeChange('limited')}
+              className={cn(
+                'rounded-md px-3 py-1 text-xs font-semibold transition-colors',
+                params.mode === 'limited'
+                  ? 'bg-primary text-white'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Limited Access
+            </button>
+          </div>
+        </div>
+
+        {params.disabled ? (
+          <p className="text-xs text-muted-foreground">
+            You cannot change your own role or administrator permissions.
+          </p>
+        ) : params.mode === 'full' ? (
+          <p className="text-xs text-muted-foreground">
+            This administrator can access all operations modules, user controls, and profile settings.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Choose the specific admin features this account is allowed to access. Limited admins can only update their profile photo and password.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {grantableFeatures.map((feature) => {
+                const checked = params.selected.includes(feature.key)
+                const id = `${params.idPrefix}-${feature.key}`
+                return (
+                  <label
+                    key={feature.key}
+                    htmlFor={id}
+                    className={cn(
+                      'flex items-start gap-2.5 rounded-lg border px-3 py-2 text-xs cursor-pointer transition-colors',
+                      checked
+                        ? 'border-primary bg-primary-tint/70 text-foreground'
+                        : 'border-border bg-card hover:bg-muted/50'
+                    )}
+                  >
+                    <Checkbox
+                      id={id}
+                      checked={checked}
+                      onCheckedChange={(v) => params.onToggle(feature.key, v === true)}
+                    />
+                    <span className="space-y-0.5">
+                      <span className="block font-semibold text-foreground">{feature.label}</span>
+                      <span className="block text-[11px] text-muted-foreground">
+                        {feature.description}
+                      </span>
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <Card>
@@ -222,7 +410,7 @@ export function UsersPanel({ users, currentAdminId }: UsersPanelProps) {
         <div>
           <CardTitle>User Management &amp; RBAC Accounts</CardTitle>
           <CardDescription>
-            Create customer or internal staff accounts, manage roles, and activate or deactivate access.
+            Create customer or internal staff accounts, manage roles, and configure scoped admin permissions.
           </CardDescription>
         </div>
         <Button onClick={openCreate}>
@@ -282,12 +470,21 @@ export function UsersPanel({ users, currentAdminId }: UsersPanelProps) {
               {filtered.map((user) => {
                 const role = user.user_types?.type_name ?? 'customer'
                 const isSelf = user.user_id === currentAdminId
+                const displayName = formatFullName(user)
                 return (
                   <div key={user.user_id} className="rounded-xl border border-border bg-card p-4 space-y-2.5">
                     <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-semibold text-foreground">{formatFullName(user)}</p>
-                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <UserAvatar
+                          avatarUrl={user.avatar_url}
+                          avatarPosition={user.avatar_position}
+                          name={displayName}
+                          size="md"
+                        />
+                        <div className="min-w-0">
+                          <p className="font-semibold text-foreground truncate">{displayName}</p>
+                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                        </div>
                       </div>
                       <StatusBadge status={user.is_active ? 'active' : 'inactive'} />
                     </div>
@@ -295,6 +492,12 @@ export function UsersPanel({ users, currentAdminId }: UsersPanelProps) {
                       <span className="inline-flex rounded-md bg-muted px-2 py-0.5 font-semibold uppercase text-foreground">
                         {role}
                       </span>
+                      {getAdminScopeBadge(user)}
+                      {user.nickname && (
+                        <Badge variant="outline" className="text-[10px]">
+                          aka {user.nickname}
+                        </Badge>
+                      )}
                       <span>{user.branch_location || 'Unassigned'}</span>
                       <span>{formatPHPhone(user.phone)}</span>
                     </div>
@@ -328,9 +531,9 @@ export function UsersPanel({ users, currentAdminId }: UsersPanelProps) {
               <Table regionLabel="System users directory">
                 <TableHeader>
                   <TableRow>
+                    <TableHead>User</TableHead>
                     <TableHead>User ID</TableHead>
-                    <TableHead>Name &amp; Email</TableHead>
-                    <TableHead>Role</TableHead>
+                    <TableHead>Role &amp; Access</TableHead>
                     <TableHead>Branch &amp; Phone</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -340,19 +543,40 @@ export function UsersPanel({ users, currentAdminId }: UsersPanelProps) {
                   {filtered.map((user) => {
                     const role = user.user_types?.type_name ?? 'customer'
                     const isSelf = user.user_id === currentAdminId
+                    const displayName = formatFullName(user)
                     return (
                       <TableRow key={user.user_id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <UserAvatar
+                              avatarUrl={user.avatar_url}
+                              avatarPosition={user.avatar_position}
+                              name={displayName}
+                              size="sm"
+                            />
+                            <div className="min-w-0">
+                              <p className="font-semibold text-foreground">
+                                {displayName}
+                                {user.nickname && (
+                                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                                    ({user.nickname})
+                                  </span>
+                                )}
+                              </p>
+                              <p className="text-xs text-muted-foreground">{user.email}</p>
+                            </div>
+                          </div>
+                        </TableCell>
                         <TableCell className="font-mono text-xs font-semibold text-primary">
                           {user.user_id}
                         </TableCell>
                         <TableCell>
-                          <p className="font-semibold text-foreground">{formatFullName(user)}</p>
-                          <p className="text-xs text-muted-foreground">{user.email}</p>
-                        </TableCell>
-                        <TableCell>
-                          <span className="inline-flex rounded-md bg-muted px-2.5 py-0.5 text-xs font-semibold uppercase text-foreground">
-                            {role}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="inline-flex rounded-md bg-muted px-2.5 py-0.5 text-xs font-semibold uppercase text-foreground">
+                              {role}
+                            </span>
+                            {getAdminScopeBadge(user)}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <p className="text-xs font-medium text-foreground">
@@ -578,27 +802,88 @@ export function UsersPanel({ users, currentAdminId }: UsersPanelProps) {
             </div>
 
             {createRole === 'technician' && (
-              <div className="grid gap-3 sm:grid-cols-2 rounded-lg border border-border bg-slate-50 p-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="adm-c-cert">TESDA Cert No. (optional)</Label>
-                  <Input
-                    id="adm-c-cert"
-                    placeholder="TESDA-RAC-NCII-..."
-                    {...createForm.register('certification_no')}
-                  />
+              <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-3.5">
+                <p className="text-xs text-muted-foreground">
+                  New technicians will complete onboarding on first sign-in (Credentials, Nickname, Profile Photo). Assign their capacity &amp; specializations below:
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="adm-c-cert">TESDA Cert No. (optional)</Label>
+                    <Input
+                      id="adm-c-cert"
+                      placeholder="TESDA-RAC-NCII-..."
+                      {...createForm.register('certification_no')}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="adm-c-cap">Max Daily Jobs (1–15)</Label>
+                    <Input
+                      id="adm-c-cap"
+                      type="number"
+                      min={1}
+                      max={15}
+                      {...createForm.register('max_daily_jobs', { valueAsNumber: true })}
+                    />
+                  </div>
                 </div>
+
                 <div className="space-y-1.5">
-                  <Label htmlFor="adm-c-cap">Max Daily Jobs</Label>
-                  <Input
-                    id="adm-c-cap"
-                    type="number"
-                    min={1}
-                    max={15}
-                    {...createForm.register('max_daily_jobs', { valueAsNumber: true })}
-                  />
+                  <Label>Assigned Appliance Specializations</Label>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {APPLIANCE_CATEGORIES.map((cat) => {
+                      const checked = createSpecs.includes(cat)
+                      const id = `adm-c-spec-${cat.toLowerCase().replace(/[^a-z0-9]/g, '-')}`
+                      return (
+                        <label
+                          key={cat}
+                          htmlFor={id}
+                          className={cn(
+                            'flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs font-medium cursor-pointer',
+                            checked ? 'border-primary bg-primary-tint/70' : 'border-border bg-card'
+                          )}
+                        >
+                          <Checkbox
+                            id={id}
+                            checked={checked}
+                            onCheckedChange={(v) => {
+                              const next = v === true
+                                ? [...createSpecs, cat]
+                                : createSpecs.filter((s) => s !== cat)
+                              createForm.setValue('specializations', next)
+                            }}
+                          />
+                          <span>{cat}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             )}
+
+            {createRole === 'admin' &&
+              renderPermissionSelector({
+                mode: createAccessMode,
+                onModeChange: (next) => {
+                  setCreateAccessMode(next)
+                  if (next === 'full') {
+                    createForm.setValue('admin_permissions', null)
+                  } else if (!createPerms.length) {
+                    createForm.setValue(
+                      'admin_permissions',
+                      grantableFeatures.slice(0, 1).map((f) => f.key)
+                    )
+                  }
+                },
+                selected: createPerms,
+                onToggle: (key, checked) => {
+                  const next = checked
+                    ? [...createPerms, key]
+                    : createPerms.filter((k) => k !== key)
+                  createForm.setValue('admin_permissions', next)
+                },
+                idPrefix: 'adm-c-perm',
+              })}
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
@@ -624,7 +909,7 @@ export function UsersPanel({ users, currentAdminId }: UsersPanelProps) {
           <DialogHeader>
             <DialogTitle>Edit User ({editingUser?.user_id})</DialogTitle>
             <DialogDescription>
-              Update user contact information, branch assignment, role, or account activation.
+              Update user contact information, branch assignment, role, or admin feature access.
             </DialogDescription>
           </DialogHeader>
 
@@ -653,7 +938,11 @@ export function UsersPanel({ users, currentAdminId }: UsersPanelProps) {
                   name="role"
                   control={editForm.control}
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={editingUser?.user_id === currentAdminId}
+                    >
                       <SelectTrigger id="adm-e-role">
                         <SelectValue />
                       </SelectTrigger>
@@ -718,6 +1007,31 @@ export function UsersPanel({ users, currentAdminId }: UsersPanelProps) {
                 <Input id="adm-e-zip" maxLength={4} {...editForm.register('address_zip_code')} />
               </div>
             </div>
+
+            {editRole === 'admin' &&
+              renderPermissionSelector({
+                mode: editAccessMode,
+                onModeChange: (next) => {
+                  setEditAccessMode(next)
+                  if (next === 'full') {
+                    editForm.setValue('admin_permissions', null)
+                  } else if (!editPerms.length) {
+                    editForm.setValue(
+                      'admin_permissions',
+                      grantableFeatures.slice(0, 1).map((f) => f.key)
+                    )
+                  }
+                },
+                selected: editPerms,
+                onToggle: (key, checked) => {
+                  const next = checked
+                    ? [...editPerms, key]
+                    : editPerms.filter((k) => k !== key)
+                  editForm.setValue('admin_permissions', next)
+                },
+                idPrefix: 'adm-e-perm',
+                disabled: editingUser?.user_id === currentAdminId,
+              })}
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditingUser(null)}>
