@@ -1,0 +1,56 @@
+﻿I. Project Objectives
+
+
+* System Development: Design and develop a functional, web-based information system that solves a specific organizational problem or need.
+* Database Management: Implement well-structured SQL databases with proper data organization and table relationships.
+* Database Operations: Demonstrate CRUD (Create, Read, Update, Delete) functionalities and use JOINs to retrieve related records.
+* Security & Transactions: Enforce data consistency and security through input validation, secure connections, password hashing, Role-Based Access Control (RBAC), and database locking mechanisms.
+* Deployment & Version Control: Use GitHub for source code management and securely deploy the app using web hosting platforms with HTTPS/SSL.
+
+
+II. Overall Project Requirements
+
+
+* Web Hosting: The application must be deployed and publicly accessible online via Vercel.
+* Security: The deployed web application must utilize a secure HTTPS/SSL connection.
+
+
+III. Backend & Database Requirements
+
+
+* Core Operations:
+
+   * CRUD: Successfully implement Create, Read, Update, and Delete functions.
+   * SQL JOINs: Combine and retrieve related records across multiple database tables.
+
+
+   * Database Architecture:
+
+   * System: Must utilize an SQL (Relational) database.
+   * Primary Keys: Must be implemented using an alphanumeric format (combination of letters and numbers ) rather than purely numeric identifiers. Must be unique. 
+   * Security & Data Integrity:
+
+
+   * Database Security: Defend against SQL injection, apply strict input validation, and use secure database connections.
+   * Transactions & Locking: Use transaction commands (START TRANSACTION, COMMIT, ROLLBACK) and locking mechanisms (row-level or table-level) to manage concurrent operations and prevent conflicts.
+   * Authentication: Secure user logins by implementing proper hashing and verification.
+
+
+IV. Frontend & System Features
+
+
+   * Core Technologies:
+
+
+Framework = Next.js ( Feature-Based App Router Architecture )
+Language = TypeScript
+Styling & UI = Tailwind CSS + shadcn/ui
+Database & Auth = Supabase free version
+Form Validation = Zod + React Hook Form
+Hosting & CI/CD = github + vercel
+
+
+   * Design & Access Constraints:
+
+      * Responsive Web Design: The interface must adapt seamlessly to desktop, tablet, and mobile screens.
+      * Role-Based Access Control (RBAC): The system must include user roles and permissions to restrict access to specific pages or functionalities based on the user's role.
