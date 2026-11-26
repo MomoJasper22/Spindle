@@ -2,8 +2,17 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { ArrowRight, CheckCircle2, ChevronDown, X } from 'lucide-react'
+import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
 interface ApplianceCategory {
@@ -316,50 +325,11 @@ const APPLIANCE_CATEGORIES: ApplianceCategory[] = [
 
 export function ApplianceRepairSection() {
   const [selectedId, setSelectedId] = React.useState<string | null>(null)
-  const panelRefs = React.useRef<Record<string, HTMLDivElement | null>>({})
 
-  React.useEffect(() => {
-    const supportsUntilFound =
-      typeof HTMLElement !== 'undefined' && 'onbeforematch' in HTMLElement.prototype
-    const cleanups: Array<() => void> = []
-
-    APPLIANCE_CATEGORIES.forEach((item) => {
-      const node = panelRefs.current[item.id]
-      if (!node) return
-
-      if (selectedId === item.id) {
-        node.removeAttribute('hidden')
-      } else {
-        node.setAttribute('hidden', supportsUntilFound ? 'until-found' : '')
-      }
-
-      const handleBeforeMatch = () => {
-        setSelectedId(item.id)
-      }
-
-      node.addEventListener('beforematch', handleBeforeMatch)
-      cleanups.push(() => node.removeEventListener('beforematch', handleBeforeMatch))
-    })
-
-    return () => {
-      cleanups.forEach((fn) => fn())
-    }
-  }, [selectedId])
-
-  const handleToggle = (id: string) => {
-    setSelectedId((prev) => {
-      const next = prev === id ? null : id
-      if (next) {
-        requestAnimationFrame(() => {
-          panelRefs.current[next]?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest',
-          })
-        })
-      }
-      return next
-    })
-  }
+  const selectedItem = React.useMemo(
+    () => APPLIANCE_CATEGORIES.find((item) => item.id === selectedId) ?? null,
+    [selectedId],
+  )
 
   return (
     <section id="repair" className="border-t border-border bg-card py-14 sm:py-16">
@@ -369,7 +339,7 @@ export function ApplianceRepairSection() {
             Appliances We Repair
           </h2>
           <p className="text-sm text-muted-foreground sm:text-base">
-            Click an appliance below to inspect covered repair services and diagnostic details.
+            Click an appliance below to view covered repair services and diagnostic details.
           </p>
         </div>
 
@@ -380,9 +350,8 @@ export function ApplianceRepairSection() {
               <button
                 key={item.id}
                 type="button"
-                aria-expanded={isSelected}
-                aria-controls={`appliance-panel-${item.id}`}
-                onClick={() => handleToggle(item.id)}
+                aria-haspopup="dialog"
+                onClick={() => setSelectedId(item.id)}
                 className={cn(
                   'group relative flex aspect-square flex-col items-center justify-between rounded-xl px-3 py-5 sm:px-4 sm:py-6 text-center transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   isSelected
@@ -393,72 +362,51 @@ export function ApplianceRepairSection() {
                 <span className="flex flex-1 items-center justify-center transition-transform duration-200 group-hover:scale-105">
                   {item.renderIllustration(isSelected)}
                 </span>
-                <span className="mt-2 inline-flex items-center gap-1 font-heading text-xs font-semibold uppercase tracking-wider sm:text-sm">
-                  <span>{item.shortLabel}</span>
-                  <ChevronDown
-                    className={cn(
-                      'h-3.5 w-3.5 shrink-0 opacity-80 transition-transform duration-200',
-                      isSelected && 'rotate-180 opacity-100',
-                    )}
-                    aria-hidden="true"
-                  />
+                <span className="mt-2 font-heading text-xs font-semibold uppercase tracking-wider sm:text-sm">
+                  {item.shortLabel}
                 </span>
               </button>
             )
           })}
         </div>
 
-        {/* Hidden on initial SSR render and upgraded to hidden="until-found" on client so Find-in-page still works */}
-        <div aria-live="polite" className="space-y-4">
-          {APPLIANCE_CATEGORIES.map((item) => {
-            const isOpen = selectedId === item.id
-            return (
-              <div
-                key={item.id}
-                id={`appliance-panel-${item.id}`}
-                hidden={!isOpen}
-                ref={(el) => {
-                  panelRefs.current[item.id] = el
-                }}
-              >
-                <div className="rounded-xl border border-primary/25 bg-primary-tint/50 p-5 sm:p-6 shadow-xs transition-all">
-                  <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex items-start gap-4">
-                      <div className="hidden sm:flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-primary p-2.5 shadow-xs">
-                        <div className="scale-[0.65] origin-center">
-                          {item.renderIllustration(true)}
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <p className="font-heading text-xs font-semibold uppercase tracking-wider text-primary">
-                          {item.label}
-                        </p>
-                        <h3 className="font-heading text-lg font-bold text-foreground sm:text-xl">
-                          {item.headline}
-                        </h3>
-                        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                          {item.description}
-                        </p>
-                      </div>
+        <Dialog
+          open={selectedItem !== null}
+          onOpenChange={(open) => {
+            if (!open) setSelectedId(null)
+          }}
+        >
+          <DialogContent className="max-w-xl">
+            {selectedItem && (
+              <>
+                <div className="flex items-start gap-4 pr-6">
+                  <div className="hidden sm:flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-primary p-2.5 shadow-xs">
+                    <div className="scale-[0.65] origin-center">
+                      {selectedItem.renderIllustration(true)}
                     </div>
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setSelectedId(null)}
-                      aria-label={`Close ${item.label} details`}
-                      className="self-end sm:self-start text-muted-foreground hover:text-foreground shrink-0"
-                    >
-                      <X className="h-4 w-4" aria-hidden="true" />
-                    </Button>
                   </div>
+                  <DialogHeader className="pr-0">
+                    <p className="font-heading text-xs font-semibold uppercase tracking-wider text-primary">
+                      {selectedItem.label}
+                    </p>
+                    <DialogTitle className="text-xl leading-snug">
+                      {selectedItem.headline}
+                    </DialogTitle>
+                    <DialogDescription className="pt-1 leading-relaxed">
+                      {selectedItem.description}
+                    </DialogDescription>
+                  </DialogHeader>
+                </div>
 
-                  <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
-                    {item.services.map((service) => (
+                <div className="space-y-2.5 pt-1">
+                  <p className="font-heading text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Common Repairs &amp; Services
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {selectedItem.services.map((service) => (
                       <div
                         key={service}
-                        className="flex items-start gap-2.5 rounded-lg border border-border/80 bg-card px-3.5 py-2.5 text-sm text-foreground"
+                        className="flex items-start gap-2.5 rounded-lg border border-border bg-muted/40 px-3.5 py-2.5 text-sm text-foreground"
                       >
                         <CheckCircle2
                           className="mt-0.5 h-4 w-4 shrink-0 text-secondary"
@@ -468,23 +416,30 @@ export function ApplianceRepairSection() {
                       </div>
                     ))}
                   </div>
+                </div>
 
-                  <div className="mt-5 flex flex-col gap-3 border-t border-border/80 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs font-medium text-muted-foreground">
-                      {item.turnaround}
-                    </p>
+                <DialogFooter className="border-t border-border pt-4 sm:items-center sm:justify-between">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {selectedItem.turnaround}
+                  </p>
+                  <div className="flex items-center justify-end gap-2">
+                    <DialogClose asChild>
+                      <Button type="button" variant="outline" size="sm">
+                        Close
+                      </Button>
+                    </DialogClose>
                     <Button asChild size="sm">
                       <Link href="/signup">
-                        <span>Book {item.shortLabel} Repair</span>
+                        <span>Book {selectedItem.shortLabel} Repair</span>
                         <ArrowRight className="h-4 w-4" aria-hidden="true" />
                       </Link>
                     </Button>
                   </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+                </DialogFooter>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </section>
   )
