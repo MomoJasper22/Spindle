@@ -21,11 +21,9 @@
 - **Profile (`/customer/profile`)**: Update contact details, Philippine address, interactive focal-framed avatar (`ProfilePhotoField`), password, or deactivate account.
 
 ### Technician Portal (`/technician/*`)
-- **Dashboard (`/technician/dashboard`)**: Daily job KPIs, active queue snapshot, upcoming schedule, and self-service availability status toggle (`available`, `busy`, `on_leave`) recorded in `technician_status_logs`.
-- **Assigned Jobs (`/technician/jobs`)**: Search/filter assigned repair tickets and slide-over diagnostic & billing workbench (`DiagnosticDrawer`) to log findings, update estimated/final PHP costs, transition status, and record cash/e-wallet collections.
-- **Schedule (`/technician/schedule`)**: Inspect upcoming home visits and reschedule/update visit status with slot-conflict checks.
-- **Collections (`/technician/collections`)**: Track collected and verified payments per ticket.
-- **Profile (`/technician/profile`)**: Manage avatar focal framing, password, and inspect locked certification/specialization profile details.
+- **Overview (`/technician/dashboard`)**: Clickable daily KPIs, interactive Today's Visits & Other Active Jobs cards, collapsible activity log, and self-service availability status toggle (`available`, `busy`, `break` / DB `'lunch'`, `off_duty`) recorded in `technician_status_logs`.
+- **My Jobs (`/technician/jobs`)**: Unified queue combining active jobs, today's schedule, unpaid bills, completed history, and field collections, backed by `JobWorkbenchDrawer` to confirm/reschedule visit slots, log diagnostics & final PHP price, and record cash/e-wallet collections (legacy `/technician/schedule` and `/technician/collections` routes redirect here).
+- **Profile (`/technician/profile`)**: Inline display nickname editor, avatar focal framing, password update, and read-only field credentials summary.
 
 ### Operations Admin Portal (`/admin/*`)
 Granular RBAC controlled via `users.admin_permissions`: **Super Admins** (`null`) can access every module; **Limited Admins** (`string[]` matching `ADMIN_FEATURES`) see and route exclusively within their granted modules.

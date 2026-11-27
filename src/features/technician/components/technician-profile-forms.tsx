@@ -3,10 +3,10 @@
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Lock, Loader2, LogOut, Pencil, Save, Wrench } from 'lucide-react'
+import { Lock, Loader2, LogOut, Save, Wrench } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { FormBanner } from '@/components/shared/form-banner'
@@ -28,7 +28,6 @@ interface TechnicianProfileFormsProps {
 }
 
 export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfileFormsProps) {
-  const [isEditing, setIsEditing] = React.useState(false)
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
     null
   )
@@ -40,7 +39,7 @@ export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfi
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<TechnicianNicknameInput>({
     resolver: zodResolver(technicianNicknameSchema),
     mode: 'onBlur',
@@ -50,17 +49,15 @@ export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfi
   })
 
   React.useEffect(() => {
-    if (!isEditing) {
-      reset({ nickname: savedNickname })
-    }
-  }, [isEditing, reset, savedNickname])
+    reset({ nickname: savedNickname })
+  }, [reset, savedNickname])
 
   function onSubmit(values: TechnicianNicknameInput) {
     setFeedback(null)
     startTransition(async () => {
       const result = await updateTechnicianNicknameAction(values)
       if (result.success) {
-        setIsEditing(false)
+        reset({ nickname: values.nickname?.trim() ?? '' })
         setFeedback({ type: 'success', message: result.message })
       } else {
         setFeedback({ type: 'error', message: result.error })
@@ -84,11 +81,8 @@ export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfi
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Wrench className="h-4 w-4 text-primary" aria-hidden="true" />
-            <span>Technician Identity &amp; Field Credentials</span>
+            <span>Profile &amp; Field Credentials</span>
           </CardTitle>
-          <CardDescription>
-            Update your profile photo and nickname. Personal details, assigned branch, specializations, and daily job capacity are managed by your administrator.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <ProfilePhotoField
@@ -99,92 +93,53 @@ export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfi
 
           {feedback && <FormBanner type={feedback.type} message={feedback.message} />}
 
-          {/* Display Nickname (Only freely editable profile detail) */}
-          {!isEditing ? (
-            <div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">Display Nickname</p>
-                <p className="font-heading text-base font-semibold text-foreground">
-                  {profile.nickname || 'No nickname set'}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Only your display nickname can be edited directly. Other field credentials are managed by your administrator.
-                </p>
+          {/* Direct Inline Display Nickname */}
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="rounded-xl border border-border bg-muted/20 p-4"
+            noValidate
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex-1 space-y-1.5">
+                <Label htmlFor="tech-nickname">Display Nickname</Label>
+                <Input
+                  id="tech-nickname"
+                  placeholder="e.g. Kuya Jun, Tech Rico"
+                  aria-describedby={errors.nickname ? 'tech-nickname-error' : undefined}
+                  {...register('nickname')}
+                />
+                {errors.nickname && (
+                  <p id="tech-nickname-error" role="alert" className="text-xs text-destructive">
+                    {errors.nickname.message}
+                  </p>
+                )}
               </div>
 
               <Button
-                type="button"
+                type="submit"
+                disabled={isPending || !isDirty}
                 className="w-full sm:w-auto shrink-0"
-                onClick={() => {
-                  reset({ nickname: savedNickname })
-                  setFeedback(null)
-                  setIsEditing(true)
-                }}
               >
-                <Pencil className="h-4 w-4" aria-hidden="true" />
-                <span>Edit Profile</span>
+                {isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Save className="h-4 w-4" aria-hidden="true" />
+                )}
+                <span>Save Nickname</span>
               </Button>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 rounded-xl border border-border bg-muted/30 p-4" noValidate>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                <div className="flex-1 space-y-1.5">
-                  <Label htmlFor="tech-nickname">Display Nickname</Label>
-                  <p id="tech-nickname-hint" className="text-xs text-muted-foreground">
-                    This is the only personal detail you can freely edit (e.g. Kuya Jun, Tech Rico).
-                  </p>
-                  <Input
-                    id="tech-nickname"
-                    placeholder="Enter a nickname or preferred name"
-                    aria-describedby={
-                      errors.nickname ? 'tech-nickname-hint tech-nickname-error' : 'tech-nickname-hint'
-                    }
-                    {...register('nickname')}
-                  />
-                  {errors.nickname && (
-                    <p id="tech-nickname-error" role="alert" className="text-xs text-destructive">
-                      {errors.nickname.message}
-                    </p>
-                  )}
-                </div>
+          </form>
 
-                <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
-                    {isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <Save className="h-4 w-4" aria-hidden="true" />
-                    )}
-                    <span>Save Changes</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isPending}
-                    className="w-full sm:w-auto"
-                    onClick={() => {
-                      reset({ nickname: savedNickname })
-                      setFeedback(null)
-                      setIsEditing(false)
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </form>
-          )}
-
-          {/* Read-only Admin-Managed Details */}
+          {/* Compact Field Credentials Summary */}
           <div className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5">
             <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
               <div className="flex items-center gap-2">
                 <Lock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 <h3 className="font-heading text-sm font-semibold text-foreground">
-                  Admin-Managed Personal &amp; Dispatch Details
+                  Dispatch &amp; Trade Credentials
                 </h3>
               </div>
-              <Badge variant="slate">Read-only</Badge>
+              <Badge variant="slate">Admin-managed</Badge>
             </div>
 
             <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
@@ -213,7 +168,7 @@ export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfi
                 </dd>
               </div>
               <div>
-                <dt className="text-xs font-medium text-muted-foreground">Max Daily Jobs (1–15)</dt>
+                <dt className="text-xs font-medium text-muted-foreground">Daily Job Limit</dt>
                 <dd className="mt-0.5 font-semibold tabular-nums text-foreground">
                   {techProfile?.max_daily_jobs ?? 4} jobs / day
                 </dd>
@@ -225,9 +180,7 @@ export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfi
             </dl>
 
             <div className="space-y-2 border-t border-border pt-3">
-              <p className="text-xs font-medium text-muted-foreground">
-                Assigned Appliance Specializations
-              </p>
+              <p className="text-xs font-medium text-muted-foreground">Specializations</p>
               {assignedSpecializations.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
                   {assignedSpecializations.map((spec) => (
@@ -237,15 +190,13 @@ export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfi
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground">
-                  Pending administrator assignment.
-                </p>
+                <p className="text-xs text-muted-foreground">Pending administrator assignment.</p>
               )}
 
               {proposedSpecializations.length > 0 && (
                 <div className="pt-2">
                   <p className="text-xs font-medium text-amber-ink">
-                    Proposed Specializations (Awaiting Admin Review)
+                    Proposed (Awaiting Admin Review)
                   </p>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {proposedSpecializations.map((spec) => (
@@ -257,6 +208,10 @@ export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfi
                 </div>
               )}
             </div>
+
+            <p className="text-xs text-muted-foreground">
+              Need to change your branch, phone, address, or specializations? Contact your branch administrator.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -266,7 +221,7 @@ export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfi
 
         <div className="flex items-center justify-between rounded-lg border border-border/80 bg-card/70 px-4 py-3">
           <span className="text-xs text-muted-foreground">
-            End your current field session safely.
+            Signing out automatically marks your shift as Off Duty.
           </span>
           <form action={signOutAction}>
             <Button type="submit" variant="outline" size="sm">

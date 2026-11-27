@@ -3,6 +3,7 @@
 import { revalidatePath, updateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/auth/session'
+import { getTechAvailabilityLabel } from '@/lib/constants'
 import { getManilaTodayISO } from '@/lib/formatters'
 import { getTicketPaymentSummary } from '@/lib/payments'
 import type { RepairDetailView } from '@/types/database'
@@ -63,12 +64,16 @@ export async function updateTechnicianRepairAction(
   const supabase = await createClient()
   const { data: existingRepair } = await supabase
     .from('v_repair_details')
-    .select('completed_at, verified_paid_php')
+    .select('completed_at, estimated_cost_php, verified_paid_php')
     .eq('ticket_id', parsed.data.ticket_id)
     .eq('technician_id', profile.user_id)
     .maybeSingle()
 
-  const verifiedPaidPhp = Number(existingRepair?.verified_paid_php ?? 0)
+  if (!existingRepair) {
+    return { success: false, error: 'Assigned repair ticket not found.' }
+  }
+
+  const verifiedPaidPhp = Number(existingRepair.verified_paid_php ?? 0)
   const finalCostPhp = parsed.data.final_cost_php
   const autoCompletedFromDeposit =
     parsed.data.status === 'awaiting_payment' &&
@@ -79,15 +84,18 @@ export async function updateTechnicianRepairAction(
   const resolvedStatus = autoCompletedFromDeposit ? 'completed' : parsed.data.status
   const completedAt =
     resolvedStatus === 'completed'
-      ? (existingRepair?.completed_at ?? new Date().toISOString())
+      ? (existingRepair.completed_at ?? new Date().toISOString())
       : null
+
+  const preservedEstimatePhp =
+    parsed.data.estimated_cost_php ?? Number(existingRepair.estimated_cost_php ?? 0)
 
   const { error } = await supabase
     .from('repair')
     .update({
       status: resolvedStatus,
       diagnostic_notes: parsed.data.diagnostic_notes || null,
-      estimated_cost_php: parsed.data.estimated_cost_php,
+      estimated_cost_php: preservedEstimatePhp,
       final_cost_php: finalCostPhp,
       completed_at: completedAt,
     })
@@ -105,6 +113,13 @@ export async function updateTechnicianRepairAction(
       .eq('ticket_id', parsed.data.ticket_id)
       .eq('technician_id', profile.user_id)
       .in('appointment_status', ['requested', 'confirmed', 'rescheduled'])
+  } else if (resolvedStatus === 'in_progress' || resolvedStatus === 'awaiting_payment') {
+    await supabase
+      .from('appointments')
+      .update({ appointment_status: 'confirmed' })
+      .eq('ticket_id', parsed.data.ticket_id)
+      .eq('technician_id', profile.user_id)
+      .in('appointment_status', ['requested', 'rescheduled'])
   }
 
   await supabase.from('activity_logs').insert({
@@ -119,7 +134,7 @@ export async function updateTechnicianRepairAction(
   return {
     success: true,
     message: autoCompletedFromDeposit
-      ? `Final cost is already covered by verified payments — ticket ${parsed.data.ticket_id} marked Completed!`
+      ? `Final price is already covered by verified payments — ticket ${parsed.data.ticket_id} marked Completed.`
       : `Ticket ${parsed.data.ticket_id} updated successfully.`,
   }
 }
@@ -173,7 +188,7 @@ export async function recordOnsitePaymentAction(
     p_payment_id: null,
     p_payment_method: parsed.data.payment_method,
     p_amount_php: parsed.data.amount_php,
-    p_installment_no: parsed.data.installment_no,
+    p_installment_no: parsed.data.installment_no ?? null,
     p_reference_no: parsed.data.reference_no || null,
     p_remarks: parsed.data.remarks || `Collected on-site by ${profile.first_name} ${profile.last_name}`,
     p_verify_immediately: false,
@@ -262,6 +277,37 @@ export async function updateTechnicianAppointmentAction(
       .update({ scheduled_date: parsed.data.scheduled_date })
       .eq('ticket_id', apt.ticket_id)
       .eq('technician_id', profile.user_id)
+  } else if (parsed.data.appointment_status === 'completed') {
+    const { data: repairRow } = await supabase
+      .from('v_repair_details')
+      .select('status, final_cost_php, verified_paid_php')
+      .eq('ticket_id', apt.ticket_id)
+      .eq('technician_id', profile.user_id)
+      .maybeSingle()
+
+    if (repairRow && ['confirmed', 'assigned', 'in_progress'].includes(repairRow.status)) {
+      const finalCost = repairRow.final_cost_php !== null ? Number(repairRow.final_cost_php) : null
+      const verifiedPaid = Number(repairRow.verified_paid_php ?? 0)
+      if (finalCost !== null && finalCost > 0 && verifiedPaid >= finalCost) {
+        await supabase
+          .from('repair')
+          .update({ status: 'completed', completed_at: new Date().toISOString() })
+          .eq('ticket_id', apt.ticket_id)
+          .eq('technician_id', profile.user_id)
+      } else if (finalCost !== null && finalCost > 0) {
+        await supabase
+          .from('repair')
+          .update({ status: 'awaiting_payment' })
+          .eq('ticket_id', apt.ticket_id)
+          .eq('technician_id', profile.user_id)
+      } else if (repairRow.status !== 'in_progress') {
+        await supabase
+          .from('repair')
+          .update({ status: 'in_progress' })
+          .eq('ticket_id', apt.ticket_id)
+          .eq('technician_id', profile.user_id)
+      }
+    }
   }
 
   await supabase.from('activity_logs').insert({
@@ -275,7 +321,7 @@ export async function updateTechnicianAppointmentAction(
   revalidateTechPortals()
   return {
     success: true,
-    message: `Appointment ${apt.appointment_id} marked ${parsed.data.appointment_status}.`,
+    message: `Visit ${apt.appointment_id} marked ${parsed.data.appointment_status}.`,
   }
 }
 
@@ -378,6 +424,6 @@ export async function updateTechnicianAvailabilityAction(
   ])
   return {
     success: true,
-    message: `Status updated to ${nextStatus.replace('_', ' ')}.`,
+    message: `Status updated to ${getTechAvailabilityLabel(nextStatus)}.`,
   }
 }

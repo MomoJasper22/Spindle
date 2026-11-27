@@ -4,6 +4,7 @@ import { requireRole } from '@/lib/auth/session'
 import {
   getTechnicianActivityLogs,
   getTechnicianAppointments,
+  getTechnicianPayments,
   getTechnicianRepairs,
 } from '@/lib/data/portal-data'
 import { TechnicianOverviewView } from '@/features/technician/components/technician-overview-view'
@@ -17,10 +18,11 @@ export const metadata: Metadata = {
 async function TechnicianDashboardContent() {
   const profile = await requireRole('technician')
 
-  const [repairs, appointments, activityLogs] = await Promise.all([
+  const [repairs, appointments, payments, activityLogs] = await Promise.all([
     getTechnicianRepairs(profile.user_id),
     getTechnicianAppointments(profile.user_id),
-    getTechnicianActivityLogs(10),
+    getTechnicianPayments(),
+    getTechnicianActivityLogs(8),
   ])
 
   return (
@@ -29,6 +31,7 @@ async function TechnicianDashboardContent() {
       availabilityStatus={profile.technician_profile?.availability_status ?? 'available'}
       repairs={repairs}
       appointments={appointments}
+      payments={payments}
       activityLogs={activityLogs}
     />
   )

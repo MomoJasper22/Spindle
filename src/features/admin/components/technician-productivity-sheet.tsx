@@ -24,7 +24,7 @@ import {
 import { ScrollableList } from '@/components/shared/scrollable-list'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { UserAvatar } from '@/components/shared/user-avatar'
-import type { TechAvailabilityStatus } from '@/lib/constants'
+import { getTechAvailabilityLabel, type TechAvailabilityStatus } from '@/lib/constants'
 import {
   formatFullName,
   formatManilaDate,
@@ -32,7 +32,6 @@ import {
   formatPHPhone,
   formatPHP,
   getManilaTodayISO,
-  humanizeLabel,
 } from '@/lib/formatters'
 import type {
   AppointmentDetailView,
@@ -280,7 +279,7 @@ export function TechnicianProductivitySheet({
               {turnaroundDurations.length > 0 ? formatDurationMs(avgTurnaroundMs) : '—'}
             </p>
             <p className="text-xs text-muted-foreground">
-              Active status now: {humanizeLabel(currentStatus)} ({formatDurationMs(currentStatusDurationMs)})
+              Active status now: {getTechAvailabilityLabel(currentStatus)} ({formatDurationMs(currentStatusDurationMs)})
             </p>
           </div>
 
@@ -326,7 +325,7 @@ export function TechnicianProductivitySheet({
                 <div
                   className="bg-sky-500"
                   style={{ width: `${(durationsByStatus.lunch / totalLoggedMs) * 100}%` }}
-                  title={`Lunch: ${formatDurationMs(durationsByStatus.lunch)}`}
+                  title={`Break: ${formatDurationMs(durationsByStatus.lunch)}`}
                 />
                 <div
                   className="bg-slate-400"
@@ -357,7 +356,7 @@ export function TechnicianProductivitySheet({
                 <div className="rounded-lg border border-border bg-card px-2.5 py-2">
                   <span className="flex items-center gap-1.5 text-muted-foreground">
                     <span className="h-2 w-2 rounded-full bg-sky-500" />
-                    Lunch
+                    Break
                   </span>
                   <p className="mt-0.5 font-semibold tabular-nums text-foreground">
                     {formatDurationMs(durationsByStatus.lunch)}
@@ -390,8 +389,8 @@ export function TechnicianProductivitySheet({
                 {techLogs.map((log) => (
                   <li key={log.log_id} className="flex items-center justify-between gap-2 py-2">
                     <span className="font-medium text-foreground">
-                      {log.previous_status ? `${humanizeLabel(log.previous_status)} → ` : ''}
-                      {humanizeLabel(log.new_status)}
+                      {log.previous_status ? `${getTechAvailabilityLabel(log.previous_status)} → ` : ''}
+                      {getTechAvailabilityLabel(log.new_status)}
                     </span>
                     <time dateTime={log.changed_at} className="text-muted-foreground tabular-nums">
                       {formatManilaDateTime(log.changed_at)}

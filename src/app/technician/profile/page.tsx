@@ -17,10 +17,10 @@ async function TechnicianProfileContent() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Technician Profile &amp; Credentials
+            Profile &amp; Credentials
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Update your profile photo, display nickname, and password. Field credentials and specializations are managed by Admin.
+            Manage your photo, display nickname, and password.
           </p>
         </div>
         <Badge variant="secondary" className="font-mono">

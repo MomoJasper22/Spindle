@@ -3,34 +3,43 @@
 import * as React from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { ArrowRight, CalendarClock, Loader2, MapPin, Phone, Wrench } from 'lucide-react'
+import {
+  Activity,
+  ArrowRight,
+  CalendarClock,
+  CheckCircle2,
+  ChevronDown,
+  MapPin,
+  Phone,
+  Play,
+  Wrench,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
 import { ScrollableList } from '@/components/shared/scrollable-list'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { ActivityFeed } from '@/features/customer/components/activity-feed'
-import { TECH_AVAILABILITY_STATUSES, type TechAvailabilityStatus } from '@/lib/constants'
-import { formatManilaDate, formatPHPhone, formatPHP, getManilaTodayISO, humanizeLabel } from '@/lib/formatters'
+import type { TechAvailabilityStatus } from '@/lib/constants'
+import { formatManilaDate, formatPHPhone, formatPHP } from '@/lib/formatters'
 import { cn } from '@/lib/utils'
 import type {
   ActivityLogRow,
   AppointmentDetailView,
+  PaymentDetailView,
   RepairDetailView,
 } from '@/types/database'
-import { updateTechnicianAvailabilityAction } from '../actions/technician-actions'
+import {
+  updateTechnicianAppointmentAction,
+  updateTechnicianRepairAction,
+} from '../actions/technician-actions'
+import { buildTechnicianJobItems, type TechnicianJobItem } from '../lib/technician-jobs'
+import { TechnicianAvailabilityControl } from './technician-availability-control'
 import { TechnicianKpiCards } from './technician-kpi-cards'
 
-const DiagnosticDrawer = dynamic(
-  () => import('./diagnostic-drawer').then((m) => m.DiagnosticDrawer),
+const JobWorkbenchDrawer = dynamic(
+  () => import('./diagnostic-drawer').then((m) => m.JobWorkbenchDrawer),
   { ssr: false }
 )
 
@@ -39,14 +48,8 @@ interface TechnicianOverviewViewProps {
   availabilityStatus: TechAvailabilityStatus
   repairs: RepairDetailView[]
   appointments: AppointmentDetailView[]
+  payments: PaymentDetailView[]
   activityLogs: ActivityLogRow[]
-}
-
-const STATUS_DOT_CLASSES: Record<TechAvailabilityStatus, string> = {
-  available: 'bg-emerald-500',
-  busy: 'bg-amber-500',
-  lunch: 'bg-sky-500',
-  off_duty: 'bg-slate-400',
 }
 
 export function TechnicianOverviewView({
@@ -54,111 +57,104 @@ export function TechnicianOverviewView({
   availabilityStatus,
   repairs,
   appointments,
+  payments,
   activityLogs,
 }: TechnicianOverviewViewProps) {
   const [selectedTicketId, setSelectedTicketId] = React.useState<string | null>(null)
-  const [optimisticStatus, setOptimisticStatus] = React.useOptimistic(availabilityStatus)
-  const [statusFeedback, setStatusFeedback] = React.useState<string | null>(null)
-  const [isUpdatingStatus, startStatusTransition] = React.useTransition()
-  const selectedTicket = repairs.find((r) => r.ticket_id === selectedTicketId) ?? null
+  const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
+    null
+  )
+  const [showActivity, setShowActivity] = React.useState(false)
+  const [isActionPending, startActionTransition] = React.useTransition()
 
-  function handleAvailabilityChange(nextValue: string) {
-    const next = nextValue as TechAvailabilityStatus
-    setStatusFeedback(null)
-    startStatusTransition(async () => {
-      setOptimisticStatus(next)
-      const result = await updateTechnicianAvailabilityAction({ availability_status: next })
-      if (!result.success) {
-        setStatusFeedback(result.error)
-      }
+  const jobs = React.useMemo(
+    () => buildTechnicianJobItems(repairs, appointments, payments),
+    [repairs, appointments, payments]
+  )
+
+  const selectedJob = jobs.find((j) => j.ticket.ticket_id === selectedTicketId) ?? null
+  const todaysJobs = jobs.filter((j) => j.isToday)
+  const activeJobs = jobs.filter((j) => j.isActive)
+  const otherActiveJobs = activeJobs.filter((j) => !j.isToday)
+  const unconfirmedToday = todaysJobs.filter((j) => j.needsSlotConfirm).length
+
+  const payableJobs = activeJobs.filter((j) => j.paymentSummary.payableRemaining > 0)
+  const pendingCollectionsPhp = payableJobs.reduce(
+    (sum, j) => sum + j.paymentSummary.payableRemaining,
+    0
+  )
+
+  function handleQuickConfirm(e: React.MouseEvent, job: TechnicianJobItem) {
+    e.stopPropagation()
+    if (!job.appointment) return
+    setFeedback(null)
+    startActionTransition(async () => {
+      const result = await updateTechnicianAppointmentAction({
+        appointment_id: job.appointment!.appointment_id,
+        appointment_status: 'confirmed',
+        scheduled_date: job.appointment!.scheduled_date,
+        time_slot: job.appointment!.time_slot,
+        remarks: job.appointment!.remarks ?? '',
+      })
+      setFeedback(
+        result.success
+          ? { type: 'success', message: result.message }
+          : { type: 'error', message: result.error }
+      )
     })
   }
 
-  const todayISO = getManilaTodayISO()
-  const currentMonthPrefix = todayISO.slice(0, 7)
-
-  const todaysVisits = appointments.filter(
-    (a) => a.scheduled_date === todayISO && a.appointment_status !== 'cancelled'
-  )
-
-  const activeJobs = repairs.filter((r) => !['completed', 'cancelled'].includes(r.status))
-
-  const completedThisMonth = repairs.filter(
-    (r) =>
-      r.status === 'completed' &&
-      (r.completed_at?.startsWith(currentMonthPrefix) || r.updated_at.startsWith(currentMonthPrefix))
-  ).length
-
-  const pendingCollectionsPhp = activeJobs.reduce((sum, r) => {
-    const target = Number(r.final_cost_php ?? r.estimated_cost_php ?? 0)
-    const paid = Number(r.verified_paid_php ?? 0)
-    return sum + Math.max(0, target - paid)
-  }, 0)
+  function handleQuickStart(e: React.MouseEvent, job: TechnicianJobItem) {
+    e.stopPropagation()
+    setFeedback(null)
+    startActionTransition(async () => {
+      const result = await updateTechnicianRepairAction({
+        ticket_id: job.ticket.ticket_id,
+        status: 'in_progress',
+        diagnostic_notes: job.ticket.diagnostic_notes ?? '',
+        final_cost_php:
+          job.ticket.final_cost_php !== null ? Number(job.ticket.final_cost_php) : null,
+      })
+      setFeedback(
+        result.success
+          ? { type: 'success', message: result.message }
+          : { type: 'error', message: result.error }
+      )
+    })
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Field Overview, {techDisplayName}
+            Hi, {techDisplayName}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Today&apos;s dispatched visits, active jobs, and recent field logs.
+            Your visits for today and open jobs needing attention.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
-          <label
-            htmlFor="tech-overview-availability"
-            className="text-xs font-semibold text-muted-foreground whitespace-nowrap"
-          >
-            Availability:
-          </label>
-          <Select
-            value={optimisticStatus}
-            onValueChange={handleAvailabilityChange}
-            disabled={isUpdatingStatus}
-          >
-            <SelectTrigger
-              id="tech-overview-availability"
-              aria-label="Availability status"
-              className="w-[170px] bg-card"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                {isUpdatingStatus && (
-                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" aria-hidden="true" />
-                )}
-                <SelectValue />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              {TECH_AVAILABILITY_STATUSES.map((opt) => (
-                <SelectItem key={opt} value={opt}>
-                  <span className="inline-flex items-center gap-2">
-                    <span
-                      aria-hidden="true"
-                      className={cn('h-2 w-2 rounded-full', STATUS_DOT_CLASSES[opt])}
-                    />
-                    <span>{humanizeLabel(opt)}</span>
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <TechnicianAvailabilityControl
+          availabilityStatus={availabilityStatus}
+          onError={(err) =>
+            setFeedback(err ? { type: 'error', message: err } : null)
+          }
+        />
       </div>
 
-      {statusFeedback && <FormBanner type="error" message={statusFeedback} />}
+      {feedback && <FormBanner type={feedback.type} message={feedback.message} />}
 
       <TechnicianKpiCards
-        todaysAppointments={todaysVisits.length}
+        todaysVisits={todaysJobs.length}
+        unconfirmedToday={unconfirmedToday}
         assignedActiveJobs={activeJobs.length}
-        completedThisMonth={completedThisMonth}
         pendingCollectionsPhp={pendingCollectionsPhp}
+        pendingCollectionCount={payableJobs.length}
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Today's Agenda */}
+        {/* Today's Visits (Interactive, Unified with Job Workbench) */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <div>
@@ -166,60 +162,136 @@ export function TechnicianOverviewView({
                 <CalendarClock className="h-4 w-4 text-primary" aria-hidden="true" />
                 <span>Today&apos;s Visits</span>
               </CardTitle>
-              <CardDescription>Dispatched home visits for today</CardDescription>
+              <CardDescription>Tap a visit to log diagnostics, pricing, or payment</CardDescription>
             </div>
             <Button asChild variant="ghost" size="sm">
-              <Link href="/technician/schedule">
-                <span>Full Schedule</span>
+              <Link href="/technician/jobs?tab=today">
+                <span>All Today</span>
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               </Link>
             </Button>
           </CardHeader>
           <CardContent>
-            {todaysVisits.length === 0 ? (
+            {todaysJobs.length === 0 ? (
               <EmptyState
                 icon={CalendarClock}
                 title="No visits scheduled for today"
-                description="Check Upcoming in your Schedule page for your next assigned slots."
+                description="Check My Jobs for upcoming visits or active tickets."
               />
             ) : (
               <ScrollableList
                 regionLabel="Today's visits list"
-                maxHeightClassName="max-h-80"
-                className="pr-1"
+                maxHeightClassName="max-h-96"
+                className="p-0.5 pr-1"
               >
-                <div className="divide-y divide-dashed divide-border">
-                  {todaysVisits.map((apt) => (
-                    <div key={apt.appointment_id} className="py-3 first:pt-0 last:pb-0 space-y-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold text-primary">{apt.time_slot}</span>
-                        <StatusBadge status={apt.appointment_status} />
+                <div className="space-y-3">
+                  {todaysJobs.map((job) => {
+                    const { ticket, appointment } = job
+                    const address =
+                      appointment?.service_address ||
+                      [ticket.customer_address_barangay, ticket.customer_address_city]
+                        .filter(Boolean)
+                        .join(', ')
+                    return (
+                      <div
+                        key={ticket.ticket_id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setSelectedTicketId(ticket.ticket_id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            setSelectedTicketId(ticket.ticket_id)
+                          }
+                        }}
+                        className="rounded-xl border border-border bg-card p-3.5 space-y-2.5 cursor-pointer transition-colors hover:border-primary/50 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-primary">
+                            {appointment?.time_slot ?? 'Scheduled today'}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {job.needsSlotConfirm && appointment && (
+                              <StatusBadge status={appointment.appointment_status} />
+                            )}
+                            <StatusBadge status={ticket.status} />
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {ticket.customer_first_name} {ticket.customer_last_name} &mdash;{' '}
+                            {ticket.appliance_brand} {ticket.appliance_category}
+                          </p>
+                          <p className="mt-0.5 flex items-start gap-1 text-xs text-muted-foreground">
+                            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                            <span className="line-clamp-1">{address || 'Address on file'}</span>
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            {ticket.customer_phone && (
+                              <a
+                                href={`tel:${ticket.customer_phone.replace(/\s+/g, '')}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                              >
+                                <Phone className="h-3 w-3" aria-hidden="true" />
+                                <span>{formatPHPhone(ticket.customer_phone)}</span>
+                              </a>
+                            )}
+                            {job.paymentSummary.payableRemaining > 0 && (
+                              <span className="font-semibold tabular-nums text-foreground">
+                                Due {formatPHP(job.paymentSummary.payableRemaining)}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            {job.needsSlotConfirm && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={isActionPending}
+                                onClick={(e) => handleQuickConfirm(e, job)}
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                                <span>Confirm</span>
+                              </Button>
+                            )}
+                            {(ticket.status === 'confirmed' || ticket.status === 'assigned') && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={isActionPending}
+                                onClick={(e) => handleQuickStart(e, job)}
+                              >
+                                <Play className="h-3.5 w-3.5" aria-hidden="true" />
+                                <span>Start</span>
+                              </Button>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-sm font-semibold text-foreground">
-                        {apt.customer_first_name} {apt.customer_last_name} &middot;{' '}
-                        <span className="font-mono text-xs text-muted-foreground">{apt.ticket_id}</span>
-                      </p>
-                      <p className="flex items-start gap-1 text-xs text-muted-foreground">
-                        <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                        <span className="line-clamp-1">{apt.service_address}</span>
-                      </p>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </ScrollableList>
             )}
           </CardContent>
         </Card>
 
-        {/* Priority Active Jobs */}
+        {/* Other Active Jobs (Non-overlapping with Today's Visits) */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <div>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Wrench className="h-4 w-4 text-primary" aria-hidden="true" />
-                <span>Active Repair Queue</span>
+                <span>Other Active Jobs</span>
               </CardTitle>
-              <CardDescription>Tap any job to update diagnostics or collect payment</CardDescription>
+              <CardDescription>Upcoming visits and open tickets outside today</CardDescription>
             </div>
             <Button asChild variant="ghost" size="sm">
               <Link href="/technician/jobs">
@@ -229,48 +301,52 @@ export function TechnicianOverviewView({
             </Button>
           </CardHeader>
           <CardContent>
-            {activeJobs.length === 0 ? (
+            {otherActiveJobs.length === 0 ? (
               <EmptyState
                 icon={Wrench}
-                title="No active jobs assigned"
-                description="New repair tickets assigned to you will appear here automatically."
+                title={todaysJobs.length > 0 ? 'No other open jobs' : 'No active jobs assigned'}
+                description="Upcoming dispatches and open follow-ups will appear here automatically."
               />
             ) : (
               <ScrollableList
-                regionLabel="Active repair queue"
-                maxHeightClassName="max-h-80"
+                regionLabel="Other active jobs"
+                maxHeightClassName="max-h-96"
                 className="p-0.5 pr-1"
               >
                 <div className="space-y-3">
-                  {activeJobs.map((ticket) => (
-                    <button
-                      key={ticket.ticket_id}
-                      type="button"
-                      onClick={() => setSelectedTicketId(ticket.ticket_id)}
-                      className="w-full rounded-xl border border-border bg-card p-3.5 text-left transition-colors hover:border-primary/50 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono text-xs font-semibold text-primary">
-                          {ticket.ticket_id}
-                        </span>
-                        <StatusBadge status={ticket.status} />
-                      </div>
-                      <p className="mt-1 text-sm font-semibold text-foreground">
-                        {ticket.customer_first_name} {ticket.customer_last_name} &mdash;{' '}
-                        {ticket.appliance_brand} {ticket.appliance_model_number}
-                      </p>
-                      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Phone className="h-3 w-3" aria-hidden="true" />
-                          {formatPHPhone(ticket.customer_phone)}
-                        </span>
-                        <span className="font-medium tabular-nums text-foreground">
-                          {formatManilaDate(ticket.scheduled_date)} &middot;{' '}
-                          {formatPHP(ticket.final_cost_php ?? ticket.estimated_cost_php)}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
+                  {otherActiveJobs.map((job) => {
+                    const { ticket, appointment } = job
+                    return (
+                      <button
+                        key={ticket.ticket_id}
+                        type="button"
+                        onClick={() => setSelectedTicketId(ticket.ticket_id)}
+                        className="w-full rounded-xl border border-border bg-card p-3.5 text-left transition-colors hover:border-primary/50 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono text-xs font-semibold text-primary">
+                            {ticket.ticket_id}
+                          </span>
+                          <StatusBadge status={ticket.status} />
+                        </div>
+                        <p className="mt-1 text-sm font-semibold text-foreground">
+                          {ticket.customer_first_name} {ticket.customer_last_name} &mdash;{' '}
+                          {ticket.appliance_brand} {ticket.appliance_model_number}
+                        </p>
+                        <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                          <span>
+                            {formatManilaDate(job.visitDate)}
+                            {appointment?.time_slot ? ` · ${appointment.time_slot}` : ''}
+                          </span>
+                          <span className="font-semibold tabular-nums text-foreground">
+                            {job.paymentSummary.payableRemaining > 0
+                              ? `Due ${formatPHP(job.paymentSummary.payableRemaining)}`
+                              : formatPHP(ticket.final_cost_php ?? ticket.estimated_cost_php)}
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               </ScrollableList>
             )}
@@ -278,16 +354,45 @@ export function TechnicianOverviewView({
         </Card>
       </div>
 
-      <ActivityFeed
-        logs={activityLogs.slice(0, 8)}
-        audience="staff"
-        title="Recent Field Activity"
-        description="Ticket updates, appointment status changes, and on-site collection logs."
-      />
+      {/* Collapsible Recent Activity (tucked away by default to reduce visual noise) */}
+      <div className="rounded-2xl border border-border bg-card">
+        <button
+          type="button"
+          aria-expanded={showActivity}
+          onClick={() => setShowActivity((prev) => !prev)}
+          className="flex w-full items-center justify-between gap-3 px-5 py-3.5 text-left text-sm font-semibold text-foreground hover:bg-muted/30 rounded-2xl"
+        >
+          <span className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary" aria-hidden="true" />
+            <span>Recent Field Activity</span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground tabular-nums">
+              {activityLogs.length}
+            </span>
+          </span>
+          <ChevronDown
+            className={cn(
+              'h-4 w-4 text-muted-foreground transition-transform',
+              showActivity && 'rotate-180'
+            )}
+            aria-hidden="true"
+          />
+        </button>
 
-      <DiagnosticDrawer
-        ticket={selectedTicket}
-        open={Boolean(selectedTicket)}
+        {showActivity && (
+          <div className="border-t border-border p-4">
+            <ActivityFeed
+              logs={activityLogs.slice(0, 8)}
+              audience="staff"
+              title="Field Logs"
+              description="Recent ticket updates, schedule changes, and recorded collections."
+            />
+          </div>
+        )}
+      </div>
+
+      <JobWorkbenchDrawer
+        job={selectedJob}
+        open={Boolean(selectedJob)}
         onOpenChange={(open) => {
           if (!open) setSelectedTicketId(null)
         }}

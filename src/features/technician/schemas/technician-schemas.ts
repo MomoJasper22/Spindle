@@ -7,12 +7,13 @@ import {
 
 export const technicianRepairUpdateSchema = z.object({
   ticket_id: z.string().trim().min(1),
-  status: z.enum(['confirmed', 'assigned', 'in_progress', 'awaiting_payment', 'completed']),
+  status: z.enum(['assigned', 'in_progress', 'awaiting_payment', 'completed']),
   diagnostic_notes: z.string().trim().max(2000).optional().or(z.literal('')),
   estimated_cost_php: z
     .number({ message: 'Enter a valid estimated cost in PHP.' })
     .min(0, 'Estimated cost cannot be negative.')
-    .max(1000000),
+    .max(1000000)
+    .optional(),
   final_cost_php: z
     .number({ message: 'Enter a valid final cost in PHP.' })
     .min(0, 'Final cost cannot be negative.')
@@ -34,7 +35,8 @@ export const technicianPaymentSchema = z
       .number({ message: 'Enter a whole installment number.' })
       .int()
       .min(1)
-      .nullable(),
+      .nullable()
+      .optional(),
     reference_no: z.string().trim().max(100).optional().or(z.literal('')),
     remarks: z.string().trim().max(500).optional().or(z.literal('')),
   })

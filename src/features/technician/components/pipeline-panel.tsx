@@ -1,17 +1,10 @@
 'use client'
 
 import * as React from 'react'
-import { Columns3, MapPin, Phone, Search, Table2, Wrench } from 'lucide-react'
+import { CalendarClock, CreditCard, MapPin, Phone, Search, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -23,78 +16,147 @@ import {
 import { EmptyState } from '@/components/shared/empty-state'
 import { ScrollableList } from '@/components/shared/scrollable-list'
 import { StatusBadge } from '@/components/shared/status-badge'
-import { REPAIR_PRIORITIES } from '@/lib/constants'
-import { formatManilaDate, formatPHPhone, formatPHP, humanizeLabel } from '@/lib/formatters'
-import type { RepairDetailView } from '@/types/database'
+import { formatManilaDate, formatPHPhone, formatPHP, getManilaTodayISO } from '@/lib/formatters'
+import { cn } from '@/lib/utils'
+import type { PaymentDetailView } from '@/types/database'
+import type { TechnicianJobItem } from '../lib/technician-jobs'
+
+export type JobsTabKey = 'active' | 'today' | 'needs_payment' | 'completed' | 'collections'
 
 interface PipelinePanelProps {
-  repairs: RepairDetailView[]
-  onSelectTicket: (ticket: RepairDetailView) => void
+  jobs: TechnicianJobItem[]
+  payments: PaymentDetailView[]
+  activeTab: JobsTabKey
+  onTabChange: (tab: JobsTabKey) => void
+  onSelectJob: (job: TechnicianJobItem) => void
+  onSelectTicketId: (ticketId: string) => void
 }
 
-const PIPELINE_STAGES = [
-  { key: 'assigned', title: 'Assigned / Confirmed', statuses: ['confirmed', 'assigned'] },
-  { key: 'in_progress', title: 'In Progress', statuses: ['in_progress'] },
-  { key: 'awaiting_payment', title: 'Awaiting Payment', statuses: ['awaiting_payment'] },
-  { key: 'completed', title: 'Completed', statuses: ['completed'] },
-] as const
+function getBillingBadge(job: TechnicianJobItem): { label: string; tone: string } {
+  const { paymentSummary, ticket } = job
+  if (ticket.status === 'cancelled') {
+    return { label: 'Cancelled', tone: 'text-muted-foreground' }
+  }
+  if (paymentSummary.isSettled) {
+    return { label: `Paid ${formatPHP(paymentSummary.verifiedPaid)}`, tone: 'text-emerald-700' }
+  }
+  if (paymentSummary.isCoveredByPending) {
+    return { label: 'Pending verify', tone: 'text-amber-700' }
+  }
+  if (paymentSummary.hasFinalBill && paymentSummary.payableRemaining > 0) {
+    return { label: `Collect ${formatPHP(paymentSummary.payableRemaining)}`, tone: 'text-orange-700' }
+  }
+  if (ticket.estimated_cost_php > 0) {
+    return { label: `Est. ${formatPHP(ticket.estimated_cost_php)}`, tone: 'text-muted-foreground' }
+  }
+  return { label: 'Quote pending', tone: 'text-muted-foreground' }
+}
 
-export function PipelinePanel({ repairs, onSelectTicket }: PipelinePanelProps) {
-  const [viewMode, setViewMode] = React.useState<'kanban' | 'table'>('kanban')
+export function PipelinePanel({
+  jobs,
+  payments,
+  activeTab,
+  onTabChange,
+  onSelectJob,
+  onSelectTicketId,
+}: PipelinePanelProps) {
   const [search, setSearch] = React.useState('')
-  const [priorityFilter, setPriorityFilter] = React.useState<string>('all')
-  const [statusFilter, setStatusFilter] = React.useState<string>('all')
+  const todayISO = getManilaTodayISO()
+  const q = search.trim().toLowerCase()
 
-  const filtered = repairs.filter((r) => {
-    if (priorityFilter !== 'all' && r.priority !== priorityFilter) return false
-    if (statusFilter !== 'all' && r.status !== statusFilter) return false
-    const q = search.trim().toLowerCase()
+  const activeJobs = jobs.filter((j) => j.isActive)
+  const todayJobs = jobs.filter((j) => j.isToday)
+  const needsPaymentJobs = jobs.filter((j) => j.needsPayment)
+  const completedJobs = jobs.filter((j) => !j.isActive)
+
+  const tabs: ReadonlyArray<{ key: JobsTabKey; label: string; count: number }> = [
+    { key: 'active', label: 'Active', count: activeJobs.length },
+    { key: 'today', label: 'Today', count: todayJobs.length },
+    { key: 'needs_payment', label: 'Needs Payment', count: needsPaymentJobs.length },
+    { key: 'completed', label: 'Completed', count: completedJobs.length },
+    { key: 'collections', label: 'Collections', count: payments.length },
+  ]
+
+  const jobTabPool =
+    activeTab === 'today'
+      ? todayJobs
+      : activeTab === 'needs_payment'
+        ? needsPaymentJobs
+        : activeTab === 'completed'
+          ? completedJobs
+          : activeJobs
+
+  const filteredJobs = jobTabPool.filter((job) => {
     if (!q) return true
+    const { ticket, appointment } = job
     return (
-      r.ticket_id.toLowerCase().includes(q) ||
-      `${r.customer_first_name} ${r.customer_last_name}`.toLowerCase().includes(q) ||
-      r.appliance_brand.toLowerCase().includes(q) ||
-      r.appliance_model_number.toLowerCase().includes(q) ||
-      (r.customer_address_city ?? '').toLowerCase().includes(q) ||
-      (r.customer_address_barangay ?? '').toLowerCase().includes(q)
+      ticket.ticket_id.toLowerCase().includes(q) ||
+      `${ticket.customer_first_name} ${ticket.customer_last_name}`.toLowerCase().includes(q) ||
+      ticket.appliance_brand.toLowerCase().includes(q) ||
+      ticket.appliance_category.toLowerCase().includes(q) ||
+      ticket.appliance_model_number.toLowerCase().includes(q) ||
+      (ticket.customer_address_city ?? '').toLowerCase().includes(q) ||
+      (ticket.customer_address_barangay ?? '').toLowerCase().includes(q) ||
+      (appointment?.service_address ?? '').toLowerCase().includes(q)
     )
   })
 
+  const filteredPayments = payments.filter((p) => {
+    if (!q) return true
+    return (
+      p.payment_id.toLowerCase().includes(q) ||
+      p.ticket_id.toLowerCase().includes(q) ||
+      `${p.customer_first_name} ${p.customer_last_name}`.toLowerCase().includes(q) ||
+      p.payment_method.toLowerCase().includes(q) ||
+      (p.reference_no ?? '').toLowerCase().includes(q)
+    )
+  })
+
+  const jobByTicketId = new Map(jobs.map((j) => [j.ticket.ticket_id, j]))
+
   return (
     <Card>
-      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <CardTitle>Repair Pipeline &amp; Job Queue</CardTitle>
-          <CardDescription>
-            Inspect assigned customer repairs, update stage progression, and record diagnostics or on-site payments.
-          </CardDescription>
-        </div>
-
-        <div className="inline-flex rounded-lg border border-border bg-muted p-1 self-start">
-          <Button
-            type="button"
-            variant={viewMode === 'kanban' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('kanban')}
+      <CardContent standalone className="space-y-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          {/* Segmented Filter Tabs */}
+          <div
+            role="tablist"
+            aria-label="Job queue filters"
+            className="flex flex-wrap gap-1.5 rounded-xl border border-border bg-muted/60 p-1"
           >
-            <Columns3 className="h-4 w-4" aria-hidden="true" />
-            <span>Pipeline</span>
-          </Button>
-          <Button
-            type="button"
-            variant={viewMode === 'table' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('table')}
-          >
-            <Table2 className="h-4 w-4" aria-hidden="true" />
-            <span>Table</span>
-          </Button>
-        </div>
-      </CardHeader>
+            {tabs.map((tab) => {
+              const selected = activeTab === tab.key
+              return (
+                <button
+                  key={tab.key}
+                  role="tab"
+                  type="button"
+                  aria-selected={selected}
+                  onClick={() => onTabChange(tab.key)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors',
+                    selected
+                      ? 'bg-primary text-primary-foreground shadow-2xs'
+                      : 'text-muted-foreground hover:bg-card hover:text-foreground'
+                  )}
+                >
+                  <span>{tab.label}</span>
+                  <span
+                    className={cn(
+                      'rounded-full px-1.5 py-0.5 text-[10px] tabular-nums',
+                      selected
+                        ? 'bg-white/20 text-white'
+                        : 'bg-background text-muted-foreground'
+                    )}
+                  >
+                    {tab.count}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
 
-      <CardContent className="space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
+          <div className="relative w-full lg:max-w-xs">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden="true"
@@ -103,239 +165,312 @@ export function PipelinePanel({ repairs, onSelectTicket }: PipelinePanelProps) {
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search ticket, customer, barangay, model..."
-              aria-label="Search assigned jobs"
+              placeholder={
+                activeTab === 'collections'
+                  ? 'Search payment ID, ticket, customer...'
+                  : 'Search ticket, customer, barangay...'
+              }
+              aria-label="Search jobs or collections"
               className="pl-9"
             />
           </div>
-
-          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-            <SelectTrigger className="w-full sm:w-44" aria-label="Filter by priority">
-              <SelectValue placeholder="All Priorities" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Priorities</SelectItem>
-              {REPAIR_PRIORITIES.map((p) => (
-                <SelectItem key={p} value={p}>
-                  {humanizeLabel(p)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-48" aria-label="Filter by status">
-              <SelectValue placeholder="All Stages" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Stages</SelectItem>
-              <SelectItem value="confirmed">Confirmed</SelectItem>
-              <SelectItem value="assigned">Assigned</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="awaiting_payment">Awaiting Payment</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
-        {repairs.length === 0 ? (
+        {activeTab === 'collections' ? (
+          payments.length === 0 ? (
+            <EmptyState
+              icon={CreditCard}
+              title="No collections recorded yet"
+              description="Payments collected on-site or paid online for your assigned tickets will appear here."
+            />
+          ) : filteredPayments.length === 0 ? (
+            <EmptyState
+              icon={Search}
+              title="No matching payments"
+              description="Try another ticket ID, customer name, or reference number."
+            />
+          ) : (
+            <>
+              <ScrollableList regionLabel="Field payment collections list" className="md:hidden p-0.5 pr-1">
+                <div className="space-y-3">
+                  {filteredPayments.map((pay) => {
+                    const hasJob = jobByTicketId.has(pay.ticket_id)
+                    return (
+                      <div
+                        key={pay.payment_id}
+                        className="rounded-xl border border-border bg-card p-4 space-y-2.5"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-heading text-base font-bold tabular-nums text-foreground">
+                              {formatPHP(pay.amount_php)}
+                            </p>
+                            <p className="font-mono text-xs text-primary">{pay.ticket_id}</p>
+                          </div>
+                          <StatusBadge status={pay.payment_status} />
+                        </div>
+                        <p className="text-sm font-medium text-foreground">
+                          {pay.customer_first_name} {pay.customer_last_name}
+                        </p>
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
+                          <span>
+                            {pay.payment_method} &middot; {pay.reference_no || 'Cash'} &middot;{' '}
+                            {formatManilaDate(pay.payment_date)}
+                          </span>
+                          {hasJob && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => onSelectTicketId(pay.ticket_id)}
+                            >
+                              Open Job
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </ScrollableList>
+
+              <div className="hidden md:block">
+                <Table regionLabel="Field payment collections">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ticket &amp; Unit</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Method &amp; Ref</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPayments.map((pay) => {
+                      const hasJob = jobByTicketId.has(pay.ticket_id)
+                      return (
+                        <TableRow key={pay.payment_id}>
+                          <TableCell>
+                            <p className="font-mono text-xs font-semibold text-primary">{pay.ticket_id}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {pay.appliance_brand} {pay.appliance_model_number}
+                            </p>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {pay.customer_first_name} {pay.customer_last_name}
+                          </TableCell>
+                          <TableCell>
+                            <p className="text-sm font-medium">{pay.payment_method}</p>
+                            <p className="font-mono text-xs text-muted-foreground">
+                              {pay.reference_no || 'Cash'}
+                            </p>
+                          </TableCell>
+                          <TableCell className="font-semibold tabular-nums">
+                            {formatPHP(pay.amount_php)}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                            {formatManilaDate(pay.payment_date)}
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={pay.payment_status} />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {hasJob && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => onSelectTicketId(pay.ticket_id)}
+                              >
+                                Open Job
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )
+        ) : jobTabPool.length === 0 ? (
           <EmptyState
-            icon={Wrench}
-            title="No assigned jobs yet"
-            description="Repair tickets assigned to you by dispatch administrators will appear in your pipeline queue."
+            icon={activeTab === 'today' ? CalendarClock : Wrench}
+            title={
+              activeTab === 'today'
+                ? 'No visits scheduled for today'
+                : activeTab === 'needs_payment'
+                  ? 'No unpaid bills right now'
+                  : activeTab === 'completed'
+                    ? 'No completed jobs yet'
+                    : 'No active jobs assigned'
+            }
+            description={
+              activeTab === 'today'
+                ? 'Switch to Active to check upcoming dispatches or open tickets.'
+                : 'Assigned service visits and repairs will show up here automatically.'
+            }
           />
-        ) : filtered.length === 0 ? (
+        ) : filteredJobs.length === 0 ? (
           <EmptyState
             icon={Search}
             title="No matching jobs"
-            description="No assigned repair tickets match your current search or filter settings."
+            description="No jobs match your search query in this tab."
           />
-        ) : viewMode === 'kanban' ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {PIPELINE_STAGES.map((stage) => {
-              const stageTickets = filtered.filter((t) =>
-                (stage.statuses as readonly string[]).includes(t.status)
-              )
-              return (
-                <section
-                  key={stage.key}
-                  aria-label={stage.title}
-                  className="flex flex-col rounded-xl border border-border bg-slate-50/80 p-3"
-                >
-                  <header className="mb-3 flex items-center justify-between px-1">
-                    <h3 className="font-heading text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {stage.title}
-                    </h3>
-                    <span className="rounded-full bg-card px-2 py-0.5 text-xs font-semibold text-foreground border border-border tabular-nums">
-                      {stageTickets.length}
-                    </span>
-                  </header>
-
-                  <ScrollableList
-                    regionLabel={`${stage.title} queue`}
-                    maxHeightClassName="max-h-[30rem]"
-                    className="flex-1 p-0.5 pr-1"
-                  >
-                    <div className="space-y-2.5">
-                      {stageTickets.length === 0 ? (
-                        <p className="rounded-lg border border-dashed border-slate-200 py-6 text-center text-xs text-muted-foreground">
-                          No jobs in stage
-                        </p>
-                      ) : (
-                        stageTickets.map((ticket) => (
-                          <button
-                            key={ticket.ticket_id}
-                            type="button"
-                            onClick={() => onSelectTicket(ticket)}
-                            className="w-full rounded-lg border border-border bg-card p-3.5 text-left shadow-2xs transition-colors hover:border-primary/50 hover:bg-primary-tint/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-mono text-xs font-semibold text-primary">
-                                {ticket.ticket_id}
-                              </span>
-                              <StatusBadge status={ticket.priority} showIcon={false} />
-                            </div>
-                            <p className="mt-1.5 text-sm font-semibold text-foreground">
-                              {ticket.customer_first_name} {ticket.customer_last_name}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {ticket.appliance_brand} &middot; {ticket.appliance_model_number}
-                            </p>
-                            <div className="mt-2.5 space-y-1 text-[11px] text-muted-foreground">
-                              <p className="flex items-center gap-1 truncate">
-                                <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
-                                <span>
-                                  {[ticket.customer_address_barangay, ticket.customer_address_city]
-                                    .filter(Boolean)
-                                    .join(', ') || 'Address on file'}
-                                </span>
-                              </p>
-                              <p className="flex items-center gap-1">
-                                <Phone className="h-3 w-3 shrink-0" aria-hidden="true" />
-                                <span>{formatPHPhone(ticket.customer_phone)}</span>
-                              </p>
-                            </div>
-                            <div className="mt-3 flex items-center justify-between border-t border-border pt-2 text-xs">
-                              <span className="text-muted-foreground">
-                                {formatManilaDate(ticket.scheduled_date)}
-                              </span>
-                              <span className="font-semibold text-foreground tabular-nums">
-                                {ticket.final_cost_php !== null
-                                  ? formatPHP(ticket.final_cost_php)
-                                  : formatPHP(ticket.estimated_cost_php)}
-                              </span>
-                            </div>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </ScrollableList>
-                </section>
-              )
-            })}
-          </div>
         ) : (
           <>
-            <ScrollableList regionLabel="Assigned repair tickets list" className="md:hidden p-0.5 pr-1">
+            {/* Mobile Stacked Cards */}
+            <ScrollableList regionLabel="Assigned jobs list" className="md:hidden p-0.5 pr-1">
               <div className="space-y-3">
-                {filtered.map((ticket) => (
-                  <div
-                    key={ticket.ticket_id}
-                    className="rounded-xl border border-border bg-card p-4 space-y-3"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <span className="font-mono text-xs font-semibold text-primary">
-                          {ticket.ticket_id}
+                {filteredJobs.map((job) => {
+                  const { ticket, appointment } = job
+                  const billing = getBillingBadge(job)
+                  const dateLabel =
+                    job.visitDate === todayISO ? 'Today' : formatManilaDate(job.visitDate)
+                  const shortLocation =
+                    [ticket.customer_address_barangay, ticket.customer_address_city]
+                      .filter(Boolean)
+                      .join(', ') || appointment?.service_address || 'Address on file'
+
+                  return (
+                    <div
+                      key={ticket.ticket_id}
+                      className="rounded-xl border border-border bg-card p-4 space-y-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-primary">
+                            {dateLabel}
+                            {appointment?.time_slot ? ` · ${appointment.time_slot}` : ''}
+                          </p>
+                          <p className="mt-0.5 font-semibold text-foreground truncate">
+                            {ticket.customer_first_name} {ticket.customer_last_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {ticket.appliance_brand} {ticket.appliance_category} &middot;{' '}
+                            <span className="font-mono">{ticket.ticket_id}</span>
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <StatusBadge status={ticket.status} />
+                          {(ticket.priority === 'high' || ticket.priority === 'urgent') && (
+                            <StatusBadge status={ticket.priority} showIcon={false} />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <p className="flex items-center gap-1.5 truncate">
+                          <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                          <span className="truncate">{shortLocation}</span>
+                        </p>
+                        {ticket.customer_phone && (
+                          <a
+                            href={`tel:${ticket.customer_phone.replace(/\s+/g, '')}`}
+                            className="inline-flex items-center gap-1.5 text-primary font-medium hover:underline"
+                          >
+                            <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                            <span>{formatPHPhone(ticket.customer_phone)}</span>
+                          </a>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 border-t border-border pt-2.5">
+                        <span className={cn('text-xs font-semibold tabular-nums', billing.tone)}>
+                          {billing.label}
                         </span>
-                        <p className="mt-0.5 font-semibold text-foreground">
-                          {ticket.customer_first_name} {ticket.customer_last_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {ticket.appliance_brand} {ticket.appliance_model_number}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <StatusBadge status={ticket.status} />
-                        <StatusBadge status={ticket.priority} showIcon={false} />
+                        <Button type="button" size="sm" onClick={() => onSelectJob(job)}>
+                          Open Job
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between border-t border-border pt-2.5 text-xs">
-                      <span className="text-muted-foreground">
-                        {formatManilaDate(ticket.scheduled_date)} &middot;{' '}
-                        {ticket.final_cost_php !== null
-                          ? formatPHP(ticket.final_cost_php)
-                          : formatPHP(ticket.estimated_cost_php)}
-                      </span>
-                      <Button size="sm" variant="outline" onClick={() => onSelectTicket(ticket)}>
-                        Open Drawer
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </ScrollableList>
 
+            {/* Desktop Scannable Table */}
             <div className="hidden md:block">
-              <Table regionLabel="Assigned repair tickets">
+              <Table regionLabel="Assigned repair jobs and visit windows">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Ticket</TableHead>
+                    <TableHead>Visit Window</TableHead>
                     <TableHead>Customer &amp; Location</TableHead>
-                    <TableHead>Appliance</TableHead>
-                    <TableHead>Scheduled</TableHead>
-                    <TableHead>Status &amp; Priority</TableHead>
-                    <TableHead>Cost (PHP)</TableHead>
-                    <TableHead className="text-right">Manage</TableHead>
+                    <TableHead>Appliance &amp; Ticket</TableHead>
+                    <TableHead>Stage</TableHead>
+                    <TableHead>Balance</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((ticket) => (
-                    <TableRow key={ticket.ticket_id}>
-                      <TableCell className="font-mono text-xs font-semibold text-primary">
-                        {ticket.ticket_id}
-                      </TableCell>
-                      <TableCell>
-                        <p className="font-semibold text-foreground">
-                          {ticket.customer_first_name} {ticket.customer_last_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatPHPhone(ticket.customer_phone)} &middot;{' '}
-                          {[ticket.customer_address_barangay, ticket.customer_address_city]
-                            .filter(Boolean)
-                            .join(', ')}
-                        </p>
-                      </TableCell>
-                      <TableCell>
-                        <p className="font-medium">
-                          {ticket.appliance_brand} {ticket.appliance_model_number}
-                        </p>
-                        <p className="font-mono text-xs text-muted-foreground">
-                          {ticket.appliance_serial_number}
-                        </p>
-                      </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {formatManilaDate(ticket.scheduled_date)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col items-start gap-1">
-                          <StatusBadge status={ticket.status} />
-                          <StatusBadge status={ticket.priority} showIcon={false} />
-                        </div>
-                      </TableCell>
-                      <TableCell className="tabular-nums text-xs">
-                        <p>Est: {formatPHP(ticket.estimated_cost_php)}</p>
-                        <p className="font-semibold">
-                          Final: {ticket.final_cost_php !== null ? formatPHP(ticket.final_cost_php) : '—'}
-                        </p>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button size="sm" variant="outline" onClick={() => onSelectTicket(ticket)}>
-                          Open Drawer
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredJobs.map((job) => {
+                    const { ticket, appointment } = job
+                    const billing = getBillingBadge(job)
+                    const dateLabel =
+                      job.visitDate === todayISO ? 'Today' : formatManilaDate(job.visitDate)
+                    const shortLocation =
+                      [ticket.customer_address_barangay, ticket.customer_address_city]
+                        .filter(Boolean)
+                        .join(', ') || appointment?.service_address || 'Address on file'
+
+                    return (
+                      <TableRow
+                        key={ticket.ticket_id}
+                        onClick={() => onSelectJob(job)}
+                        className="cursor-pointer transition-colors hover:bg-muted/40"
+                      >
+                        <TableCell className="whitespace-nowrap">
+                          <p className="font-semibold text-foreground">{dateLabel}</p>
+                          <p className="text-xs font-medium text-primary">
+                            {appointment?.time_slot ?? 'No slot set'}
+                          </p>
+                          {job.needsSlotConfirm && appointment && (
+                            <div className="mt-1">
+                              <StatusBadge status={appointment.appointment_status} />
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          <p className="font-semibold text-foreground">
+                            {ticket.customer_first_name} {ticket.customer_last_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">{shortLocation}</p>
+                          {ticket.customer_phone && (
+                            <p className="text-xs text-muted-foreground">
+                              {formatPHPhone(ticket.customer_phone)}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-medium text-foreground">
+                            {ticket.appliance_brand} {ticket.appliance_category}
+                          </p>
+                          <p className="font-mono text-xs text-muted-foreground">
+                            {ticket.ticket_id} &middot; {ticket.appliance_model_number}
+                          </p>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col items-start gap-1">
+                            <StatusBadge status={ticket.status} />
+                            {(ticket.priority === 'high' || ticket.priority === 'urgent') && (
+                              <StatusBadge status={ticket.priority} showIcon={false} />
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className={cn('text-xs font-semibold tabular-nums', billing.tone)}>
+                          {billing.label}
+                        </TableCell>
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                          <Button type="button" size="sm" variant="outline" onClick={() => onSelectJob(job)}>
+                            Open Job
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>

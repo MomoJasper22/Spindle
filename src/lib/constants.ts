@@ -212,6 +212,21 @@ export const TECH_AVAILABILITY_STATUSES = [
 
 export type TechAvailabilityStatus = (typeof TECH_AVAILABILITY_STATUSES)[number]
 
+export const TECH_AVAILABILITY_LABELS: Record<TechAvailabilityStatus, string> = {
+  available: 'Available',
+  busy: 'Busy',
+  lunch: 'Break',
+  off_duty: 'Off Duty',
+}
+
+export function getTechAvailabilityLabel(status: TechAvailabilityStatus | string | null | undefined): string {
+  if (!status) return '—'
+  if (status in TECH_AVAILABILITY_LABELS) {
+    return TECH_AVAILABILITY_LABELS[status as TechAvailabilityStatus]
+  }
+  return status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
 export const USER_TYPE_IDS = {
   customer: 'UTP-CUST',
   technician: 'UTP-TECH',

@@ -45,8 +45,9 @@ import {
   SERVICE_BRANCHES,
   TECH_AVAILABILITY_STATUSES,
   TIME_SLOTS,
+  getTechAvailabilityLabel,
 } from '@/lib/constants'
-import { formatFullName, formatPHPhone, getManilaTodayISO, humanizeLabel } from '@/lib/formatters'
+import { formatFullName, formatPHPhone, getManilaTodayISO } from '@/lib/formatters'
 import { cn } from '@/lib/utils'
 import type {
   AppointmentDetailView,
@@ -547,7 +548,7 @@ export function TechniciansPanel({
                       <SelectContent>
                         {TECH_AVAILABILITY_STATUSES.map((st) => (
                           <SelectItem key={st} value={st}>
-                            {humanizeLabel(st)}
+                            {getTechAvailabilityLabel(st)}
                           </SelectItem>
                         ))}
                       </SelectContent>
