@@ -1,5 +1,9 @@
+'use client'
+
 import * as React from 'react'
+import { Check, ChevronDown } from 'lucide-react'
 import {
+  APPLIANCE_CATEGORIES,
   resolveApplianceIconKey,
   type ApplianceIconKey,
 } from '@/lib/constants'
@@ -262,4 +266,99 @@ export function ApplianceIcon({
 }: ApplianceIconProps) {
   const key = resolveApplianceIconKey(icon, category)
   return <ApplianceIllustration iconKey={key} isActive={isActive} className={className} />
+}
+
+interface ApplianceTypePickerProps {
+  id?: string
+  value?: string
+  onChange: (value: (typeof APPLIANCE_CATEGORIES)[number]) => void
+  placeholder?: string
+  ariaInvalid?: boolean
+}
+
+export function ApplianceTypePicker({
+  id,
+  value,
+  onChange,
+  placeholder = 'Pick Appliances',
+  ariaInvalid = false,
+}: ApplianceTypePickerProps) {
+  const [open, setOpen] = React.useState(false)
+  const hasSelection = Boolean(
+    value && (APPLIANCE_CATEGORIES as readonly string[]).includes(value)
+  )
+
+  return (
+    <div className="space-y-2">
+      <button
+        id={id}
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        onClick={() => setOpen((prev) => !prev)}
+        className={cn(
+          'flex min-h-[44px] w-full items-center justify-between gap-2 rounded-lg border border-input bg-card px-3.5 py-2 text-left text-base sm:text-sm shadow-2xs transition-colors hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer',
+          ariaInvalid && 'border-destructive focus:ring-destructive'
+        )}
+      >
+        {hasSelection ? (
+          <span className="flex min-w-0 items-center gap-2.5">
+            <ApplianceIcon category={value} className="h-6 w-6 shrink-0" />
+            <span className="truncate font-medium text-foreground">{value}</span>
+          </span>
+        ) : (
+          <span className="truncate text-slate-500">{placeholder}</span>
+        )}
+        <ChevronDown
+          className={cn(
+            'h-4 w-4 shrink-0 text-muted-foreground opacity-70 transition-transform',
+            open && 'rotate-180'
+          )}
+          aria-hidden="true"
+        />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-label="Choose an appliance type"
+          className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto rounded-xl border border-border bg-muted/35 p-2.5 shadow-sm sm:grid-cols-3"
+        >
+          {APPLIANCE_CATEGORIES.map((cat) => {
+            const isSelected = value === cat
+            return (
+              <button
+                key={cat}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => {
+                  onChange(cat)
+                  setOpen(false)
+                }}
+                className={cn(
+                  'relative flex flex-col items-center justify-center gap-2 rounded-xl border px-2.5 py-3 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer',
+                  isSelected
+                    ? 'border-primary bg-primary text-white shadow-xs'
+                    : 'border-border bg-card text-foreground hover:border-primary/50 hover:bg-primary-tint/45'
+                )}
+              >
+                {isSelected && (
+                  <span className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-white/20">
+                    <Check className="h-3 w-3 text-white" aria-hidden="true" />
+                  </span>
+                )}
+                <ApplianceIcon
+                  category={cat}
+                  isActive={isSelected}
+                  className="h-10 w-10 shrink-0"
+                />
+                <span className="text-xs font-semibold leading-tight">{cat}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }

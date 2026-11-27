@@ -8,7 +8,11 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireRole } from '@/lib/auth/session'
 import { getManilaTodayISO, normalizePHPhone } from '@/lib/formatters'
-import { getDefaultApplianceIcon, getServiceBookingFeePhp } from '@/lib/constants'
+import {
+  getDefaultApplianceIcon,
+  getServiceBookingFeePhp,
+  getServiceFullPricePhp,
+} from '@/lib/constants'
 import { getTicketPaymentSummary } from '@/lib/payments'
 import {
   createPayMongoCheckoutSession,
@@ -271,13 +275,16 @@ export async function createBookingCheckoutAction(
     return { success: false, error: 'Inactive appliances cannot be booked for a home visit.' }
   }
 
-  const amountPhp = getServiceBookingFeePhp(parsed.data.service_type)
+  const paymentMode = parsed.data.payment_mode
+  const downPaymentPhp = getServiceBookingFeePhp(parsed.data.service_type)
+  const fullPricePhp = getServiceFullPricePhp(parsed.data.service_type)
+  const amountPhp = paymentMode === 'full_payment' ? fullPricePhp : downPaymentPhp
   const admin = createAdminClient()
 
   // Prevent accidental double checkout/payment for an identical pending booking request
-  const { data: existingOpen } = await admin
+  const { data: openSessions } = await admin
     .from('payment_checkout_sessions')
-    .select('session_id, paymongo_checkout_id, checkout_url, created_at')
+    .select('session_id, payment_mode, paymongo_checkout_id, checkout_url, created_at')
     .eq('customer_id', profile.user_id)
     .eq('session_kind', 'booking_deposit')
     .eq('status', 'awaiting_payment')
@@ -286,10 +293,8 @@ export async function createBookingCheckoutAction(
     .eq('scheduled_date', parsed.data.scheduled_date)
     .eq('time_slot', parsed.data.time_slot)
     .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
 
-  if (existingOpen) {
+  for (const existingOpen of openSessions ?? []) {
     try {
       const existingPm = await retrievePayMongoCheckoutSession(existingOpen.paymongo_checkout_id)
       if (existingPm.paidPayment || existingPm.paymentIntentStatus === 'succeeded') {
@@ -302,7 +307,11 @@ export async function createBookingCheckoutAction(
           error: 'Your payment for this home visit was already completed and your booking has been placed!',
         }
       }
-      if (existingPm.status === 'active' && existingOpen.checkout_url) {
+      if (
+        existingPm.status === 'active' &&
+        existingOpen.payment_mode === paymentMode &&
+        existingOpen.checkout_url
+      ) {
         return {
           success: true,
           message: 'Resuming your open PayMongo checkout session.',
@@ -313,8 +322,13 @@ export async function createBookingCheckoutAction(
           },
         }
       }
+      // Customer switched between Down Payment and Pay in Full: retire old unpaid checkout session
+      await admin
+        .from('payment_checkout_sessions')
+        .update({ status: 'cancelled' })
+        .eq('session_id', existingOpen.session_id)
     } catch {
-      // If existing session is expired or unreadable, cancel it and create a fresh one
+      // If existing session is expired or unreadable, expire it and create a fresh one
       await admin
         .from('payment_checkout_sessions')
         .update({ status: 'expired' })
@@ -327,11 +341,16 @@ export async function createBookingCheckoutAction(
   const successUrl = `${origin}/api/paymongo/callback?session_id=${encodeURIComponent(sessionId)}`
   const cancelUrl = `${origin}/customer/bookings?payment_cancelled=1`
 
+  const checkoutDescription =
+    paymentMode === 'full_payment'
+      ? `Full upfront service payment (${parsed.data.scheduled_date}, ${parsed.data.time_slot}).`
+      : `Down payment (${parsed.data.scheduled_date}, ${parsed.data.time_slot}) — remaining balance due in full after repair.`
+
   try {
     const pmSession = await createPayMongoCheckoutSession({
       amountPhp,
       lineItemName: `Spindle Home Visit — ${appliance.brand} ${appliance.category}`,
-      description: `Upfront booking fee (${parsed.data.scheduled_date}, ${parsed.data.time_slot}) — credited toward your total service bill.`,
+      description: checkoutDescription,
       referenceNumber: sessionId,
       successUrl,
       cancelUrl,
@@ -341,6 +360,7 @@ export async function createBookingCheckoutAction(
       metadata: {
         spindle_session_id: sessionId,
         spindle_kind: 'booking_deposit',
+        payment_mode: paymentMode,
         customer_id: profile.user_id,
       },
     })
@@ -351,7 +371,9 @@ export async function createBookingCheckoutAction(
       customer_id: profile.user_id,
       appliance_id: parsed.data.appliance_id,
       service_type: parsed.data.service_type,
-      priority: parsed.data.priority,
+      priority: 'normal',
+      payment_mode: paymentMode,
+      estimated_service_cost_php: fullPricePhp,
       issue_description: parsed.data.issue_description,
       scheduled_date: parsed.data.scheduled_date,
       time_slot: parsed.data.time_slot,

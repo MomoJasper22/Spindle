@@ -32,14 +32,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
-import { ApplianceIcon } from '@/components/shared/appliance-icons'
+import { ApplianceIcon, ApplianceTypePicker } from '@/components/shared/appliance-icons'
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
 import { StatusBadge } from '@/components/shared/status-badge'
 import {
   APPLIANCE_BRAND_SUGGESTIONS,
-  APPLIANCE_CATEGORIES,
   REGISTRATION_STATUSES,
   getDefaultApplianceIcon,
 } from '@/lib/constants'
@@ -76,7 +75,7 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
     defaultValues: {
       customer_id: customers[0]?.user_id ?? '',
       brand: '',
-      category: APPLIANCE_CATEGORIES[0],
+      category: '' as AdminApplianceInput['category'],
       model_number: '',
       serial_number: '',
       purchase_date: '',
@@ -90,7 +89,7 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
     form.reset({
       customer_id: customers[0]?.user_id ?? '',
       brand: '',
-      category: APPLIANCE_CATEGORIES[0],
+      category: '' as AdminApplianceInput['category'],
       model_number: '',
       serial_number: '',
       purchase_date: '',
@@ -450,45 +449,43 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
               />
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-app-brand">Brand</Label>
-                <Input id="adm-app-brand" list="adm-brands" {...form.register('brand')} />
-                <datalist id="adm-brands">
-                  {APPLIANCE_BRAND_SUGGESTIONS.map((b) => (
-                    <option key={b} value={b} />
-                  ))}
-                </datalist>
-                {form.formState.errors.brand && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {form.formState.errors.brand.message}
-                  </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="adm-app-brand">Brand</Label>
+              <Input id="adm-app-brand" list="adm-brands" {...form.register('brand')} />
+              <datalist id="adm-brands">
+                {APPLIANCE_BRAND_SUGGESTIONS.map((b) => (
+                  <option key={b} value={b} />
+                ))}
+              </datalist>
+              {form.formState.errors.brand && (
+                <p role="alert" className="text-xs text-destructive">
+                  {form.formState.errors.brand.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="adm-app-cat" className="block">
+                Appliance Type
+              </Label>
+              <Controller
+                name="category"
+                control={form.control}
+                render={({ field }) => (
+                  <ApplianceTypePicker
+                    id="adm-app-cat"
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Pick Appliances"
+                    ariaInvalid={Boolean(form.formState.errors.category)}
+                  />
                 )}
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-app-cat">Appliance Type</Label>
-                <Controller
-                  name="category"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="adm-app-cat">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {APPLIANCE_CATEGORIES.map((c) => (
-                          <SelectItem key={c} value={c}>
-                            <span className="inline-flex items-center gap-2.5">
-                              <ApplianceIcon category={c} className="h-5 w-5 shrink-0" />
-                              <span>{c}</span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
+              />
+              {form.formState.errors.category && (
+                <p role="alert" className="text-xs text-destructive">
+                  {form.formState.errors.category.message}
+                </p>
+              )}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">

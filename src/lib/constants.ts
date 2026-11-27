@@ -136,14 +136,29 @@ export const SERVICE_TYPES = [
 export type ServiceType = (typeof SERVICE_TYPES)[number]['value']
 
 export const SERVICE_BOOKING_FEES_PHP: Record<ServiceType, number> = {
-  diagnostic: 350,
+  diagnostic: 200,
   repair: 450,
   maintenance_cleaning: 650,
   installation: 800,
 }
 
+export const SERVICE_FULL_PRICES_PHP: Record<ServiceType, number> = {
+  diagnostic: 350,
+  repair: 1500,
+  maintenance_cleaning: 1200,
+  installation: 2000,
+}
+
+export const CHECKOUT_PAYMENT_MODES = ['down_payment', 'full_payment'] as const
+
+export type CheckoutPaymentMode = (typeof CHECKOUT_PAYMENT_MODES)[number]
+
 export function getServiceBookingFeePhp(serviceType: ServiceType): number {
   return SERVICE_BOOKING_FEES_PHP[serviceType] ?? 450
+}
+
+export function getServiceFullPricePhp(serviceType: ServiceType): number {
+  return SERVICE_FULL_PRICES_PHP[serviceType] ?? 1500
 }
 
 export const REPAIR_STATUSES = [
@@ -191,6 +206,7 @@ export type PaymentStatus = (typeof PAYMENT_STATUSES)[number]
 export const TECH_AVAILABILITY_STATUSES = [
   'available',
   'busy',
+  'lunch',
   'off_duty',
 ] as const
 

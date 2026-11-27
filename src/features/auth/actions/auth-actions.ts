@@ -180,6 +180,64 @@ export async function signUpAction(input: SignupInput): Promise<AuthActionResult
 
 export async function signOutAction(): Promise<void> {
   const supabase = await createClient()
+
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (user) {
+      const admin = createAdminClient()
+      const { data: profile } = await admin
+        .from('users')
+        .select('user_id, first_name, last_name, user_types(type_name)')
+        .eq('auth_user_id', user.id)
+        .maybeSingle()
+
+      const rawUserTypes: unknown = profile?.user_types
+      const rawRole = Array.isArray(rawUserTypes)
+        ? (rawUserTypes[0] as { type_name?: UserRole } | undefined)?.type_name
+        : (rawUserTypes as { type_name?: UserRole } | null | undefined)?.type_name
+
+      if (profile && rawRole === 'technician') {
+        const { data: tp } = await admin
+          .from('technician_profiles')
+          .select('availability_status')
+          .eq('technician_id', profile.user_id)
+          .maybeSingle()
+
+        const previousStatus = tp?.availability_status ?? null
+        if (previousStatus !== 'off_duty') {
+          await admin
+            .from('technician_profiles')
+            .update({ availability_status: 'off_duty' })
+            .eq('technician_id', profile.user_id)
+
+          await admin.from('technician_status_logs').insert({
+            technician_id: profile.user_id,
+            previous_status: previousStatus,
+            new_status: 'off_duty',
+            changed_by: profile.user_id,
+          })
+
+          await admin.from('activity_logs').insert({
+            actor_id: profile.user_id,
+            entity_type: 'technician',
+            entity_id: profile.user_id,
+            action: 'availability_changed',
+            description: `Technician ${profile.first_name} ${profile.last_name} logged out (auto set to off duty).`,
+          })
+
+          updateTag('admin-tech-profiles')
+          updateTag('admin-status-logs')
+          updateTag('technician-activity')
+        }
+      }
+    }
+  } catch {
+    // Always complete sign-out even if status logging fails
+  }
+
   await supabase.auth.signOut()
   updateTag('user-profile')
   redirect('/login')

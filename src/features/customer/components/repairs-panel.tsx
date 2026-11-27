@@ -40,17 +40,18 @@ import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
 import { StatusBadge, getCustomerStatusLabel } from '@/components/shared/status-badge'
 import {
-  REPAIR_PRIORITIES,
   REPAIR_STATUSES,
   SERVICE_TYPES,
   TIME_SLOTS,
   getServiceBookingFeePhp,
+  getServiceFullPricePhp,
 } from '@/lib/constants'
 import {
   formatManilaDate,
   formatPHP,
   getManilaTodayISO,
 } from '@/lib/formatters'
+import { cn } from '@/lib/utils'
 import { getTicketPaymentSummary } from '@/lib/payments'
 import type {
   AppointmentDetailView,
@@ -68,13 +69,6 @@ import {
   type RepairBookingInput,
   type RescheduleAppointmentInput,
 } from '../schemas/customer-schemas'
-
-const CUSTOMER_PRIORITY_LABELS: Record<string, string> = {
-  low: 'Flexible — anytime this week',
-  normal: 'Standard — normal scheduling',
-  high: 'Soon — within 1 to 2 days',
-  urgent: 'Urgent — as soon as possible',
-}
 
 interface RepairsPanelProps {
   appliances: CustomerApplianceRow[]
@@ -121,7 +115,7 @@ export function RepairsPanel({
     defaultValues: {
       appliance_id: resolvedDefaultApplianceId,
       service_type: 'repair',
-      priority: 'normal',
+      payment_mode: 'down_payment',
       issue_description: '',
       scheduled_date: todayISO,
       time_slot: TIME_SLOTS[0],
@@ -142,13 +136,16 @@ export function RepairsPanel({
   })
 
   const watchedServiceType = useWatch({ control: bookForm.control, name: 'service_type' })
-  const bookingFeePhp = getServiceBookingFeePhp(watchedServiceType)
+  const watchedPaymentMode = useWatch({ control: bookForm.control, name: 'payment_mode' })
+  const downPaymentPhp = getServiceBookingFeePhp(watchedServiceType)
+  const fullPricePhp = getServiceFullPricePhp(watchedServiceType)
+  const selectedCheckoutAmount = watchedPaymentMode === 'full_payment' ? fullPricePhp : downPaymentPhp
 
   function openBookDialog() {
     bookForm.reset({
       appliance_id: resolvedDefaultApplianceId,
       service_type: 'repair',
-      priority: 'normal',
+      payment_mode: 'down_payment',
       issue_description: '',
       scheduled_date: todayISO,
       time_slot: TIME_SLOTS[0],
@@ -458,7 +455,7 @@ export function RepairsPanel({
           <DialogHeader>
             <DialogTitle>Schedule a Home Visit</DialogTitle>
             <DialogDescription>
-              Pick your appliance, describe what is happening, and pay the upfront visit fee via PayMongo to place your booking.
+              Pick your appliance, describe what is happening, and choose how you want to pay via PayMongo to place your booking.
             </DialogDescription>
           </DialogHeader>
 
@@ -494,54 +491,28 @@ export function RepairsPanel({
               )}
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="book-service-type">
-                  What do you need? <span className="text-destructive">*</span>
-                </Label>
-                <Controller
-                  name="service_type"
-                  control={bookForm.control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="book-service-type">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SERVICE_TYPES.map((st) => (
-                          <SelectItem key={st.value} value={st.value}>
-                            {st.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="book-priority">
-                  How soon do you need us? <span className="text-destructive">*</span>
-                </Label>
-                <Controller
-                  name="priority"
-                  control={bookForm.control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="book-priority">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {REPAIR_PRIORITIES.map((p) => (
-                          <SelectItem key={p} value={p}>
-                            {CUSTOMER_PRIORITY_LABELS[p] ?? p}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="book-service-type">
+                What do you need? <span className="text-destructive">*</span>
+              </Label>
+              <Controller
+                name="service_type"
+                control={bookForm.control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="book-service-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SERVICE_TYPES.map((st) => (
+                        <SelectItem key={st.value} value={st.value}>
+                          {st.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -631,15 +602,70 @@ export function RepairsPanel({
               />
             </div>
 
-            <div className="rounded-xl border border-teal-200 bg-primary-tint/50 p-3.5 text-sm">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold text-foreground">Upfront Booking Fee</span>
-                <span className="font-heading text-base font-bold tabular-nums text-primary">
-                  {formatPHP(bookingFeePhp)}
-                </span>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Paid securely via PayMongo (GCash, Maya, QR Ph, or Card) before your booking is placed, and credited toward your total bill.
+            <div className="space-y-2">
+              <Label>
+                Payment option <span className="text-destructive">*</span>
+              </Label>
+              <Controller
+                name="payment_mode"
+                control={bookForm.control}
+                render={({ field }) => (
+                  <div className="grid gap-2.5 sm:grid-cols-2" role="radiogroup" aria-label="Payment option">
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={field.value === 'down_payment'}
+                      onClick={() => field.onChange('down_payment')}
+                      className={cn(
+                        'min-h-11 rounded-xl border p-3.5 text-left transition-colors',
+                        field.value === 'down_payment'
+                          ? 'border-primary bg-primary-tint/60 ring-2 ring-primary/20'
+                          : 'border-border bg-card hover:bg-muted/60'
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-foreground">Down Payment</span>
+                        <span className="font-heading text-sm font-bold tabular-nums text-primary">
+                          {formatPHP(downPaymentPhp)}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Pay this deposit now via PayMongo, then pay the remaining balance in full after repair.
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={field.value === 'full_payment'}
+                      onClick={() => field.onChange('full_payment')}
+                      className={cn(
+                        'min-h-11 rounded-xl border p-3.5 text-left transition-colors',
+                        field.value === 'full_payment'
+                          ? 'border-primary bg-primary-tint/60 ring-2 ring-primary/20'
+                          : 'border-border bg-card hover:bg-muted/60'
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-foreground">Pay in Full</span>
+                        <span className="font-heading text-sm font-bold tabular-nums text-primary">
+                          {formatPHP(fullPricePhp)}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Pay the full base service amount now via PayMongo before your visit.
+                      </p>
+                    </button>
+                  </div>
+                )}
+              />
+              {bookForm.formState.errors.payment_mode && (
+                <p role="alert" className="text-xs font-medium text-destructive">
+                  {bookForm.formState.errors.payment_mode.message}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Secured by PayMongo (GCash, Maya, QR Ph, or Card). Your booking is placed as soon as payment completes.
               </p>
             </div>
 
@@ -656,7 +682,7 @@ export function RepairsPanel({
                 {(isPending || isRedirecting) && (
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                 )}
-                <span>Proceed to Payment ({formatPHP(bookingFeePhp)})</span>
+                <span>Proceed to Payment ({formatPHP(selectedCheckoutAmount)})</span>
               </Button>
             </DialogFooter>
           </form>

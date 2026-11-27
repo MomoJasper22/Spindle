@@ -46,11 +46,8 @@ export function LandingHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+          <Button asChild size="sm" className="rounded-full px-5">
             <Link href="/login">Sign In</Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link href="/signup">Book a Repair</Link>
           </Button>
 
           <Sheet open={open} onOpenChange={setOpen}>
@@ -89,14 +86,9 @@ export function LandingHeader() {
               </nav>
 
               <div className="mt-auto flex flex-col gap-2.5 border-t border-border pt-4">
-                <Button asChild variant="outline" className="w-full" size="lg">
+                <Button asChild className="w-full rounded-full" size="lg">
                   <Link href="/login" onClick={() => setOpen(false)}>
                     Sign In
-                  </Link>
-                </Button>
-                <Button asChild className="w-full" size="lg">
-                  <Link href="/signup" onClick={() => setOpen(false)}>
-                    Book a Repair
                   </Link>
                 </Button>
               </div>

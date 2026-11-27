@@ -368,26 +368,20 @@ export function PaymentsPanel({
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <Label htmlFor="pay-amount">Amount to Pay (PHP)</Label>
-                {selectedMaxPayable > 0 && (
-                  <span className="text-muted-foreground tabular-nums">
-                    Max due: {formatPHP(selectedMaxPayable)}
-                  </span>
-                )}
+            <input type="hidden" {...register('amount_php', { valueAsNumber: true })} />
+
+            <div className="rounded-xl border border-teal-200 bg-primary-tint/50 p-3.5 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-foreground">Pay Remaining Balance in Full</span>
+                <span className="font-heading text-base font-bold tabular-nums text-primary">
+                  {formatPHP(selectedMaxPayable)}
+                </span>
               </div>
-              <Input
-                id="pay-amount"
-                type="number"
-                step="0.01"
-                min="1"
-                max={selectedMaxPayable || undefined}
-                aria-invalid={Boolean(errors.amount_php)}
-                {...register('amount_php', { valueAsNumber: true })}
-              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Remaining balances are settled in full via PayMongo (GCash, Maya, QR Ph, or Card).
+              </p>
               {errors.amount_php && (
-                <p role="alert" className="text-xs font-medium text-destructive">
+                <p role="alert" className="mt-1.5 text-xs font-medium text-destructive">
                   {errors.amount_php.message}
                 </p>
               )}

@@ -44,6 +44,7 @@ interface TechnicianOverviewViewProps {
 const STATUS_DOT_CLASSES: Record<TechAvailabilityStatus, string> = {
   available: 'bg-emerald-500',
   busy: 'bg-amber-500',
+  lunch: 'bg-sky-500',
   off_duty: 'bg-slate-400',
 }
 
@@ -122,17 +123,9 @@ export function TechnicianOverviewView({
               aria-label="Availability status"
               className="w-[170px] bg-card"
             >
-              <div className="flex items-center gap-2">
-                {isUpdatingStatus ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" aria-hidden="true" />
-                ) : (
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      'h-2.5 w-2.5 shrink-0 rounded-full',
-                      STATUS_DOT_CLASSES[optimisticStatus]
-                    )}
-                  />
+              <div className="flex items-center gap-2 min-w-0">
+                {isUpdatingStatus && (
+                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" aria-hidden="true" />
                 )}
                 <SelectValue />
               </div>

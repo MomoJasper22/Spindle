@@ -2,7 +2,7 @@ import { z } from 'zod'
 import {
   APPLIANCE_CATEGORIES,
   APPLIANCE_ICON_KEYS,
-  REPAIR_PRIORITIES,
+  CHECKOUT_PAYMENT_MODES,
   SERVICE_BRANCHES,
   TIME_SLOTS,
 } from '@/lib/constants'
@@ -10,7 +10,7 @@ import { validatePHPhone } from '@/lib/formatters'
 
 export const applianceSchema = z.object({
   brand: z.string().trim().min(2, 'Enter the appliance brand.').max(50),
-  category: z.enum(APPLIANCE_CATEGORIES, { message: 'Select an appliance category.' }),
+  category: z.enum(APPLIANCE_CATEGORIES, { message: 'Pick an appliance type.' }),
   icon: z.enum(APPLIANCE_ICON_KEYS, { message: 'Select an appliance icon.' }).optional(),
   model_number: z.string().trim().min(2, 'Enter the model number.').max(100),
   serial_number: z.string().trim().min(3, 'Enter the serial number.').max(100),
@@ -25,7 +25,9 @@ export const repairBookingSchema = z.object({
   service_type: z.enum(['diagnostic', 'repair', 'maintenance_cleaning', 'installation'], {
     message: 'Select a service type.',
   }),
-  priority: z.enum(REPAIR_PRIORITIES),
+  payment_mode: z.enum(CHECKOUT_PAYMENT_MODES, {
+    message: 'Choose Down Payment or Pay in Full.',
+  }),
   issue_description: z
     .string()
     .trim()

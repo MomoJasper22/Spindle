@@ -18,13 +18,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -37,10 +30,9 @@ import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
 import { StatusBadge } from '@/components/shared/status-badge'
-import { ApplianceIcon } from '@/components/shared/appliance-icons'
+import { ApplianceIcon, ApplianceTypePicker } from '@/components/shared/appliance-icons'
 import {
   APPLIANCE_BRAND_SUGGESTIONS,
-  APPLIANCE_CATEGORIES,
   getDefaultApplianceIcon,
 } from '@/lib/constants'
 import { formatManilaDate } from '@/lib/formatters'
@@ -78,7 +70,7 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
     mode: 'onBlur',
     defaultValues: {
       brand: '',
-      category: APPLIANCE_CATEGORIES[0],
+      category: '' as ApplianceInput['category'],
       model_number: '',
       serial_number: '',
       purchase_date: '',
@@ -90,7 +82,7 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
     setEditingAppliance(null)
     reset({
       brand: '',
-      category: APPLIANCE_CATEGORIES[0],
+      category: '' as ApplianceInput['category'],
       model_number: '',
       serial_number: '',
       purchase_date: '',
@@ -403,61 +395,51 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
           {feedback && dialogOpen && <FormBanner type={feedback.type} message={feedback.message} />}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="app-brand">
-                  Brand <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="app-brand"
-                  list="ph-appliance-brands"
-                  placeholder="e.g. Carrier, LG, Panasonic"
-                  aria-invalid={Boolean(errors.brand)}
-                  {...register('brand')}
-                />
-                <datalist id="ph-appliance-brands">
-                  {APPLIANCE_BRAND_SUGGESTIONS.map((b) => (
-                    <option key={b} value={b} />
-                  ))}
-                </datalist>
-                {errors.brand && (
-                  <p role="alert" className="text-xs font-medium text-destructive">
-                    {errors.brand.message}
-                  </p>
-                )}
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="app-brand">
+                Brand <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="app-brand"
+                list="ph-appliance-brands"
+                placeholder="e.g. Carrier, LG, Panasonic"
+                aria-invalid={Boolean(errors.brand)}
+                {...register('brand')}
+              />
+              <datalist id="ph-appliance-brands">
+                {APPLIANCE_BRAND_SUGGESTIONS.map((b) => (
+                  <option key={b} value={b} />
+                ))}
+              </datalist>
+              {errors.brand && (
+                <p role="alert" className="text-xs font-medium text-destructive">
+                  {errors.brand.message}
+                </p>
+              )}
+            </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="app-category">
-                  Appliance Type <span className="text-destructive">*</span>
-                </Label>
-                <Controller
-                  name="category"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="app-category">
-                        <SelectValue placeholder="Choose appliance type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {APPLIANCE_CATEGORIES.map((cat) => (
-                          <SelectItem key={cat} value={cat}>
-                            <span className="inline-flex items-center gap-2.5">
-                              <ApplianceIcon category={cat} className="h-5 w-5 shrink-0" />
-                              <span>{cat}</span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.category && (
-                  <p role="alert" className="text-xs font-medium text-destructive">
-                    {errors.category.message}
-                  </p>
+            <div className="space-y-2">
+              <Label htmlFor="app-category" className="block">
+                Appliance Type <span className="text-destructive">*</span>
+              </Label>
+              <Controller
+                name="category"
+                control={control}
+                render={({ field }) => (
+                  <ApplianceTypePicker
+                    id="app-category"
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Pick Appliances"
+                    ariaInvalid={Boolean(errors.category)}
+                  />
                 )}
-              </div>
+              />
+              {errors.category && (
+                <p role="alert" className="text-xs font-medium text-destructive">
+                  {errors.category.message}
+                </p>
+              )}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">

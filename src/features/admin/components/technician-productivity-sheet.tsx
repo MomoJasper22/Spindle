@@ -147,6 +147,7 @@ export function TechnicianProductivitySheet({
   const durationsByStatus: Record<TechAvailabilityStatus, number> = {
     available: 0,
     busy: 0,
+    lunch: 0,
     off_duty: 0,
   }
 
@@ -164,7 +165,10 @@ export function TechnicianProductivitySheet({
   const latestLogTime = techLogs[0]?.changed_at ?? techProfile?.updated_at ?? technician.created_at
   const currentStatusDurationMs = Math.max(0, nowMs - new Date(latestLogTime).getTime())
   const totalLoggedMs =
-    durationsByStatus.available + durationsByStatus.busy + durationsByStatus.off_duty
+    durationsByStatus.available +
+    durationsByStatus.busy +
+    durationsByStatus.lunch +
+    durationsByStatus.off_duty
 
   const fullName = formatFullName(technician)
   const maxDaily = techProfile?.max_daily_jobs ?? 4
@@ -319,13 +323,18 @@ export function TechnicianProductivitySheet({
                   title={`Busy: ${formatDurationMs(durationsByStatus.busy)}`}
                 />
                 <div
+                  className="bg-sky-500"
+                  style={{ width: `${(durationsByStatus.lunch / totalLoggedMs) * 100}%` }}
+                  title={`Lunch: ${formatDurationMs(durationsByStatus.lunch)}`}
+                />
+                <div
                   className="bg-slate-400"
                   style={{ width: `${(durationsByStatus.off_duty / totalLoggedMs) * 100}%` }}
                   title={`Off Duty: ${formatDurationMs(durationsByStatus.off_duty)}`}
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-2 text-xs">
+              <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
                 <div className="rounded-lg border border-border bg-card px-2.5 py-2">
                   <span className="flex items-center gap-1.5 text-muted-foreground">
                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -342,6 +351,15 @@ export function TechnicianProductivitySheet({
                   </span>
                   <p className="mt-0.5 font-semibold tabular-nums text-foreground">
                     {formatDurationMs(durationsByStatus.busy)}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border bg-card px-2.5 py-2">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <span className="h-2 w-2 rounded-full bg-sky-500" />
+                    Lunch
+                  </span>
+                  <p className="mt-0.5 font-semibold tabular-nums text-foreground">
+                    {formatDurationMs(durationsByStatus.lunch)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-border bg-card px-2.5 py-2">

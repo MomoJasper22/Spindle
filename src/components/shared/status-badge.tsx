@@ -7,6 +7,7 @@ import {
   CreditCard,
   ShieldCheck,
   UserCheck,
+  UtensilsCrossed,
   Wrench,
   XCircle,
 } from 'lucide-react'
@@ -36,6 +37,7 @@ const STATUS_MAP: Record<string, StatusConfig> = {
   completed: { label: 'Completed', variant: 'emerald', icon: CheckCircle2 },
   verified: { label: 'Verified', variant: 'emerald', icon: ShieldCheck },
   available: { label: 'Available', variant: 'emerald', icon: CheckCircle2 },
+  lunch: { label: 'Lunch', variant: 'sky', icon: UtensilsCrossed },
   active: { label: 'Active', variant: 'emerald', icon: CheckCircle2 },
 
   cancelled: { label: 'Cancelled', variant: 'rose', icon: XCircle },
