@@ -14,12 +14,19 @@ import {
   SupportedBrandsSection,
 } from '@/features/landing/components/appliance-showcase'
 import { LandingHeader } from '@/features/landing/components/landing-header'
-import { SERVICE_BRANCHES } from '@/lib/constants'
+import {
+  SERVICE_BOOKING_FEES_PHP,
+  SERVICE_BRANCHES,
+  SERVICE_FULL_PRICES_PHP,
+} from '@/lib/constants'
+
+const MIN_DOWN_PAYMENT_PHP = Math.min(...Object.values(SERVICE_BOOKING_FEES_PHP))
+const MIN_FULL_PRICE_PHP = Math.min(...Object.values(SERVICE_FULL_PRICES_PHP))
 
 const PASSBOOK_STEPS = [
   {
     step: '01',
-    title: 'Pick a Unit',
+    title: 'Pick Appliance',
     detail: 'Aircon, Fridge, Washer & More',
   },
   {
@@ -29,13 +36,13 @@ const PASSBOOK_STEPS = [
   },
   {
     step: '03',
-    title: 'Upfront Quote',
-    detail: 'Approve Cost Before Repair',
+    title: 'Choose Payment',
+    detail: 'Down Payment or Pay in Full',
   },
   {
     step: '04',
-    title: 'Easy Payment',
-    detail: 'GCash, Maya, Bank, or Cash',
+    title: 'Confirmed & Settled',
+    detail: 'PayMongo Checkout & Balance Receipt',
   },
 ] as const
 
@@ -47,9 +54,9 @@ const CUSTOMER_PROMISES = [
     icon: ShieldCheck,
   },
   {
-    title: 'Clear Peso Pricing First',
+    title: 'Clear Peso Pricing Upfront',
     description:
-      'See and approve your repair estimate in Philippine Pesos before work starts—then pay via GCash, Maya, QR Ph, bank transfer, or cash.',
+      'Choose a Down Payment (and settle the rest in full after repair) or Pay in Full upfront via PayMongo (GCash, Maya, QR Ph, or Card).',
     icon: CreditCard,
   },
   {
@@ -99,7 +106,7 @@ export default function LandingPage() {
 
                 <div className="pt-1">
                   <Button asChild size="lg" className="w-full sm:w-auto px-7 shadow-md">
-                    <Link href="/signup">
+                    <Link href="/login">
                       <span>Schedule a Visit</span>
                       <ArrowRight className="h-4 w-4" aria-hidden="true" />
                     </Link>
@@ -115,7 +122,7 @@ export default function LandingPage() {
                       Service Passbook
                     </h2>
                     <span className="-rotate-2 rounded-md border-2 border-emerald-400 px-2.5 py-0.5 text-[11px] font-bold tracking-wider text-emerald-300 uppercase">
-                      Clear Estimate
+                      PayMongo Ready
                     </span>
                   </div>
 
@@ -139,6 +146,13 @@ export default function LandingPage() {
                       </li>
                     ))}
                   </ol>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-slate-300 bg-muted/40 px-5 py-3 text-xs text-muted-foreground sm:px-7">
+                    <span>Upfront down payment from &#8369;{MIN_DOWN_PAYMENT_PHP.toLocaleString('en-PH')}</span>
+                    <span className="font-semibold text-foreground tabular-nums">
+                      Full base service from &#8369;{MIN_FULL_PRICE_PHP.toLocaleString('en-PH')}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -251,7 +265,7 @@ export default function LandingPage() {
             <Link href="/login" className="hover:text-foreground">
               Sign In
             </Link>
-            <Link href="/signup" className="text-primary hover:underline">
+            <Link href="/login" className="text-primary hover:underline">
               Schedule a Visit
             </Link>
           </div>

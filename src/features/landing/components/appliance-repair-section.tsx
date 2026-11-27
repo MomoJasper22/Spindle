@@ -347,7 +347,7 @@ export function ApplianceRepairSection() {
                       </Button>
                     </DialogClose>
                     <Button asChild size="sm">
-                      <Link href="/signup">
+                      <Link href="/login">
                         <span>Book {selectedItem.shortLabel} Visit</span>
                         <ArrowRight className="h-4 w-4" aria-hidden="true" />
                       </Link>
