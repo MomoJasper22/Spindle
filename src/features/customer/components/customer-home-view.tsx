@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { ApplianceIcon } from '@/components/shared/appliance-icons'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { ActivityFeed } from '@/features/customer/components/activity-feed'
 import { formatManilaDate, formatPHP } from '@/lib/formatters'
@@ -89,13 +90,22 @@ export function CustomerHomeView({
           </div>
 
           <div className="grid gap-4 p-5 sm:grid-cols-3 sm:items-center">
-            <div className="space-y-1">
-              <p className="font-heading text-lg font-bold text-foreground">
-                {nextBooking.appliance_brand} {nextBooking.appliance_category}
-              </p>
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {nextBooking.issue_description}
-              </p>
+            <div className="flex items-start gap-3.5">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-border bg-primary-tint/45">
+                <ApplianceIcon
+                  icon={nextBooking.appliance_icon}
+                  category={nextBooking.appliance_category}
+                  className="h-10 w-10"
+                />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <p className="font-heading text-lg font-bold text-foreground">
+                  {nextBooking.appliance_brand} {nextBooking.appliance_category}
+                </p>
+                <p className="text-sm text-muted-foreground line-clamp-2">
+                  {nextBooking.issue_description}
+                </p>
+              </div>
             </div>
 
             <div className="space-y-1.5 text-sm">

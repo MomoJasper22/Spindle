@@ -8,12 +8,10 @@ import {
   CreditCard,
   Home,
   Laptop,
-  Plus,
   User,
 } from 'lucide-react'
 import { SpindleLogo } from '@/components/shared/spindle-logo'
 import { UserAvatar } from '@/components/shared/user-avatar'
-import { Button } from '@/components/ui/button'
 import type { AvatarPosition } from '@/lib/avatar'
 import { cn } from '@/lib/utils'
 
@@ -80,13 +78,6 @@ export function CustomerShell({
           </nav>
 
           <div className="flex items-center gap-2.5">
-            <Button asChild size="sm" className="h-9 rounded-lg px-3.5">
-              <Link href="/customer/bookings?book=1">
-                <Plus className="h-4 w-4" aria-hidden="true" />
-                <span>Book a Visit</span>
-              </Link>
-            </Button>
-
             <Link
               href="/customer/profile"
               aria-current={profileActive ? 'page' : undefined}

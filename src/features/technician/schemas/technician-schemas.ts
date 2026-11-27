@@ -52,6 +52,17 @@ export const technicianPaymentSchema = z
 
 export type TechnicianPaymentInput = z.infer<typeof technicianPaymentSchema>
 
+export const technicianPayMongoCheckoutSchema = z.object({
+  ticket_id: z.string().trim().min(1, 'Select a ticket.'),
+  amount_php: z
+    .number({ message: 'Enter a valid PHP amount.' })
+    .positive('Amount must be greater than PHP 0.00.')
+    .max(1000000),
+  remarks: z.string().trim().max(500).optional().or(z.literal('')),
+})
+
+export type TechnicianPayMongoCheckoutInput = z.infer<typeof technicianPayMongoCheckoutSchema>
+
 export const technicianAppointmentActionSchema = z.object({
   appointment_id: z.string().trim().min(1),
   appointment_status: z.enum(['confirmed', 'rescheduled', 'completed']),

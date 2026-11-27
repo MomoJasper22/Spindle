@@ -1,28 +1,55 @@
 'use server'
 
+import crypto from 'node:crypto'
+import { headers } from 'next/headers'
 import { revalidatePath, updateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { requireRole } from '@/lib/auth/session'
 import { getTechAvailabilityLabel } from '@/lib/constants'
 import { getManilaTodayISO } from '@/lib/formatters'
 import { getTicketPaymentSummary } from '@/lib/payments'
+import {
+  createPayMongoCheckoutSession,
+  retrievePayMongoCheckoutSession,
+} from '@/lib/paymongo'
+import { finalizePayMongoCheckoutSession } from '@/lib/paymongo-checkout'
 import type { RepairDetailView } from '@/types/database'
 import {
   technicianAppointmentActionSchema,
   technicianAvailabilitySchema,
   technicianNicknameSchema,
+  technicianPayMongoCheckoutSchema,
   technicianPaymentSchema,
   technicianRepairUpdateSchema,
   type TechnicianAppointmentActionInput,
   type TechnicianAvailabilityInput,
   type TechnicianNicknameInput,
+  type TechnicianPayMongoCheckoutInput,
   type TechnicianPaymentInput,
   type TechnicianRepairUpdateInput,
 } from '../schemas/technician-schemas'
 
-export type TechActionResult =
-  | { success: true; message: string }
+export type TechActionResult<T = void> =
+  | { success: true; message: string; data?: T }
   | { success: false; error: string }
+
+function roundCurrency(value: number): number {
+  return Math.round(value * 100) / 100
+}
+
+async function getRequestOrigin(): Promise<string> {
+  const hdrs = await headers()
+  const host = hdrs.get('x-forwarded-host') ?? hdrs.get('host') ?? 'localhost:3000'
+  const proto =
+    hdrs.get('x-forwarded-proto') ??
+    (host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https')
+  return `${proto}://${host}`
+}
+
+function generateCheckoutSessionId(): string {
+  return `CHK-${crypto.randomBytes(4).toString('hex').toUpperCase()}`
+}
 
 function revalidateTechPortals(extraTags: string[] = []) {
   const tags = new Set([
@@ -48,6 +75,56 @@ function revalidateTechPortals(extraTags: string[] = []) {
   revalidatePath('/admin', 'layout')
 }
 
+async function syncPaidOpenCheckoutSessions(ticketId: string): Promise<{
+  finalizedCount: number
+  openSessions: Array<{
+    session_id: string
+    amount_php: number
+    paymongo_checkout_id: string
+    checkout_url: string
+  }>
+}> {
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from('payment_checkout_sessions')
+    .select('session_id, amount_php, paymongo_checkout_id, checkout_url')
+    .eq('ticket_id', ticketId)
+    .eq('session_kind', 'ticket_balance')
+    .eq('status', 'awaiting_payment')
+    .order('created_at', { ascending: false })
+
+  let finalizedCount = 0
+  const stillOpen: Array<{
+    session_id: string
+    amount_php: number
+    paymongo_checkout_id: string
+    checkout_url: string
+  }> = []
+
+  for (const row of data ?? []) {
+    try {
+      const pm = await retrievePayMongoCheckoutSession(row.paymongo_checkout_id)
+      if (pm.paidPayment || pm.paymentIntentStatus === 'succeeded') {
+        const res = await finalizePayMongoCheckoutSession({ sessionId: row.session_id })
+        if (res.finalized) {
+          finalizedCount += 1
+        }
+      } else if (pm.status === 'active') {
+        stillOpen.push(row)
+      } else {
+        await admin
+          .from('payment_checkout_sessions')
+          .update({ status: 'expired' })
+          .eq('session_id', row.session_id)
+      }
+    } catch {
+      stillOpen.push(row)
+    }
+  }
+
+  return { finalizedCount, openSessions: stillOpen }
+}
+
 export async function updateTechnicianRepairAction(
   input: TechnicianRepairUpdateInput
 ): Promise<TechActionResult> {
@@ -64,7 +141,7 @@ export async function updateTechnicianRepairAction(
   const supabase = await createClient()
   const { data: existingRepair } = await supabase
     .from('v_repair_details')
-    .select('completed_at, estimated_cost_php, verified_paid_php')
+    .select('completed_at, estimated_cost_php, verified_paid_php, pending_paid_php')
     .eq('ticket_id', parsed.data.ticket_id)
     .eq('technician_id', profile.user_id)
     .maybeSingle()
@@ -73,8 +150,18 @@ export async function updateTechnicianRepairAction(
     return { success: false, error: 'Assigned repair ticket not found.' }
   }
 
-  const verifiedPaidPhp = Number(existingRepair.verified_paid_php ?? 0)
+  const verifiedPaidPhp = roundCurrency(Number(existingRepair.verified_paid_php ?? 0))
+  const pendingPaidPhp = roundCurrency(Number(existingRepair.pending_paid_php ?? 0))
+  const totalRecordedPhp = roundCurrency(verifiedPaidPhp + pendingPaidPhp)
   const finalCostPhp = parsed.data.final_cost_php
+
+  if (finalCostPhp !== null && finalCostPhp < totalRecordedPhp) {
+    return {
+      success: false,
+      error: `Final price cannot be lower than already recorded payments (PHP ${totalRecordedPhp.toFixed(2)}).`,
+    }
+  }
+
   const autoCompletedFromDeposit =
     parsed.data.status === 'awaiting_payment' &&
     finalCostPhp !== null &&
@@ -160,6 +247,20 @@ export async function recordOnsitePaymentAction(
   }
 
   const supabase = await createClient()
+  const { data: initialRepair } = await supabase
+    .from('v_repair_details')
+    .select('ticket_id')
+    .eq('ticket_id', parsed.data.ticket_id)
+    .eq('technician_id', profile.user_id)
+    .maybeSingle()
+
+  if (!initialRepair) {
+    return { success: false, error: 'Assigned repair ticket not found.' }
+  }
+
+  // Finalize any already-paid PayMongo checkout session before checking balance
+  const { finalizedCount } = await syncPaidOpenCheckoutSessions(parsed.data.ticket_id)
+
   const { data: repairRow } = await supabase
     .from('v_repair_details')
     .select('*')
@@ -167,19 +268,31 @@ export async function recordOnsitePaymentAction(
     .eq('technician_id', profile.user_id)
     .maybeSingle()
 
-  if (repairRow) {
-    const summary = getTicketPaymentSummary(repairRow as RepairDetailView)
-    if (!summary.canRecordFieldPayment) {
-      return {
-        success: false,
-        error: 'This ticket is already covered by verified or pending payments.',
-      }
+  if (!repairRow) {
+    return { success: false, error: 'Assigned repair ticket not found.' }
+  }
+
+  const summary = getTicketPaymentSummary(repairRow as RepairDetailView)
+  if (!summary.hasFinalBill) {
+    return {
+      success: false,
+      error: 'Set the final service price in Billing before collecting payment.',
     }
-    if (summary.hasFinalBill && parsed.data.amount_php > summary.payableRemaining) {
-      return {
-        success: false,
-        error: `Amount exceeds the remaining unpaid balance of PHP ${summary.payableRemaining.toFixed(2)}.`,
-      }
+  }
+
+  if (!summary.canCollectBalance) {
+    return {
+      success: false,
+      error: finalizedCount > 0
+        ? 'An online PayMongo payment was just confirmed and settled this ticket.'
+        : 'This ticket is already settled or covered by pending payments.',
+    }
+  }
+
+  if (roundCurrency(parsed.data.amount_php) > summary.payableRemaining) {
+    return {
+      success: false,
+      error: `Amount exceeds the remaining unpaid balance of PHP ${summary.payableRemaining.toFixed(2)}.`,
     }
   }
 
@@ -198,10 +311,215 @@ export async function recordOnsitePaymentAction(
     return { success: false, error: error.message }
   }
 
+  // Retire unpaid PayMongo checkout sessions once full remaining balance is collected on-site
+  if (roundCurrency(parsed.data.amount_php) >= summary.payableRemaining) {
+    const admin = createAdminClient()
+    await admin
+      .from('payment_checkout_sessions')
+      .update({ status: 'cancelled' })
+      .eq('ticket_id', parsed.data.ticket_id)
+      .eq('session_kind', 'ticket_balance')
+      .eq('status', 'awaiting_payment')
+  }
+
   revalidateTechPortals()
   return {
     success: true,
     message: 'On-site payment recorded and queued for admin verification.',
+  }
+}
+
+export async function createTechnicianPayMongoCheckoutAction(
+  input: TechnicianPayMongoCheckoutInput
+): Promise<TechActionResult<{ checkoutUrl: string; sessionId: string; amountPhp: number }>> {
+  const profile = await requireRole('technician')
+  const parsed = technicianPayMongoCheckoutSchema.safeParse(input)
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? 'Invalid PayMongo checkout amount.',
+    }
+  }
+
+  const supabase = await createClient()
+  const { data: initialRepair } = await supabase
+    .from('v_repair_details')
+    .select('ticket_id')
+    .eq('ticket_id', parsed.data.ticket_id)
+    .eq('technician_id', profile.user_id)
+    .maybeSingle()
+
+  if (!initialRepair) {
+    return { success: false, error: 'Assigned repair ticket not found.' }
+  }
+
+  const { finalizedCount, openSessions } = await syncPaidOpenCheckoutSessions(parsed.data.ticket_id)
+  if (finalizedCount > 0) {
+    revalidateTechPortals()
+  }
+
+  const { data: repairRow } = await supabase
+    .from('v_repair_details')
+    .select('*')
+    .eq('ticket_id', parsed.data.ticket_id)
+    .eq('technician_id', profile.user_id)
+    .maybeSingle()
+
+  if (!repairRow) {
+    return { success: false, error: 'Assigned repair ticket not found.' }
+  }
+
+  const repair = repairRow as RepairDetailView
+  const summary = getTicketPaymentSummary(repair)
+
+  if (repair.status === 'cancelled' || repair.status === 'completed') {
+    return { success: false, error: 'This ticket is already completed or cancelled.' }
+  }
+
+  if (!summary.hasFinalBill) {
+    return {
+      success: false,
+      error: 'Set the final service price in Billing before creating a PayMongo checkout.',
+    }
+  }
+
+  if (!summary.canCollectBalance) {
+    return {
+      success: false,
+      error: finalizedCount > 0
+        ? 'An existing PayMongo payment was confirmed and covers this balance!'
+        : summary.isCoveredByPending
+          ? 'Remaining balance is already covered by a payment awaiting verification.'
+          : 'This ticket is already paid in full.',
+    }
+  }
+
+  const amountPhp = roundCurrency(parsed.data.amount_php)
+  if (amountPhp > summary.payableRemaining) {
+    return {
+      success: false,
+      error: `Amount exceeds the remaining unpaid balance of PHP ${summary.payableRemaining.toFixed(2)}.`,
+    }
+  }
+
+  const admin = createAdminClient()
+
+  for (const open of openSessions) {
+    if (Math.abs(Number(open.amount_php) - amountPhp) < 0.01 && open.checkout_url) {
+      return {
+        success: true,
+        message: 'Resuming existing PayMongo checkout session.',
+        data: {
+          checkoutUrl: open.checkout_url,
+          sessionId: open.session_id,
+          amountPhp,
+        },
+      }
+    }
+    await admin
+      .from('payment_checkout_sessions')
+      .update({ status: 'cancelled' })
+      .eq('session_id', open.session_id)
+  }
+
+  const sessionId = generateCheckoutSessionId()
+  const origin = await getRequestOrigin()
+  const successUrl = `${origin}/api/paymongo/callback?session_id=${encodeURIComponent(sessionId)}`
+  const cancelUrl = `${origin}/technician/jobs?ticket=${encodeURIComponent(repair.ticket_id)}&payment_cancelled=1`
+
+  try {
+    const pmSession = await createPayMongoCheckoutSession({
+      amountPhp,
+      lineItemName: `${repair.appliance_brand} ${repair.appliance_category} (${repair.ticket_id})`,
+      description: `On-site PayMongo balance payment for ${repair.ticket_id}`,
+      referenceNumber: `${repair.ticket_id}-${sessionId}`,
+      successUrl,
+      cancelUrl,
+      customerName: `${repair.customer_first_name} ${repair.customer_last_name}`.trim(),
+      customerEmail: repair.customer_email,
+      customerPhone: repair.customer_phone ?? undefined,
+      metadata: {
+        spindle_session_id: sessionId,
+        spindle_kind: 'ticket_balance',
+        ticket_id: repair.ticket_id,
+        customer_id: repair.customer_id,
+        initiated_by_tech_id: profile.user_id,
+      },
+    })
+
+    const { error: insertErr } = await admin.from('payment_checkout_sessions').insert({
+      session_id: sessionId,
+      session_kind: 'ticket_balance',
+      customer_id: repair.customer_id,
+      ticket_id: repair.ticket_id,
+      amount_php: amountPhp,
+      remarks:
+        parsed.data.remarks?.trim() ||
+        `Field PayMongo payment initiated by ${profile.first_name} ${profile.last_name}`,
+      paymongo_checkout_id: pmSession.id,
+      checkout_url: pmSession.checkoutUrl,
+      status: 'awaiting_payment',
+    })
+
+    if (insertErr) {
+      return { success: false, error: insertErr.message }
+    }
+
+    return {
+      success: true,
+      message: 'PayMongo checkout session ready.',
+      data: {
+        checkoutUrl: pmSession.checkoutUrl,
+        sessionId,
+        amountPhp,
+      },
+    }
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Unable to start PayMongo checkout.',
+    }
+  }
+}
+
+export async function verifyTechnicianPayMongoCheckoutAction(
+  ticketId: string
+): Promise<TechActionResult> {
+  const profile = await requireRole('technician')
+  const supabase = await createClient()
+
+  const { data: repair } = await supabase
+    .from('v_repair_details')
+    .select('ticket_id')
+    .eq('ticket_id', ticketId)
+    .eq('technician_id', profile.user_id)
+    .maybeSingle()
+
+  if (!repair) {
+    return { success: false, error: 'Assigned repair ticket not found.' }
+  }
+
+  const { finalizedCount, openSessions } = await syncPaidOpenCheckoutSessions(ticketId)
+
+  if (finalizedCount > 0) {
+    revalidateTechPortals()
+    return {
+      success: true,
+      message: 'PayMongo payment verified and applied to this ticket.',
+    }
+  }
+
+  if (openSessions.length === 0) {
+    return {
+      success: false,
+      error: 'No active PayMongo checkout session was found for this ticket.',
+    }
+  }
+
+  return {
+    success: false,
+    error: 'PayMongo has not confirmed completion for this checkout yet. Ask the customer to finish payment and check again.',
   }
 }
 

@@ -4,11 +4,9 @@ import * as React from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import {
-  Activity,
   ArrowRight,
   CalendarClock,
   CheckCircle2,
-  ChevronDown,
   MapPin,
   Phone,
   Play,
@@ -23,7 +21,6 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { ActivityFeed } from '@/features/customer/components/activity-feed'
 import type { TechAvailabilityStatus } from '@/lib/constants'
 import { formatManilaDate, formatPHPhone, formatPHP } from '@/lib/formatters'
-import { cn } from '@/lib/utils'
 import type {
   ActivityLogRow,
   AppointmentDetailView,
@@ -64,7 +61,6 @@ export function TechnicianOverviewView({
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
     null
   )
-  const [showActivity, setShowActivity] = React.useState(false)
   const [isActionPending, startActionTransition] = React.useTransition()
 
   const jobs = React.useMemo(
@@ -354,41 +350,12 @@ export function TechnicianOverviewView({
         </Card>
       </div>
 
-      {/* Collapsible Recent Activity (tucked away by default to reduce visual noise) */}
-      <div className="rounded-2xl border border-border bg-card">
-        <button
-          type="button"
-          aria-expanded={showActivity}
-          onClick={() => setShowActivity((prev) => !prev)}
-          className="flex w-full items-center justify-between gap-3 px-5 py-3.5 text-left text-sm font-semibold text-foreground hover:bg-muted/30 rounded-2xl"
-        >
-          <span className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" aria-hidden="true" />
-            <span>Recent Field Activity</span>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground tabular-nums">
-              {activityLogs.length}
-            </span>
-          </span>
-          <ChevronDown
-            className={cn(
-              'h-4 w-4 text-muted-foreground transition-transform',
-              showActivity && 'rotate-180'
-            )}
-            aria-hidden="true"
-          />
-        </button>
-
-        {showActivity && (
-          <div className="border-t border-border p-4">
-            <ActivityFeed
-              logs={activityLogs.slice(0, 8)}
-              audience="staff"
-              title="Field Logs"
-              description="Recent ticket updates, schedule changes, and recorded collections."
-            />
-          </div>
-        )}
-      </div>
+      <ActivityFeed
+        logs={activityLogs.slice(0, 8)}
+        audience="staff"
+        title="Recent Field Activity"
+        description="Ticket updates, appointment status changes, and on-site collection logs."
+      />
 
       <JobWorkbenchDrawer
         job={selectedJob}

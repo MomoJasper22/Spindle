@@ -34,7 +34,14 @@ function resolveTab(raw?: string): JobsTabKey {
 async function TechnicianJobsContent({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{
+    tab?: string
+    ticket?: string
+    payment_success?: string
+    payment_cancelled?: string
+    payment_pending?: string
+    payment_error?: string
+  }>
 }) {
   const [profile, params] = await Promise.all([requireRole('technician'), searchParams])
 
@@ -45,15 +52,45 @@ async function TechnicianJobsContent({
   ])
 
   const initialTab = resolveTab(params.tab)
+  const initialNotice =
+    params.payment_success === '1'
+      ? {
+          type: 'success' as const,
+          message: `PayMongo payment verified${params.ticket ? ` for ticket ${params.ticket}` : ''}.`,
+        }
+      : params.payment_cancelled === '1'
+        ? {
+            type: 'error' as const,
+            message: 'PayMongo checkout was cancelled. No charge was applied.',
+          }
+        : params.payment_pending === '1'
+          ? {
+              type: 'error' as const,
+              message: 'PayMongo has not confirmed this payment yet. Verify status inside the job drawer.',
+            }
+          : params.payment_error
+            ? {
+                type: 'error' as const,
+                message: 'Could not verify PayMongo payment callback. Please verify inside the job drawer.',
+              }
+            : null
+
+  const initialDrawerSection =
+    params.payment_success || params.payment_cancelled || params.payment_pending
+      ? 'collect'
+      : 'work'
 
   return (
     <TechnicianJobsView
-      key={initialTab}
+      key={`${initialTab}:${params.ticket ?? ''}:${params.payment_success ?? ''}:${params.payment_cancelled ?? ''}`}
       availabilityStatus={profile.technician_profile?.availability_status ?? 'available'}
       repairs={repairs}
       appointments={appointments}
       payments={payments}
       initialTab={initialTab}
+      initialTicketId={params.ticket ?? null}
+      initialDrawerSection={initialDrawerSection}
+      initialNotice={initialNotice}
     />
   )
 }
@@ -61,7 +98,14 @@ async function TechnicianJobsContent({
 export default function TechnicianJobsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{
+    tab?: string
+    ticket?: string
+    payment_success?: string
+    payment_cancelled?: string
+    payment_pending?: string
+    payment_error?: string
+  }>
 }) {
   return (
     <Suspense fallback={<PortalContentSkeleton />}>

@@ -11,8 +11,10 @@ import type {
 } from '@/types/database'
 import { buildTechnicianJobItems } from '../lib/technician-jobs'
 import { PipelinePanel, type JobsTabKey } from './pipeline-panel'
-export type { JobsTabKey }
 import { TechnicianAvailabilityControl } from './technician-availability-control'
+import type { WorkbenchSectionTab } from './diagnostic-drawer'
+
+export type { JobsTabKey }
 
 const JobWorkbenchDrawer = dynamic(
   () => import('./diagnostic-drawer').then((m) => m.JobWorkbenchDrawer),
@@ -25,6 +27,9 @@ interface TechnicianJobsViewProps {
   appointments: AppointmentDetailView[]
   payments: PaymentDetailView[]
   initialTab?: JobsTabKey
+  initialTicketId?: string | null
+  initialDrawerSection?: WorkbenchSectionTab
+  initialNotice?: { type: 'error' | 'success'; message: string } | null
 }
 
 export function TechnicianJobsView({
@@ -33,10 +38,18 @@ export function TechnicianJobsView({
   appointments,
   payments,
   initialTab = 'active',
+  initialTicketId = null,
+  initialDrawerSection = 'work',
+  initialNotice = null,
 }: TechnicianJobsViewProps) {
   const [activeTab, setActiveTab] = React.useState<JobsTabKey>(initialTab)
-  const [selectedTicketId, setSelectedTicketId] = React.useState<string | null>(null)
-  const [statusError, setStatusError] = React.useState<string | null>(null)
+  const [selectedTicketId, setSelectedTicketId] = React.useState<string | null>(initialTicketId)
+  const [drawerSection, setDrawerSection] =
+    React.useState<WorkbenchSectionTab>(initialDrawerSection)
+  const [statusNotice, setStatusNotice] = React.useState<{
+    type: 'error' | 'success'
+    message: string
+  } | null>(initialNotice)
 
   const jobs = React.useMemo(
     () => buildTechnicianJobItems(repairs, appointments, payments),
@@ -44,6 +57,11 @@ export function TechnicianJobsView({
   )
 
   const selectedJob = jobs.find((j) => j.ticket.ticket_id === selectedTicketId) ?? null
+
+  function openJob(ticketId: string, section: WorkbenchSectionTab = 'work') {
+    setDrawerSection(section)
+    setSelectedTicketId(ticketId)
+  }
 
   return (
     <div className="space-y-6">
@@ -53,30 +71,31 @@ export function TechnicianJobsView({
             My Jobs
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Manage visit schedules, repair diagnostics, final pricing, and on-site collections in one place.
+            Manage visit schedules, diagnostics, final billing, and PayMongo or cash collections.
           </p>
         </div>
 
         <TechnicianAvailabilityControl
           availabilityStatus={availabilityStatus}
-          onError={setStatusError}
+          onError={(err) => setStatusNotice(err ? { type: 'error', message: err } : null)}
         />
       </div>
 
-      {statusError && <FormBanner type="error" message={statusError} />}
+      {statusNotice && <FormBanner type={statusNotice.type} message={statusNotice.message} />}
 
       <PipelinePanel
         jobs={jobs}
         payments={payments}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        onSelectJob={(job) => setSelectedTicketId(job.ticket.ticket_id)}
-        onSelectTicketId={(ticketId) => setSelectedTicketId(ticketId)}
+        onSelectJob={(job) => openJob(job.ticket.ticket_id, 'work')}
+        onSelectTicketId={(ticketId) => openJob(ticketId, 'billing')}
       />
 
       <JobWorkbenchDrawer
         job={selectedJob}
         open={Boolean(selectedJob)}
+        initialSection={drawerSection}
         onOpenChange={(open) => {
           if (!open) setSelectedTicketId(null)
         }}

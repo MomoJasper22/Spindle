@@ -9,7 +9,9 @@ export interface TicketPaymentSummary {
   hasFinalBill: boolean
   isSettled: boolean
   isCoveredByPending: boolean
+  isOverpaid: boolean
   canAcceptOnlinePayment: boolean
+  canCollectBalance: boolean
   canRecordFieldPayment: boolean
 }
 
@@ -27,7 +29,10 @@ export function getTicketPaymentSummary(
     'status' | 'estimated_cost_php' | 'final_cost_php' | 'verified_paid_php' | 'pending_paid_php'
   >
 ): TicketPaymentSummary {
-  const hasFinalBill = ticket.final_cost_php !== null && ticket.final_cost_php !== undefined
+  const hasFinalBill =
+    ticket.final_cost_php !== null &&
+    ticket.final_cost_php !== undefined &&
+    Number(ticket.final_cost_php) > 0
   const targetTotal = roundCurrency(Number(ticket.final_cost_php ?? ticket.estimated_cost_php ?? 0))
   const verifiedPaid = roundCurrency(Number(ticket.verified_paid_php ?? 0))
   const pendingPaid = roundCurrency(Number(ticket.pending_paid_php ?? 0))
@@ -37,11 +42,13 @@ export function getTicketPaymentSummary(
 
   const isSettled = targetTotal > 0 && verifiedPaid >= targetTotal
   const isCoveredByPending = !isSettled && targetTotal > 0 && verifiedPaid + pendingPaid >= targetTotal
+  const isOverpaid = targetTotal > 0 && roundCurrency(verifiedPaid + pendingPaid) > targetTotal
 
   const isTicketActive = ticket.status !== 'cancelled' && ticket.status !== 'completed'
   const canAcceptOnlinePayment = isTicketActive && hasFinalBill && payableRemaining > 0
+  const canCollectBalance = isTicketActive && hasFinalBill && payableRemaining > 0
   const canRecordFieldPayment =
-    isTicketActive && (hasFinalBill ? payableRemaining > 0 : true)
+    isTicketActive && (hasFinalBill || targetTotal > 0 ? payableRemaining > 0 : true)
 
   return {
     targetTotal,
@@ -52,7 +59,9 @@ export function getTicketPaymentSummary(
     hasFinalBill,
     isSettled,
     isCoveredByPending,
+    isOverpaid,
     canAcceptOnlinePayment,
+    canCollectBalance,
     canRecordFieldPayment,
   }
 }

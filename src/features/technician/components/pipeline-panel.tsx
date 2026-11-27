@@ -1,7 +1,15 @@
 'use client'
 
 import * as React from 'react'
-import { CalendarClock, CreditCard, MapPin, Phone, Search, Wrench } from 'lucide-react'
+import {
+  ArrowRight,
+  CalendarClock,
+  CreditCard,
+  MapPin,
+  Phone,
+  Search,
+  Wrench,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -16,7 +24,7 @@ import {
 import { EmptyState } from '@/components/shared/empty-state'
 import { ScrollableList } from '@/components/shared/scrollable-list'
 import { StatusBadge } from '@/components/shared/status-badge'
-import { formatManilaDate, formatPHPhone, formatPHP, getManilaTodayISO } from '@/lib/formatters'
+import { formatManilaDate, formatPHPhone, formatPHP, getManilaTodayISO, humanizeLabel } from '@/lib/formatters'
 import { cn } from '@/lib/utils'
 import type { PaymentDetailView } from '@/types/database'
 import type { TechnicianJobItem } from '../lib/technician-jobs'
@@ -49,7 +57,7 @@ function getBillingBadge(job: TechnicianJobItem): { label: string; tone: string 
   if (ticket.estimated_cost_php > 0) {
     return { label: `Est. ${formatPHP(ticket.estimated_cost_php)}`, tone: 'text-muted-foreground' }
   }
-  return { label: 'Quote pending', tone: 'text-muted-foreground' }
+  return { label: 'Final bill needed', tone: 'text-muted-foreground' }
 }
 
 export function PipelinePanel({
@@ -118,7 +126,6 @@ export function PipelinePanel({
     <Card>
       <CardContent standalone className="space-y-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          {/* Segmented Filter Tabs */}
           <div
             role="tablist"
             aria-label="Job queue filters"
@@ -224,7 +231,8 @@ export function PipelinePanel({
                               variant="outline"
                               onClick={() => onSelectTicketId(pay.ticket_id)}
                             >
-                              Open Job
+                              <span>Open Job</span>
+                              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                             </Button>
                           )}
                         </div>
@@ -284,7 +292,8 @@ export function PipelinePanel({
                                 variant="outline"
                                 onClick={() => onSelectTicketId(pay.ticket_id)}
                               >
-                                Open Job
+                                <span>Open Job</span>
+                                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                               </Button>
                             )}
                           </TableCell>
@@ -322,7 +331,7 @@ export function PipelinePanel({
           />
         ) : (
           <>
-            {/* Mobile Stacked Cards */}
+            {/* Mobile Stacked Cards (Clear Visual Hierarchy) */}
             <ScrollableList regionLabel="Assigned jobs list" className="md:hidden p-0.5 pr-1">
               <div className="space-y-3">
                 {filteredJobs.map((job) => {
@@ -346,12 +355,15 @@ export function PipelinePanel({
                             {dateLabel}
                             {appointment?.time_slot ? ` · ${appointment.time_slot}` : ''}
                           </p>
-                          <p className="mt-0.5 font-semibold text-foreground truncate">
+                          <p className="mt-0.5 text-base font-bold text-foreground truncate">
                             {ticket.customer_first_name} {ticket.customer_last_name}
                           </p>
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="text-xs font-medium text-foreground/85 truncate">
                             {ticket.appliance_brand} {ticket.appliance_category} &middot;{' '}
-                            <span className="font-mono">{ticket.ticket_id}</span>
+                            {humanizeLabel(ticket.service_type)}
+                          </p>
+                          <p className="font-mono text-[11px] text-muted-foreground">
+                            {ticket.ticket_id} &middot; {ticket.appliance_model_number}
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">
@@ -362,17 +374,17 @@ export function PipelinePanel({
                         </div>
                       </div>
 
-                      <div className="space-y-1 text-xs text-muted-foreground">
-                        <p className="flex items-center gap-1.5 truncate">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1.5 truncate">
                           <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                           <span className="truncate">{shortLocation}</span>
-                        </p>
+                        </span>
                         {ticket.customer_phone && (
                           <a
                             href={`tel:${ticket.customer_phone.replace(/\s+/g, '')}`}
-                            className="inline-flex items-center gap-1.5 text-primary font-medium hover:underline"
+                            className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
                           >
-                            <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                            <Phone className="h-3 w-3 shrink-0" aria-hidden="true" />
                             <span>{formatPHPhone(ticket.customer_phone)}</span>
                           </a>
                         )}
@@ -383,7 +395,8 @@ export function PipelinePanel({
                           {billing.label}
                         </span>
                         <Button type="button" size="sm" onClick={() => onSelectJob(job)}>
-                          Open Job
+                          <span>Open Job</span>
+                          <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                         </Button>
                       </div>
                     </div>
@@ -397,11 +410,11 @@ export function PipelinePanel({
               <Table regionLabel="Assigned repair jobs and visit windows">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Visit Window</TableHead>
                     <TableHead>Customer &amp; Location</TableHead>
-                    <TableHead>Appliance &amp; Ticket</TableHead>
+                    <TableHead>Visit Window</TableHead>
+                    <TableHead>Appliance &amp; Service</TableHead>
                     <TableHead>Stage</TableHead>
-                    <TableHead>Balance</TableHead>
+                    <TableHead>Billing</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -422,6 +435,22 @@ export function PipelinePanel({
                         onClick={() => onSelectJob(job)}
                         className="cursor-pointer transition-colors hover:bg-muted/40"
                       >
+                        <TableCell className="max-w-xs">
+                          <p className="font-semibold text-foreground">
+                            {ticket.customer_first_name} {ticket.customer_last_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">{shortLocation}</p>
+                          {ticket.customer_phone && (
+                            <a
+                              href={`tel:${ticket.customer_phone.replace(/\s+/g, '')}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                            >
+                              <Phone className="h-3 w-3" aria-hidden="true" />
+                              <span>{formatPHPhone(ticket.customer_phone)}</span>
+                            </a>
+                          )}
+                        </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <p className="font-semibold text-foreground">{dateLabel}</p>
                           <p className="text-xs font-medium text-primary">
@@ -433,23 +462,13 @@ export function PipelinePanel({
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className="max-w-xs">
-                          <p className="font-semibold text-foreground">
-                            {ticket.customer_first_name} {ticket.customer_last_name}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">{shortLocation}</p>
-                          {ticket.customer_phone && (
-                            <p className="text-xs text-muted-foreground">
-                              {formatPHPhone(ticket.customer_phone)}
-                            </p>
-                          )}
-                        </TableCell>
                         <TableCell>
                           <p className="font-medium text-foreground">
                             {ticket.appliance_brand} {ticket.appliance_category}
                           </p>
-                          <p className="font-mono text-xs text-muted-foreground">
-                            {ticket.ticket_id} &middot; {ticket.appliance_model_number}
+                          <p className="text-xs text-muted-foreground">
+                            {humanizeLabel(ticket.service_type)} &middot;{' '}
+                            <span className="font-mono">{ticket.ticket_id}</span>
                           </p>
                         </TableCell>
                         <TableCell>
@@ -464,8 +483,9 @@ export function PipelinePanel({
                           {billing.label}
                         </TableCell>
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                          <Button type="button" size="sm" variant="outline" onClick={() => onSelectJob(job)}>
-                            Open Job
+                          <Button type="button" size="sm" onClick={() => onSelectJob(job)}>
+                            <span>Open Job</span>
+                            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                           </Button>
                         </TableCell>
                       </TableRow>

@@ -21,8 +21,8 @@
 - **Profile (`/customer/profile`)**: Update contact details, Philippine address, interactive focal-framed avatar (`ProfilePhotoField`), password, or deactivate account.
 
 ### Technician Portal (`/technician/*`)
-- **Overview (`/technician/dashboard`)**: Clickable daily KPIs, interactive Today's Visits & Other Active Jobs cards, collapsible activity log, and self-service availability status toggle (`available`, `busy`, `break` / DB `'lunch'`, `off_duty`) recorded in `technician_status_logs`.
-- **My Jobs (`/technician/jobs`)**: Unified queue combining active jobs, today's schedule, unpaid bills, completed history, and field collections, backed by `JobWorkbenchDrawer` to confirm/reschedule visit slots, log diagnostics & final PHP price, and record cash/e-wallet collections (legacy `/technician/schedule` and `/technician/collections` routes redirect here).
+- **Overview (`/technician/dashboard`)**: Clickable daily KPIs, interactive Today's Visits & Other Active Jobs cards, Recent Field Activity feed, and self-service availability status toggle (`available`, `busy`, `break` / DB `'lunch'`, `off_duty`) recorded in `technician_status_logs`.
+- **My Jobs (`/technician/jobs`)**: Unified queue combining active jobs, today's schedule, unpaid bills, completed history, and field collections, backed by `JobWorkbenchDrawer` with separated **Work & Visit**, **Billing**, and **Collect Payment** tabs (supporting PayMongo digital checkout + verification, cash/offline field collection, and strict double-payment/overpayment guards; legacy `/technician/schedule` and `/technician/collections` routes redirect here).
 - **Profile (`/technician/profile`)**: Inline display nickname editor, avatar focal framing, password update, and read-only field credentials summary.
 
 ### Operations Admin Portal (`/admin/*`)
