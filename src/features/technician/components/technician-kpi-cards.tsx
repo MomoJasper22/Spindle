@@ -27,7 +27,7 @@ export function TechnicianKpiCards({
     {
       label: 'Assigned Active Jobs',
       value: String(assignedActiveJobs),
-      sub: 'In pipeline queue',
+      sub: 'Open jobs in your queue',
       icon: Wrench,
       accent: 'text-indigo-700 bg-indigo-50',
     },

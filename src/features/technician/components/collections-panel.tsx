@@ -35,7 +35,7 @@ export function CollectionsPanel({ payments }: CollectionsPanelProps) {
 
         <Button asChild variant="outline" className="w-full sm:w-auto">
           <Link href="/technician/jobs">
-            <span>Record in Assigned Jobs</span>
+            <span>Open Jobs &amp; Schedule</span>
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </Button>
@@ -45,7 +45,7 @@ export function CollectionsPanel({ payments }: CollectionsPanelProps) {
         <CardHeader>
           <CardTitle>On-Site Payment Collections</CardTitle>
           <CardDescription>
-            Open any assigned ticket on the Assigned Jobs page to capture a new Cash, GCash, Maya, or QR Ph payment.
+            Open any assigned job on Jobs &amp; Schedule to capture a new Cash, GCash, Maya, or QR Ph payment.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -53,7 +53,7 @@ export function CollectionsPanel({ payments }: CollectionsPanelProps) {
             <EmptyState
               icon={CreditCard}
               title="No field collections recorded"
-              description="Open any assigned ticket from Assigned Jobs to record on-site collections."
+              description="Open any assigned job from Jobs &amp; Schedule to record on-site collections."
             />
           ) : (
             <>

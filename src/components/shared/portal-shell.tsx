@@ -107,6 +107,15 @@ export function PortalShell({
   const profileActive = isLinkActive(profileHref)
   const mobileBarItems = navItems.slice(0, 4)
   const hasOverflowNav = navItems.length > 4
+  const mobileGridClass = hasOverflowNav
+    ? 'grid-cols-5'
+    : mobileBarItems.length === 3
+      ? 'grid-cols-3'
+      : mobileBarItems.length === 2
+        ? 'grid-cols-2'
+        : mobileBarItems.length === 1
+          ? 'grid-cols-1'
+          : 'grid-cols-4'
 
   function renderNavLinks(onNavigate?: () => void) {
     return (
@@ -262,7 +271,7 @@ export function PortalShell({
         aria-label="Mobile quick navigation"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur-md pb-safe lg:hidden"
       >
-        <div className={cn('grid', hasOverflowNav ? 'grid-cols-5' : 'grid-cols-4')}>
+        <div className={cn('grid', mobileGridClass)}>
           {mobileBarItems.map((item) => {
             const Icon = NAV_ICONS[item.icon]
             const active = isLinkActive(item.href)
