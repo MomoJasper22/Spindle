@@ -70,12 +70,14 @@ export function CustomerHomeView({
           </p>
         </div>
 
-        <Button asChild size="lg" className="w-full sm:w-auto">
-          <Link href={activeAppliances.length > 0 ? '/customer/bookings?book=1' : '/customer/appliances?add=1'}>
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            <span>{activeAppliances.length > 0 ? 'Book a Home Visit' : 'Add Your First Appliance'}</span>
-          </Link>
-        </Button>
+        {activeAppliances.length > 0 && (
+          <Button asChild size="lg" className="w-full sm:w-auto">
+            <Link href="/customer/bookings?book=1">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              <span>Book a Home Visit</span>
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* Next Upcoming Visit Highlight (Passbook Card) */}
@@ -148,8 +150,9 @@ export function CustomerHomeView({
             </div>
             <Button asChild className="w-full sm:w-auto shrink-0">
               <Link href={activeAppliances.length > 0 ? '/customer/bookings?book=1' : '/customer/appliances?add=1'}>
-                <span>{activeAppliances.length > 0 ? 'Schedule a Visit' : 'Add Appliance'}</span>
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                {activeAppliances.length === 0 && <Plus className="h-4 w-4" aria-hidden="true" />}
+                <span>{activeAppliances.length > 0 ? 'Schedule a Visit' : 'Add Your First Appliance'}</span>
+                {activeAppliances.length > 0 && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
               </Link>
             </Button>
           </CardContent>

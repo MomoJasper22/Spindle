@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Lock, Loader2, LogOut, Save, Wrench } from 'lucide-react'
+import { Lock, Loader2, LogOut, Pencil, Save, Wrench } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,28 +28,39 @@ interface TechnicianProfileFormsProps {
 }
 
 export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfileFormsProps) {
+  const [isEditing, setIsEditing] = React.useState(false)
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
     null
   )
   const [isPending, startTransition] = React.useTransition()
 
+  const savedNickname = profile.nickname ?? ''
+
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<TechnicianNicknameInput>({
     resolver: zodResolver(technicianNicknameSchema),
     mode: 'onBlur',
     defaultValues: {
-      nickname: profile.nickname ?? '',
+      nickname: savedNickname,
     },
   })
+
+  React.useEffect(() => {
+    if (!isEditing) {
+      reset({ nickname: savedNickname })
+    }
+  }, [isEditing, reset, savedNickname])
 
   function onSubmit(values: TechnicianNicknameInput) {
     setFeedback(null)
     startTransition(async () => {
       const result = await updateTechnicianNicknameAction(values)
       if (result.success) {
+        setIsEditing(false)
         setFeedback({ type: 'success', message: result.message })
       } else {
         setFeedback({ type: 'error', message: result.error })
@@ -88,39 +99,81 @@ export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfi
 
           {feedback && <FormBanner type={feedback.type} message={feedback.message} />}
 
-          {/* Editable Nickname Form (Only freely editable profile detail) */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 rounded-xl border border-border bg-muted/30 p-4" noValidate>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="flex-1 space-y-1.5">
-                <Label htmlFor="tech-nickname">Display Nickname</Label>
-                <p id="tech-nickname-hint" className="text-xs text-muted-foreground">
-                  This is the only personal detail you can freely edit (e.g. Kuya Jun, Tech Rico).
+          {/* Display Nickname (Only freely editable profile detail) */}
+          {!isEditing ? (
+            <div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Display Nickname</p>
+                <p className="font-heading text-base font-semibold text-foreground">
+                  {profile.nickname || 'No nickname set'}
                 </p>
-                <Input
-                  id="tech-nickname"
-                  placeholder="Enter a nickname or preferred name"
-                  aria-describedby={
-                    errors.nickname ? 'tech-nickname-hint tech-nickname-error' : 'tech-nickname-hint'
-                  }
-                  {...register('nickname')}
-                />
-                {errors.nickname && (
-                  <p id="tech-nickname-error" role="alert" className="text-xs text-destructive">
-                    {errors.nickname.message}
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground">
+                  Only your display nickname can be edited directly. Other field credentials are managed by your administrator.
+                </p>
               </div>
 
-              <Button type="submit" disabled={isPending} className="w-full sm:w-auto shrink-0">
-                {isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                ) : (
-                  <Save className="h-4 w-4" aria-hidden="true" />
-                )}
-                <span>Save Nickname</span>
+              <Button
+                type="button"
+                className="w-full sm:w-auto shrink-0"
+                onClick={() => {
+                  reset({ nickname: savedNickname })
+                  setFeedback(null)
+                  setIsEditing(true)
+                }}
+              >
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+                <span>Edit Profile</span>
               </Button>
             </div>
-          </form>
+          ) : (
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 rounded-xl border border-border bg-muted/30 p-4" noValidate>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="flex-1 space-y-1.5">
+                  <Label htmlFor="tech-nickname">Display Nickname</Label>
+                  <p id="tech-nickname-hint" className="text-xs text-muted-foreground">
+                    This is the only personal detail you can freely edit (e.g. Kuya Jun, Tech Rico).
+                  </p>
+                  <Input
+                    id="tech-nickname"
+                    placeholder="Enter a nickname or preferred name"
+                    aria-describedby={
+                      errors.nickname ? 'tech-nickname-hint tech-nickname-error' : 'tech-nickname-hint'
+                    }
+                    {...register('nickname')}
+                  />
+                  {errors.nickname && (
+                    <p id="tech-nickname-error" role="alert" className="text-xs text-destructive">
+                      {errors.nickname.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
+                    {isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Save className="h-4 w-4" aria-hidden="true" />
+                    )}
+                    <span>Save Changes</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isPending}
+                    className="w-full sm:w-auto"
+                    onClick={() => {
+                      reset({ nickname: savedNickname })
+                      setFeedback(null)
+                      setIsEditing(false)
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </form>
+          )}
 
           {/* Read-only Admin-Managed Details */}
           <div className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5">
@@ -218,7 +271,7 @@ export function TechnicianProfileForms({ profile, techProfile }: TechnicianProfi
           <form action={signOutAction}>
             <Button type="submit" variant="outline" size="sm">
               <LogOut className="h-4 w-4" aria-hidden="true" />
-              <span>Sign Out</span>
+              <span>Log Out</span>
             </Button>
           </form>
         </div>

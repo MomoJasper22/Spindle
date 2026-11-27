@@ -23,6 +23,72 @@ export const APPLIANCE_CATEGORIES = [
   'Water Heater',
 ] as const
 
+export const APPLIANCE_ICON_KEYS = [
+  'split-aircon',
+  'window-aircon',
+  'refrigerator',
+  'washing-machine',
+  'cooking-range',
+  'commercial-chiller',
+  'microwave-oven',
+  'water-dispenser',
+  'television',
+  'clothes-dryer',
+  'electric-fan',
+  'water-heater',
+] as const
+
+export type ApplianceIconKey = (typeof APPLIANCE_ICON_KEYS)[number]
+
+export const APPLIANCE_ICON_LABELS: Record<ApplianceIconKey, string> = {
+  'split-aircon': 'Split Aircon',
+  'window-aircon': 'Window Aircon',
+  refrigerator: 'Refrigerator',
+  'washing-machine': 'Washing Machine',
+  'cooking-range': 'Cooking Range',
+  'commercial-chiller': 'Commercial Chiller',
+  'microwave-oven': 'Microwave',
+  'water-dispenser': 'Water Dispenser',
+  television: 'Smart TV',
+  'clothes-dryer': 'Clothes Dryer',
+  'electric-fan': 'Electric Fan',
+  'water-heater': 'Shower Heater',
+}
+
+const CATEGORY_TO_ICON_MAP: Record<string, ApplianceIconKey> = {
+  'Split-Type Aircon': 'split-aircon',
+  'Window-Type Aircon': 'window-aircon',
+  'Inverter Refrigerator': 'refrigerator',
+  'Front-Load Washing Machine': 'washing-machine',
+  'Top-Load Washing Machine': 'washing-machine',
+  'Gas / Induction Range': 'cooking-range',
+  'Commercial Chiller / Freezer': 'commercial-chiller',
+  'Microwave Oven': 'microwave-oven',
+  'Water Dispenser': 'water-dispenser',
+  Television: 'television',
+  'Clothes Dryer': 'clothes-dryer',
+  'Electric Fan': 'electric-fan',
+  'Water Heater': 'water-heater',
+}
+
+export function isValidApplianceIconKey(value: unknown): value is ApplianceIconKey {
+  return typeof value === 'string' && (APPLIANCE_ICON_KEYS as readonly string[]).includes(value)
+}
+
+export function getDefaultApplianceIcon(category?: string | null): ApplianceIconKey {
+  if (category && category in CATEGORY_TO_ICON_MAP) {
+    return CATEGORY_TO_ICON_MAP[category]
+  }
+  return 'split-aircon'
+}
+
+export function resolveApplianceIconKey(
+  icon?: string | null,
+  category?: string | null
+): ApplianceIconKey {
+  return isValidApplianceIconKey(icon) ? icon : getDefaultApplianceIcon(category)
+}
+
 export const APPLIANCE_BRAND_SUGGESTIONS = [
   'Carrier',
   'Condura',

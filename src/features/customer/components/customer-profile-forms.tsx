@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, LogOut, Save, User } from 'lucide-react'
+import { Loader2, LogOut, Pencil, Save, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -23,7 +23,7 @@ import { signOutAction } from '@/features/auth/actions/auth-actions'
 import { ChangePasswordCard } from '@/features/auth/components/change-password-card'
 import type { AuthenticatedUserProfile } from '@/lib/auth/session'
 import { SERVICE_BRANCHES } from '@/lib/constants'
-import { formatFullName } from '@/lib/formatters'
+import { formatAddress, formatFullName, formatPHPhone } from '@/lib/formatters'
 import {
   deactivateCustomerAccountAction,
   updateCustomerProfileAction,
@@ -35,20 +35,14 @@ interface CustomerProfileFormsProps {
 }
 
 export function CustomerProfileForms({ profile }: CustomerProfileFormsProps) {
+  const [isEditing, setIsEditing] = React.useState(false)
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
     null
   )
   const [isPending, startTransition] = React.useTransition()
 
-  const {
-    register,
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<CustomerProfileInput>({
-    resolver: zodResolver(customerProfileSchema),
-    mode: 'onBlur',
-    defaultValues: {
+  const savedValues = React.useMemo<CustomerProfileInput>(
+    () => ({
       first_name: profile.first_name,
       middle_name: profile.middle_name ?? '',
       last_name: profile.last_name,
@@ -60,14 +54,34 @@ export function CustomerProfileForms({ profile }: CustomerProfileFormsProps) {
       address_city: profile.address_city ?? '',
       address_province: profile.address_province ?? 'Metro Manila',
       address_zip_code: profile.address_zip_code ?? '',
-    },
+    }),
+    [profile]
+  )
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CustomerProfileInput>({
+    resolver: zodResolver(customerProfileSchema),
+    mode: 'onBlur',
+    defaultValues: savedValues,
   })
+
+  React.useEffect(() => {
+    if (!isEditing) {
+      reset(savedValues)
+    }
+  }, [isEditing, reset, savedValues])
 
   function onSubmit(values: CustomerProfileInput) {
     setFeedback(null)
     startTransition(async () => {
       const result = await updateCustomerProfileAction(values)
       if (result.success) {
+        setIsEditing(false)
         setFeedback({ type: 'success', message: result.message })
       } else {
         setFeedback({ type: 'error', message: result.error })
@@ -105,89 +119,154 @@ export function CustomerProfileForms({ profile }: CustomerProfileFormsProps) {
 
           {feedback && <FormBanner type={feedback.type} message={feedback.message} />}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="cust-first">First name</Label>
-                <Input id="cust-first" {...register('first_name')} />
-                {errors.first_name && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {errors.first_name.message}
-                  </p>
-                )}
-              </div>
+          {!isEditing ? (
+            <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4 sm:p-5">
+              <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                <div>
+                  <dt className="text-xs font-medium text-muted-foreground">Full Name</dt>
+                  <dd className="mt-0.5 font-semibold text-foreground">{formatFullName(profile)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-muted-foreground">Email Address</dt>
+                  <dd className="mt-0.5 font-medium text-foreground">{profile.email}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-muted-foreground">Mobile Number (+63)</dt>
+                  <dd className="mt-0.5 font-medium text-foreground">{formatPHPhone(profile.phone)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-muted-foreground">Nearest Branch</dt>
+                  <dd className="mt-0.5 font-medium text-foreground">
+                    {profile.branch_location || 'Not set'}
+                  </dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-xs font-medium text-muted-foreground">Home Address</dt>
+                  <dd className="mt-0.5 text-foreground">
+                    {formatAddress({
+                      street: profile.address_street,
+                      barangay: profile.address_barangay,
+                      city: profile.address_city,
+                      province: profile.address_province,
+                      zip: profile.address_zip_code,
+                    })}
+                  </dd>
+                </div>
+              </dl>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="cust-middle">Middle name (optional)</Label>
-                <Input id="cust-middle" {...register('middle_name')} />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="cust-last">Last name</Label>
-                <Input id="cust-last" {...register('last_name')} />
-                {errors.last_name && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {errors.last_name.message}
-                  </p>
-                )}
+              <div className="border-t border-border pt-3">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    reset(savedValues)
+                    setFeedback(null)
+                    setIsEditing(true)
+                  }}
+                >
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
+                  <span>Edit Profile</span>
+                </Button>
               </div>
             </div>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="cust-email">Email address</Label>
-                <Input id="cust-email" value={profile.email} readOnly className="bg-muted" />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="cust-phone">Mobile number (+63)</Label>
-                <Input id="cust-phone" type="tel" {...register('phone')} />
-                {errors.phone && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {errors.phone.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="cust-branch">Nearest branch</Label>
-                <Controller
-                  name="branch_location"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="cust-branch">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SERVICE_BRANCHES.map((branch) => (
-                          <SelectItem key={branch} value={branch}>
-                            {branch}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+          ) : (
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="cust-first">First name</Label>
+                  <Input id="cust-first" {...register('first_name')} />
+                  {errors.first_name && (
+                    <p role="alert" className="text-xs text-destructive">
+                      {errors.first_name.message}
+                    </p>
                   )}
-                />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="cust-middle">Middle name (optional)</Label>
+                  <Input id="cust-middle" {...register('middle_name')} />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="cust-last">Last name</Label>
+                  <Input id="cust-last" {...register('last_name')} />
+                  {errors.last_name && (
+                    <p role="alert" className="text-xs text-destructive">
+                      {errors.last_name.message}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
 
-            <PhilippineAddressFields
-              register={register}
-              errors={errors}
-              idPrefix="cust"
-              streetLabel="Street, Unit, Building, or Subdivision"
-            />
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="cust-email">Email address</Label>
+                  <Input id="cust-email" value={profile.email} readOnly className="bg-muted" />
+                </div>
 
-            <Button type="submit" disabled={isPending}>
-              {isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Save className="h-4 w-4" aria-hidden="true" />
-              )}
-              <span>Save Changes</span>
-            </Button>
-          </form>
+                <div className="space-y-1.5">
+                  <Label htmlFor="cust-phone">Mobile number (+63)</Label>
+                  <Input id="cust-phone" type="tel" {...register('phone')} />
+                  {errors.phone && (
+                    <p role="alert" className="text-xs text-destructive">
+                      {errors.phone.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="cust-branch">Nearest branch</Label>
+                  <Controller
+                    name="branch_location"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger id="cust-branch">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SERVICE_BRANCHES.map((branch) => (
+                            <SelectItem key={branch} value={branch}>
+                              {branch}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+              </div>
+
+              <PhilippineAddressFields
+                register={register}
+                errors={errors}
+                idPrefix="cust"
+                streetLabel="Street, Unit, Building, or Subdivision"
+              />
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="submit" disabled={isPending}>
+                  {isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Save className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  <span>Save Changes</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isPending}
+                  onClick={() => {
+                    reset(savedValues)
+                    setFeedback(null)
+                    setIsEditing(false)
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
         </CardContent>
       </Card>
 
@@ -198,7 +277,7 @@ export function CustomerProfileForms({ profile }: CustomerProfileFormsProps) {
           <form action={signOutAction}>
             <Button type="submit" variant="outline" size="sm">
               <LogOut className="h-4 w-4" aria-hidden="true" />
-              <span>Sign Out</span>
+              <span>Log Out</span>
             </Button>
           </form>
 

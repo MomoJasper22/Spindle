@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Camera, Loader2, Move, RotateCcw, Trash2, ZoomIn } from 'lucide-react'
+import { Camera, Loader2, RotateCcw, Trash2, Upload, ZoomIn } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -25,17 +25,20 @@ import {
   normalizeAvatarPosition,
   type AvatarPosition,
 } from '@/lib/avatar'
+import { cn } from '@/lib/utils'
 
 interface ProfilePhotoFieldProps {
   currentAvatarUrl: string | null | undefined
   currentAvatarPosition?: AvatarPosition | null
   fullName: string
+  layout?: 'centered' | 'compact'
 }
 
 export function ProfilePhotoField({
   currentAvatarUrl,
   currentAvatarPosition,
   fullName,
+  layout = 'centered',
 }: ProfilePhotoFieldProps) {
   const [avatarUrl, setAvatarUrl] = React.useState<string | null>(currentAvatarUrl ?? null)
   const [savedPosition, setSavedPosition] = React.useState<AvatarPosition>(() =>
@@ -44,7 +47,7 @@ export function ProfilePhotoField({
   const [draftPosition, setDraftPosition] = React.useState<AvatarPosition>(() =>
     normalizeAvatarPosition(currentAvatarPosition)
   )
-  const [adjustOpen, setAdjustOpen] = React.useState(false)
+  const [editorOpen, setEditorOpen] = React.useState(false)
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
     null
   )
@@ -82,10 +85,10 @@ export function ProfilePhotoField({
     })
   }
 
-  function openPositionEditor() {
+  function openPhotoEditor() {
     setDraftPosition(savedPosition)
     setFeedback(null)
-    setAdjustOpen(true)
+    setEditorOpen(true)
   }
 
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
@@ -127,7 +130,7 @@ export function ProfilePhotoField({
       if (result.success) {
         const nextPos = result.avatarPosition ?? draftPosition
         setSavedPosition(nextPos)
-        setAdjustOpen(false)
+        setEditorOpen(false)
         setFeedback({ type: 'success', message: result.message })
       } else {
         setFeedback({ type: 'error', message: result.error })
@@ -151,39 +154,72 @@ export function ProfilePhotoField({
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-border bg-muted/40 p-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3.5">
-          {avatarUrl ? (
-            <button
-              type="button"
-              onClick={openPositionEditor}
-              aria-label="Adjust profile photo position"
-              className="group relative rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <UserAvatar
-                avatarUrl={avatarUrl}
-                avatarPosition={savedPosition}
-                name={fullName}
-                size="lg"
-              />
-              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-secondary/50 text-white opacity-0 transition-opacity group-hover:opacity-100">
-                <Move className="h-4 w-4" aria-hidden="true" />
-              </span>
-            </button>
-          ) : (
-            <UserAvatar avatarUrl={null} name={fullName} size="lg" />
-          )}
+    <div
+      className={cn(
+        'space-y-3 rounded-xl border border-border bg-muted/35 p-4',
+        layout === 'centered' && 'py-6'
+      )}
+    >
+      <div
+        className={cn(
+          layout === 'centered'
+            ? 'flex flex-col items-center justify-center gap-3.5 text-center'
+            : 'flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'
+        )}
+      >
+        <button
+          type="button"
+          onClick={openPhotoEditor}
+          aria-label="Edit profile photo"
+          className="group relative rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <UserAvatar
+            avatarUrl={avatarUrl}
+            avatarPosition={savedPosition}
+            name={fullName}
+            size={layout === 'centered' ? '2xl' : 'lg'}
+          />
+          <span className="absolute inset-0 flex items-center justify-center rounded-full bg-secondary/50 text-white opacity-0 transition-opacity group-hover:opacity-100">
+            <Camera className="h-5 w-5" aria-hidden="true" />
+          </span>
+        </button>
 
-          <div>
+        {layout === 'compact' && (
+          <div className="flex-1 text-left">
             <p className="text-sm font-semibold text-foreground">Profile Photo</p>
             <p className="text-xs text-muted-foreground">
-              PNG, JPG, or WebP up to 2 MB. You can adjust how your photo is framed anytime.
+              Add or adjust your photo for your account profile.
             </p>
           </div>
-        </div>
+        )}
 
-        <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={isPending}
+          onClick={openPhotoEditor}
+        >
+          {isPending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+          ) : (
+            <Camera className="h-3.5 w-3.5" aria-hidden="true" />
+          )}
+          <span>Edit Photo</span>
+        </Button>
+      </div>
+
+      {feedback && !editorOpen && <FormBanner type={feedback.type} message={feedback.message} />}
+
+      <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Photo</DialogTitle>
+            <DialogDescription>
+              PNG, JPG, or WebP up to 2 MB. You can adjust how your photo is framed anytime.
+            </DialogDescription>
+          </DialogHeader>
+
           <input
             ref={fileInputRef}
             id="profile-photo-input"
@@ -193,64 +229,10 @@ export function ProfilePhotoField({
             disabled={isPending}
             className="sr-only"
           />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isPending}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {isPending ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-            ) : (
-              <Camera className="h-3.5 w-3.5" aria-hidden="true" />
-            )}
-            <span>{avatarUrl ? 'Change Photo' : 'Add Photo'}</span>
-          </Button>
 
-          {avatarUrl && (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={isPending}
-                onClick={openPositionEditor}
-              >
-                <Move className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Adjust Position</span>
-              </Button>
+          {feedback && editorOpen && <FormBanner type={feedback.type} message={feedback.message} />}
 
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={isPending}
-                onClick={handleRemove}
-                className="text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Remove</span>
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {feedback && !adjustOpen && <FormBanner type={feedback.type} message={feedback.message} />}
-
-      <Dialog open={adjustOpen} onOpenChange={setAdjustOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Adjust Photo Position</DialogTitle>
-            <DialogDescription>
-              Drag your photo inside the circle or use the sliders to center your face.
-            </DialogDescription>
-          </DialogHeader>
-
-          {feedback && adjustOpen && <FormBanner type={feedback.type} message={feedback.message} />}
-
-          {avatarUrl && (
+          {avatarUrl ? (
             <div className="space-y-5">
               <div className="flex flex-col items-center gap-3">
                 <div
@@ -284,7 +266,7 @@ export function ProfilePhotoField({
                     name={fullName}
                     size="sm"
                   />
-                  <span>Preview in header &amp; menu</span>
+                  <span>Drag image or use sliders to center</span>
                 </div>
               </div>
 
@@ -367,34 +349,86 @@ export function ProfilePhotoField({
                   </div>
                 </div>
               </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isPending}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                  <span>Change Photo</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={isPending}
+                  onClick={handleRemove}
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>Remove Photo</span>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-4 py-6 text-center">
+              <UserAvatar avatarUrl={null} name={fullName} size="2xl" />
+              <p className="text-sm text-muted-foreground">
+                No profile photo uploaded yet.
+              </p>
+              <Button
+                type="button"
+                disabled={isPending}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Upload className="h-4 w-4" aria-hidden="true" />
+                )}
+                <span>Upload Photo</span>
+              </Button>
             </div>
           )}
 
-          <DialogFooter className="sm:justify-between">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={isPending}
-              onClick={() => setDraftPosition({ ...DEFAULT_AVATAR_POSITION })}
-            >
-              <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Reset Center</span>
-            </Button>
+          <DialogFooter className={cn(avatarUrl ? 'sm:justify-between' : 'sm:justify-end')}>
+            {avatarUrl && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={isPending}
+                onClick={() => setDraftPosition({ ...DEFAULT_AVATAR_POSITION })}
+              >
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Reset Center</span>
+              </Button>
+            )}
 
             <div className="flex flex-col-reverse gap-2 sm:flex-row">
               <Button
                 type="button"
                 variant="outline"
                 disabled={isPending}
-                onClick={() => setAdjustOpen(false)}
+                onClick={() => setEditorOpen(false)}
               >
-                Cancel
+                {avatarUrl ? 'Cancel' : 'Close'}
               </Button>
-              <Button type="button" disabled={isPending} onClick={handleSavePosition}>
-                {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                <span>Save Position</span>
-              </Button>
+              {avatarUrl && (
+                <Button type="button" disabled={isPending} onClick={handleSavePosition}>
+                  {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                  <span>Save Position</span>
+                </Button>
+              )}
             </div>
           </DialogFooter>
         </DialogContent>

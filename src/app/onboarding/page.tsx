@@ -27,7 +27,7 @@ async function OnboardingContent() {
           <SpindleLogo variant="dark" showTagline />
           <form action={signOutAction}>
             <Button type="submit" variant="ghost" size="sm">
-              Sign Out
+              Log Out
             </Button>
           </form>
         </div>

@@ -2,6 +2,7 @@ import { z } from 'zod'
 import {
   ADMIN_FEATURE_KEYS,
   APPLIANCE_CATEGORIES,
+  APPLIANCE_ICON_KEYS,
   APPOINTMENT_STATUSES,
   PAYMENT_METHODS,
   REPAIR_PRIORITIES,
@@ -99,6 +100,7 @@ export const adminApplianceSchema = z.object({
   customer_id: z.string().trim().min(1, 'Select a customer.'),
   brand: z.string().trim().min(2).max(50),
   category: z.enum(APPLIANCE_CATEGORIES),
+  icon: z.enum(APPLIANCE_ICON_KEYS).optional(),
   model_number: z.string().trim().min(2).max(100),
   serial_number: z.string().trim().min(3).max(100),
   purchase_date: z.string().trim().optional().or(z.literal('')),

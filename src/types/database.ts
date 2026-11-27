@@ -1,6 +1,7 @@
 import type { AvatarPosition } from '@/lib/avatar'
 import type {
   AdminFeatureKey,
+  ApplianceIconKey,
   AppointmentStatus,
   PaymentMethod,
   PaymentStatus,
@@ -71,6 +72,7 @@ export interface CustomerApplianceRow {
   customer_id: string
   brand: string
   category: string
+  icon?: ApplianceIconKey | null
   model_number: string
   serial_number: string
   purchase_date: string | null
@@ -128,6 +130,7 @@ export interface RepairDetailView {
   verified_paid_php: number
   pending_paid_php: number
   payment_count: number
+  appliance_icon?: ApplianceIconKey | null
 }
 
 export interface AppointmentDetailView {

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import {
   APPLIANCE_CATEGORIES,
+  APPLIANCE_ICON_KEYS,
   PAYMENT_METHODS,
   REPAIR_PRIORITIES,
   SERVICE_BRANCHES,
@@ -11,6 +12,7 @@ import { validatePHPhone } from '@/lib/formatters'
 export const applianceSchema = z.object({
   brand: z.string().trim().min(2, 'Enter the appliance brand.').max(50),
   category: z.enum(APPLIANCE_CATEGORIES, { message: 'Select an appliance category.' }),
+  icon: z.enum(APPLIANCE_ICON_KEYS, { message: 'Select an appliance icon.' }).optional(),
   model_number: z.string().trim().min(2, 'Enter the model number.').max(100),
   serial_number: z.string().trim().min(3, 'Enter the serial number.').max(100),
   purchase_date: z.string().trim().optional().or(z.literal('')),

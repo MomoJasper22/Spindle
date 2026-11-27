@@ -7,7 +7,7 @@ interface UserAvatarProps {
   avatarUrl?: string | null
   avatarPosition?: AvatarPosition | null
   name: string
-  size?: 'sm' | 'md' | 'lg' | 'xl'
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
   variant?: 'light' | 'dark'
   className?: string
 }
@@ -17,6 +17,7 @@ const SIZE_CLASSES: Record<NonNullable<UserAvatarProps['size']>, string> = {
   md: 'h-10 w-10',
   lg: 'h-16 w-16',
   xl: 'h-20 w-20',
+  '2xl': 'h-24 w-24 sm:h-28 sm:w-28',
 }
 
 const ICON_CLASSES: Record<NonNullable<UserAvatarProps['size']>, string> = {
@@ -24,6 +25,7 @@ const ICON_CLASSES: Record<NonNullable<UserAvatarProps['size']>, string> = {
   md: 'h-4 w-4',
   lg: 'h-7 w-7',
   xl: 'h-8 w-8',
+  '2xl': 'h-11 w-11',
 }
 
 export function UserAvatar({

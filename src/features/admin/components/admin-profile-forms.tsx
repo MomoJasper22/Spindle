@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, Lock, LogOut, Save, ShieldCheck } from 'lucide-react'
+import { Loader2, Lock, LogOut, Pencil, Save, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,20 +33,14 @@ interface AdminProfileFormsProps {
 }
 
 export function AdminProfileForms({ profile, canEditProfileDetails }: AdminProfileFormsProps) {
+  const [isEditing, setIsEditing] = React.useState(false)
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
     null
   )
   const [isPending, startTransition] = React.useTransition()
 
-  const {
-    register,
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<AdminProfileInput>({
-    resolver: zodResolver(adminProfileSchema),
-    mode: 'onBlur',
-    defaultValues: {
+  const savedValues = React.useMemo<AdminProfileInput>(
+    () => ({
       first_name: profile.first_name,
       middle_name: profile.middle_name ?? '',
       last_name: profile.last_name,
@@ -58,14 +52,34 @@ export function AdminProfileForms({ profile, canEditProfileDetails }: AdminProfi
       address_city: profile.address_city ?? '',
       address_province: profile.address_province ?? 'Metro Manila',
       address_zip_code: profile.address_zip_code ?? '',
-    },
+    }),
+    [profile]
+  )
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<AdminProfileInput>({
+    resolver: zodResolver(adminProfileSchema),
+    mode: 'onBlur',
+    defaultValues: savedValues,
   })
+
+  React.useEffect(() => {
+    if (!isEditing) {
+      reset(savedValues)
+    }
+  }, [isEditing, reset, savedValues])
 
   function onSubmit(values: AdminProfileInput) {
     setFeedback(null)
     startTransition(async () => {
       const result = await updateAdminProfileAction(values)
       if (result.success) {
+        setIsEditing(false)
         setFeedback({ type: 'success', message: result.message })
       } else {
         setFeedback({ type: 'error', message: result.error })
@@ -106,17 +120,19 @@ export function AdminProfileForms({ profile, canEditProfileDetails }: AdminProfi
 
           {feedback && <FormBanner type={feedback.type} message={feedback.message} />}
 
-          {!canEditProfileDetails ? (
+          {!canEditProfileDetails || !isEditing ? (
             <div className="space-y-4 rounded-xl border border-border bg-muted/30 p-4 sm:p-5">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
-                <div className="flex items-center gap-2">
-                  <Lock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                  <h3 className="font-heading text-sm font-semibold text-foreground">
-                    Administrator Profile &amp; Managed Branch
-                  </h3>
+              {!canEditProfileDetails && (
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+                  <div className="flex items-center gap-2">
+                    <Lock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                    <h3 className="font-heading text-sm font-semibold text-foreground">
+                      Administrator Profile &amp; Managed Branch
+                    </h3>
+                  </div>
+                  <Badge variant="slate">Read-only (Limited Admin)</Badge>
                 </div>
-                <Badge variant="slate">Read-only (Limited Admin)</Badge>
-              </div>
+              )}
 
               <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
                 <div>
@@ -151,100 +167,130 @@ export function AdminProfileForms({ profile, canEditProfileDetails }: AdminProfi
                 </div>
               </dl>
 
-              <div className="space-y-2 border-t border-border pt-3">
-                <p className="text-xs font-medium text-muted-foreground">Permitted Admin Features</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {(profile.admin_permissions ?? []).map((key) => {
-                    const feature = ADMIN_FEATURES.find((f) => f.key === key)
-                    return (
-                      <Badge key={key} variant="outline">
-                        {feature?.label ?? key}
-                      </Badge>
-                    )
-                  })}
+              {!canEditProfileDetails ? (
+                <div className="space-y-2 border-t border-border pt-3">
+                  <p className="text-xs font-medium text-muted-foreground">Permitted Admin Features</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(profile.admin_permissions ?? []).map((key) => {
+                      const feature = ADMIN_FEATURES.find((f) => f.key === key)
+                      return (
+                        <Badge key={key} variant="outline">
+                          {feature?.label ?? key}
+                        </Badge>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="border-t border-border pt-3">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      reset(savedValues)
+                      setFeedback(null)
+                      setIsEditing(true)
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" aria-hidden="true" />
+                    <span>Edit Profile</span>
+                  </Button>
+                </div>
+              )}
             </div>
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-p-first">First name</Label>
-                <Input id="adm-p-first" {...register('first_name')} />
-                {errors.first_name && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {errors.first_name.message}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-p-middle">Middle name</Label>
-                <Input id="adm-p-middle" {...register('middle_name')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-p-last">Last name</Label>
-                <Input id="adm-p-last" {...register('last_name')} />
-                {errors.last_name && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {errors.last_name.message}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-p-email">Email</Label>
-                <Input id="adm-p-email" value={profile.email} readOnly className="bg-muted" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-p-phone">Phone (+63)</Label>
-                <Input id="adm-p-phone" type="tel" {...register('phone')} />
-                {errors.phone && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {errors.phone.message}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="adm-p-branch">Primary Managed Branch</Label>
-                <Controller
-                  name="branch_location"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="adm-p-branch">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SERVICE_BRANCHES.map((b) => (
-                          <SelectItem key={b} value={b}>
-                            {b}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="adm-p-first">First name</Label>
+                  <Input id="adm-p-first" {...register('first_name')} />
+                  {errors.first_name && (
+                    <p role="alert" className="text-xs text-destructive">
+                      {errors.first_name.message}
+                    </p>
                   )}
-                />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="adm-p-middle">Middle name</Label>
+                  <Input id="adm-p-middle" {...register('middle_name')} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="adm-p-last">Last name</Label>
+                  <Input id="adm-p-last" {...register('last_name')} />
+                  {errors.last_name && (
+                    <p role="alert" className="text-xs text-destructive">
+                      {errors.last_name.message}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
 
-            <PhilippineAddressFields
-              register={register}
-              errors={errors}
-              idPrefix="adm-p"
-              streetLabel="Office Street Address"
-            />
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="adm-p-email">Email</Label>
+                  <Input id="adm-p-email" value={profile.email} readOnly className="bg-muted" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="adm-p-phone">Phone (+63)</Label>
+                  <Input id="adm-p-phone" type="tel" {...register('phone')} />
+                  {errors.phone && (
+                    <p role="alert" className="text-xs text-destructive">
+                      {errors.phone.message}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="adm-p-branch">Primary Managed Branch</Label>
+                  <Controller
+                    name="branch_location"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger id="adm-p-branch">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SERVICE_BRANCHES.map((b) => (
+                            <SelectItem key={b} value={b}>
+                              {b}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+              </div>
 
-            <Button type="submit" disabled={isPending}>
-              {isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Save className="h-4 w-4" aria-hidden="true" />
-              )}
-              <span>Save Administrator Profile</span>
-            </Button>
-          </form>
+              <PhilippineAddressFields
+                register={register}
+                errors={errors}
+                idPrefix="adm-p"
+                streetLabel="Office Street Address"
+              />
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="submit" disabled={isPending}>
+                  {isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Save className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  <span>Save Changes</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isPending}
+                  onClick={() => {
+                    reset(savedValues)
+                    setFeedback(null)
+                    setIsEditing(false)
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
           )}
         </CardContent>
       </Card>
@@ -259,7 +305,7 @@ export function AdminProfileForms({ profile, canEditProfileDetails }: AdminProfi
           <form action={signOutAction}>
             <Button type="submit" variant="outline" size="sm">
               <LogOut className="h-4 w-4" aria-hidden="true" />
-              <span>Sign Out</span>
+              <span>Log Out</span>
             </Button>
           </form>
         </div>

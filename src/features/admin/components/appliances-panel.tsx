@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, Controller, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Laptop, Loader2, Pencil, Plus, Search, ShieldCheck, Trash2, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -32,6 +32,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+import { ApplianceIcon, ApplianceIconPicker } from '@/components/shared/appliance-icons'
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
@@ -40,6 +41,8 @@ import {
   APPLIANCE_BRAND_SUGGESTIONS,
   APPLIANCE_CATEGORIES,
   REGISTRATION_STATUSES,
+  getDefaultApplianceIcon,
+  resolveApplianceIconKey,
 } from '@/lib/constants'
 import { formatFullName, formatManilaDate, humanizeLabel } from '@/lib/formatters'
 import type { CustomerApplianceRow, UserWithRole } from '@/types/database'
@@ -60,6 +63,7 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
   const [statusFilter, setStatusFilter] = React.useState('all')
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [editing, setEditing] = React.useState<CustomerApplianceRow | null>(null)
+  const [iconManuallyPicked, setIconManuallyPicked] = React.useState(false)
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
     null
   )
@@ -75,6 +79,7 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
       customer_id: customers[0]?.user_id ?? '',
       brand: '',
       category: APPLIANCE_CATEGORIES[0],
+      icon: getDefaultApplianceIcon(APPLIANCE_CATEGORIES[0]),
       model_number: '',
       serial_number: '',
       purchase_date: '',
@@ -83,12 +88,16 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
     },
   })
 
+  const watchedCategory = useWatch({ control: form.control, name: 'category' })
+
   function openCreate() {
     setEditing(null)
+    setIconManuallyPicked(false)
     form.reset({
       customer_id: customers[0]?.user_id ?? '',
       brand: '',
       category: APPLIANCE_CATEGORIES[0],
+      icon: getDefaultApplianceIcon(APPLIANCE_CATEGORIES[0]),
       model_number: '',
       serial_number: '',
       purchase_date: '',
@@ -101,10 +110,12 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
 
   function openEdit(item: CustomerApplianceRow) {
     setEditing(item)
+    setIconManuallyPicked(true)
     form.reset({
       customer_id: item.customer_id,
       brand: item.brand,
       category: item.category as AdminApplianceInput['category'],
+      icon: resolveApplianceIconKey(item.icon, item.category),
       model_number: item.model_number,
       serial_number: item.serial_number,
       purchase_date: item.purchase_date ?? '',
@@ -237,16 +248,21 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
                 return (
                   <div key={item.appliance_id} className="rounded-xl border border-border bg-card p-4 space-y-3">
                     <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <span className="font-mono text-xs font-semibold text-primary">
-                          {item.appliance_id}
-                        </span>
-                        <p className="mt-0.5 font-semibold text-foreground">
-                          {item.brand} &middot; {item.model_number}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {item.category} &middot; SN {item.serial_number}
-                        </p>
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-primary-tint/35 p-1">
+                          <ApplianceIcon icon={item.icon} category={item.category} className="h-7 w-7" />
+                        </div>
+                        <div>
+                          <span className="font-mono text-xs font-semibold text-primary">
+                            {item.appliance_id}
+                          </span>
+                          <p className="mt-0.5 font-semibold text-foreground">
+                            {item.brand} &middot; {item.model_number}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {item.category} &middot; SN {item.serial_number}
+                          </p>
+                        </div>
                       </div>
                       <StatusBadge status={item.registration_status} />
                     </div>
@@ -318,10 +334,17 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
                           </p>
                         </TableCell>
                         <TableCell>
-                          <p className="font-medium">
-                            {item.brand} &middot; {item.model_number}
-                          </p>
-                          <p className="text-xs text-muted-foreground">{item.category}</p>
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-primary-tint/35 p-1">
+                              <ApplianceIcon icon={item.icon} category={item.category} className="h-7 w-7" />
+                            </div>
+                            <div>
+                              <p className="font-medium">
+                                {item.brand} &middot; {item.model_number}
+                              </p>
+                              <p className="text-xs text-muted-foreground">{item.category}</p>
+                            </div>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <p className="font-mono text-xs">{item.serial_number}</p>
@@ -397,7 +420,7 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
       </CardContent>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>
               {editing ? `Edit Appliance (${editing.appliance_id})` : 'Add Master Appliance Record'}
@@ -453,7 +476,17 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
                   name="category"
                   control={form.control}
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value}
+                      onValueChange={(nextCategory) => {
+                        field.onChange(nextCategory)
+                        if (!iconManuallyPicked) {
+                          form.setValue('icon', getDefaultApplianceIcon(nextCategory), {
+                            shouldValidate: true,
+                          })
+                        }
+                      }}
+                    >
                       <SelectTrigger id="adm-app-cat">
                         <SelectValue />
                       </SelectTrigger>
@@ -468,6 +501,25 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
                   )}
                 />
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Appliance Icon</Label>
+              <Controller
+                name="icon"
+                control={form.control}
+                render={({ field }) => (
+                  <ApplianceIconPicker
+                    value={field.value}
+                    category={watchedCategory}
+                    onChange={(nextIcon) => {
+                      setIconManuallyPicked(true)
+                      field.onChange(nextIcon)
+                    }}
+                    error={form.formState.errors.icon?.message}
+                  />
+                )}
+              />
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">

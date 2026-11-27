@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/auth/session'
 import { getManilaTodayISO, normalizePHPhone } from '@/lib/formatters'
+import { getDefaultApplianceIcon } from '@/lib/constants'
 import {
   applianceSchema,
   customerPaymentSchema,
@@ -51,29 +52,41 @@ export async function createApplianceAction(input: ApplianceInput): Promise<Acti
   }
 
   const supabase = await createClient()
-  const { data: inserted, error } = await supabase
+  const basePayload = {
+    customer_id: profile.user_id,
+    brand: parsed.data.brand,
+    category: parsed.data.category,
+    model_number: parsed.data.model_number,
+    serial_number: parsed.data.serial_number.toUpperCase(),
+    purchase_date: parsed.data.purchase_date || null,
+    notes: parsed.data.notes || null,
+    registration_status: 'pending_verification',
+  }
+  const resolvedIcon = parsed.data.icon ?? getDefaultApplianceIcon(parsed.data.category)
+
+  let { data: inserted, error } = await supabase
     .from('customer_appliances')
-    .insert({
-      customer_id: profile.user_id,
-      brand: parsed.data.brand,
-      category: parsed.data.category,
-      model_number: parsed.data.model_number,
-      serial_number: parsed.data.serial_number.toUpperCase(),
-      purchase_date: parsed.data.purchase_date || null,
-      notes: parsed.data.notes || null,
-      registration_status: 'pending_verification',
-    })
+    .insert({ ...basePayload, icon: resolvedIcon })
     .select('appliance_id')
     .single()
 
-  if (error) {
-    if (error.code === '23505') {
+  // Graceful fallback if migration 006 (icon column) has not been applied yet
+  if (error && (error.code === '42703' || error.code === 'PGRST204' || error.message?.includes("'icon'"))) {
+    ;({ data: inserted, error } = await supabase
+      .from('customer_appliances')
+      .insert(basePayload)
+      .select('appliance_id')
+      .single())
+  }
+
+  if (error || !inserted) {
+    if (error?.code === '23505') {
       return {
         success: false,
         error: 'An appliance with this serial number is already saved on your account.',
       }
     }
-    return { success: false, error: error.message }
+    return { success: false, error: error?.message ?? 'Could not save appliance.' }
   }
 
   await supabase.from('activity_logs').insert({
@@ -99,18 +112,29 @@ export async function updateApplianceAction(
   }
 
   const supabase = await createClient()
-  const { error } = await supabase
+  const basePayload = {
+    brand: parsed.data.brand,
+    category: parsed.data.category,
+    model_number: parsed.data.model_number,
+    serial_number: parsed.data.serial_number.toUpperCase(),
+    purchase_date: parsed.data.purchase_date || null,
+    notes: parsed.data.notes || null,
+  }
+  const resolvedIcon = parsed.data.icon ?? getDefaultApplianceIcon(parsed.data.category)
+
+  let { error } = await supabase
     .from('customer_appliances')
-    .update({
-      brand: parsed.data.brand,
-      category: parsed.data.category,
-      model_number: parsed.data.model_number,
-      serial_number: parsed.data.serial_number.toUpperCase(),
-      purchase_date: parsed.data.purchase_date || null,
-      notes: parsed.data.notes || null,
-    })
+    .update({ ...basePayload, icon: resolvedIcon })
     .eq('appliance_id', applianceId)
     .eq('customer_id', profile.user_id)
+
+  if (error && (error.code === '42703' || error.code === 'PGRST204' || error.message?.includes("'icon'"))) {
+    ;({ error } = await supabase
+      .from('customer_appliances')
+      .update(basePayload)
+      .eq('appliance_id', applianceId)
+      .eq('customer_id', profile.user_id))
+  }
 
   if (error) {
     if (error.code === '23505') {

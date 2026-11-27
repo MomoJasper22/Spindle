@@ -11,6 +11,7 @@ import {
 } from '@/lib/auth/session'
 import {
   USER_TYPE_IDS,
+  getDefaultApplianceIcon,
   type AdminFeatureKey,
   type RegistrationStatus,
 } from '@/lib/constants'
@@ -477,20 +478,30 @@ export async function adminUpsertApplianceAction(
   }
 
   const supabase = await createClient()
+  const basePayload = {
+    customer_id: parsed.data.customer_id,
+    brand: parsed.data.brand,
+    category: parsed.data.category,
+    model_number: parsed.data.model_number,
+    serial_number: parsed.data.serial_number.toUpperCase(),
+    purchase_date: parsed.data.purchase_date || null,
+    registration_status: parsed.data.registration_status,
+    notes: parsed.data.notes || null,
+  }
+  const resolvedIcon = parsed.data.icon ?? getDefaultApplianceIcon(parsed.data.category)
+
   if (applianceId) {
-    const { error } = await supabase
+    let { error } = await supabase
       .from('customer_appliances')
-      .update({
-        customer_id: parsed.data.customer_id,
-        brand: parsed.data.brand,
-        category: parsed.data.category,
-        model_number: parsed.data.model_number,
-        serial_number: parsed.data.serial_number.toUpperCase(),
-        purchase_date: parsed.data.purchase_date || null,
-        registration_status: parsed.data.registration_status,
-        notes: parsed.data.notes || null,
-      })
+      .update({ ...basePayload, icon: resolvedIcon })
       .eq('appliance_id', applianceId)
+
+    if (error && (error.code === '42703' || error.code === 'PGRST204' || error.message?.includes("'icon'"))) {
+      ;({ error } = await supabase
+        .from('customer_appliances')
+        .update(basePayload)
+        .eq('appliance_id', applianceId))
+    }
 
     if (error) {
       if (error.code === '23505') {
@@ -511,20 +522,19 @@ export async function adminUpsertApplianceAction(
     return { success: true, message: `Appliance ${applianceId} updated.` }
   }
 
-  const { data: created, error } = await supabase
+  let { data: created, error } = await supabase
     .from('customer_appliances')
-    .insert({
-      customer_id: parsed.data.customer_id,
-      brand: parsed.data.brand,
-      category: parsed.data.category,
-      model_number: parsed.data.model_number,
-      serial_number: parsed.data.serial_number.toUpperCase(),
-      purchase_date: parsed.data.purchase_date || null,
-      registration_status: parsed.data.registration_status,
-      notes: parsed.data.notes || null,
-    })
+    .insert({ ...basePayload, icon: resolvedIcon })
     .select('appliance_id')
     .single()
+
+  if (error && (error.code === '42703' || error.code === 'PGRST204' || error.message?.includes("'icon'"))) {
+    ;({ data: created, error } = await supabase
+      .from('customer_appliances')
+      .insert(basePayload)
+      .select('appliance_id')
+      .single())
+  }
 
   if (error || !created) {
     if (error?.code === '23505') {

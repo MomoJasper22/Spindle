@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, Controller, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CalendarPlus, ChevronRight, Laptop, Loader2, Pencil, Plus, Search, Trash2, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -37,7 +37,13 @@ import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
 import { StatusBadge } from '@/components/shared/status-badge'
-import { APPLIANCE_BRAND_SUGGESTIONS, APPLIANCE_CATEGORIES } from '@/lib/constants'
+import { ApplianceIcon, ApplianceIconPicker } from '@/components/shared/appliance-icons'
+import {
+  APPLIANCE_BRAND_SUGGESTIONS,
+  APPLIANCE_CATEGORIES,
+  getDefaultApplianceIcon,
+  resolveApplianceIconKey,
+} from '@/lib/constants'
 import { formatManilaDate } from '@/lib/formatters'
 import type { CustomerApplianceRow } from '@/types/database'
 import {
@@ -57,6 +63,7 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
   const [dialogOpen, setDialogOpen] = React.useState(openAddByDefault)
   const [selectedAppliance, setSelectedAppliance] = React.useState<CustomerApplianceRow | null>(null)
   const [editingAppliance, setEditingAppliance] = React.useState<CustomerApplianceRow | null>(null)
+  const [iconManuallyPicked, setIconManuallyPicked] = React.useState(false)
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
     null
   )
@@ -67,6 +74,7 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<ApplianceInput>({
     resolver: zodResolver(applianceSchema),
@@ -74,6 +82,7 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
     defaultValues: {
       brand: '',
       category: APPLIANCE_CATEGORIES[0],
+      icon: getDefaultApplianceIcon(APPLIANCE_CATEGORIES[0]),
       model_number: '',
       serial_number: '',
       purchase_date: '',
@@ -81,11 +90,15 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
     },
   })
 
+  const watchedCategory = useWatch({ control, name: 'category' })
+
   function openCreateDialog() {
     setEditingAppliance(null)
+    setIconManuallyPicked(false)
     reset({
       brand: '',
       category: APPLIANCE_CATEGORIES[0],
+      icon: getDefaultApplianceIcon(APPLIANCE_CATEGORIES[0]),
       model_number: '',
       serial_number: '',
       purchase_date: '',
@@ -98,9 +111,11 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
   function openEditDialog(item: CustomerApplianceRow) {
     setSelectedAppliance(null)
     setEditingAppliance(item)
+    setIconManuallyPicked(true)
     reset({
       brand: item.brand,
       category: item.category as ApplianceInput['category'],
+      icon: resolveApplianceIconKey(item.icon, item.category),
       model_number: item.model_number,
       serial_number: item.serial_number,
       purchase_date: item.purchase_date ?? '',
@@ -215,11 +230,20 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
               <CardContent standalone className="flex h-full flex-col justify-between gap-4">
                 <div className="space-y-2">
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-heading text-base font-bold text-foreground">
-                        {item.brand}
-                      </p>
-                      <p className="text-sm text-muted-foreground">{item.category}</p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-primary-tint/35 p-1.5">
+                        <ApplianceIcon
+                          icon={item.icon}
+                          category={item.category}
+                          className="h-9 w-9"
+                        />
+                      </div>
+                      <div>
+                        <p className="font-heading text-base font-bold text-foreground">
+                          {item.brand}
+                        </p>
+                        <p className="text-sm text-muted-foreground">{item.category}</p>
+                      </div>
                     </div>
                     <StatusBadge status={item.registration_status} audience="customer" />
                   </div>
@@ -268,9 +292,18 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
                 <div className="flex items-center gap-2">
                   <StatusBadge status={selectedAppliance.registration_status} audience="customer" />
                 </div>
-                <SheetTitle>
-                  {selectedAppliance.brand} {selectedAppliance.category}
-                </SheetTitle>
+                <div className="flex items-center gap-3 pt-1">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-primary-tint/35 p-1.5">
+                    <ApplianceIcon
+                      icon={selectedAppliance.icon}
+                      category={selectedAppliance.category}
+                      className="h-9 w-9"
+                    />
+                  </div>
+                  <SheetTitle>
+                    {selectedAppliance.brand} {selectedAppliance.category}
+                  </SheetTitle>
+                </div>
                 <SheetDescription>
                   Saved appliance details used when a technician visits your home.
                 </SheetDescription>
@@ -363,7 +396,7 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
 
       {/* Add / Edit Appliance Modal */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>
               {editingAppliance ? 'Edit Appliance Details' : 'Add an Appliance'}
@@ -408,7 +441,17 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
                   name="category"
                   control={control}
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value}
+                      onValueChange={(nextCategory) => {
+                        field.onChange(nextCategory)
+                        if (!iconManuallyPicked) {
+                          setValue('icon', getDefaultApplianceIcon(nextCategory), {
+                            shouldValidate: true,
+                          })
+                        }
+                      }}
+                    >
                       <SelectTrigger id="app-category">
                         <SelectValue placeholder="Choose appliance type" />
                       </SelectTrigger>
@@ -428,6 +471,25 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
                   </p>
                 )}
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Appliance Icon</Label>
+              <Controller
+                name="icon"
+                control={control}
+                render={({ field }) => (
+                  <ApplianceIconPicker
+                    value={field.value}
+                    category={watchedCategory}
+                    onChange={(nextIcon) => {
+                      setIconManuallyPicked(true)
+                      field.onChange(nextIcon)
+                    }}
+                    error={errors.icon?.message}
+                  />
+                )}
+              />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">

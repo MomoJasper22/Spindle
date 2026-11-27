@@ -250,6 +250,7 @@ export function OnboardingForm({
                 currentAvatarUrl={avatarUrl}
                 currentAvatarPosition={avatarPosition}
                 fullName={fullName}
+                layout="compact"
               />
 
               <div className="grid gap-4 sm:grid-cols-2">
