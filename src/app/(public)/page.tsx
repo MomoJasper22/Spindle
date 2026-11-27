@@ -248,9 +248,6 @@ export default function LandingPage() {
             <a href="#service-areas" className="hover:text-foreground">
               Service Areas
             </a>
-            <a href="#brands" className="hover:text-foreground">
-              Brands
-            </a>
             <Link href="/login" className="hover:text-foreground">
               Sign In
             </Link>
