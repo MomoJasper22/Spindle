@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import {
   ArrowRight,
   CalendarClock,
-  CheckCircle2,
   CreditCard,
   ExternalLink,
   Loader2,
