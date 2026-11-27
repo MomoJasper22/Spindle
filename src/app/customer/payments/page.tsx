@@ -12,7 +12,12 @@ export const metadata: Metadata = {
 async function CustomerPaymentsContent({
   searchParams,
 }: {
-  searchParams: Promise<{ ticket?: string }>
+  searchParams: Promise<{
+    ticket?: string
+    payment_success?: string
+    payment_cancelled?: string
+    payment_pending?: string
+  }>
 }) {
   const [profile, params] = await Promise.all([requireRole('customer'), searchParams])
 
@@ -21,12 +26,31 @@ async function CustomerPaymentsContent({
     getCustomerPayments(profile.user_id),
   ])
 
+  const initialNotice =
+    params.payment_success === 'balance'
+      ? {
+          type: 'success' as const,
+          message: `PayMongo payment verified${params.ticket ? ` for booking ${params.ticket}` : ''}!`,
+        }
+      : params.payment_cancelled === '1'
+        ? {
+            type: 'error' as const,
+            message: 'PayMongo payment was cancelled. No charge was applied.',
+          }
+        : params.payment_pending === '1'
+          ? {
+              type: 'error' as const,
+              message: 'Your payment has not completed yet. Please check back or try again.',
+            }
+          : null
+
   return (
     <PaymentsPanel
-      key={params.ticket ?? 'list'}
+      key={`${params.ticket ?? 'list'}:${params.payment_success ?? ''}:${params.payment_cancelled ?? ''}`}
       repairs={repairs}
       payments={payments}
       defaultTicketId={params.ticket}
+      initialNotice={initialNotice}
     />
   )
 }
@@ -34,7 +58,12 @@ async function CustomerPaymentsContent({
 export default function CustomerPaymentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ticket?: string }>
+  searchParams: Promise<{
+    ticket?: string
+    payment_success?: string
+    payment_cancelled?: string
+    payment_pending?: string
+  }>
 }) {
   return (
     <Suspense fallback={<PortalContentSkeleton />}>

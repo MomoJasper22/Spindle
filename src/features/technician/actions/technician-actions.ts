@@ -4,6 +4,8 @@ import { revalidatePath, updateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/auth/session'
 import { getManilaTodayISO } from '@/lib/formatters'
+import { getTicketPaymentSummary } from '@/lib/payments'
+import type { RepairDetailView } from '@/types/database'
 import {
   technicianAppointmentActionSchema,
   technicianAvailabilitySchema,
@@ -60,24 +62,33 @@ export async function updateTechnicianRepairAction(
 
   const supabase = await createClient()
   const { data: existingRepair } = await supabase
-    .from('repair')
-    .select('completed_at')
+    .from('v_repair_details')
+    .select('completed_at, verified_paid_php')
     .eq('ticket_id', parsed.data.ticket_id)
     .eq('technician_id', profile.user_id)
     .maybeSingle()
 
+  const verifiedPaidPhp = Number(existingRepair?.verified_paid_php ?? 0)
+  const finalCostPhp = parsed.data.final_cost_php
+  const autoCompletedFromDeposit =
+    parsed.data.status === 'awaiting_payment' &&
+    finalCostPhp !== null &&
+    finalCostPhp > 0 &&
+    verifiedPaidPhp >= finalCostPhp
+
+  const resolvedStatus = autoCompletedFromDeposit ? 'completed' : parsed.data.status
   const completedAt =
-    parsed.data.status === 'completed'
+    resolvedStatus === 'completed'
       ? (existingRepair?.completed_at ?? new Date().toISOString())
       : null
 
   const { error } = await supabase
     .from('repair')
     .update({
-      status: parsed.data.status,
+      status: resolvedStatus,
       diagnostic_notes: parsed.data.diagnostic_notes || null,
       estimated_cost_php: parsed.data.estimated_cost_php,
-      final_cost_php: parsed.data.final_cost_php,
+      final_cost_php: finalCostPhp,
       completed_at: completedAt,
     })
     .eq('ticket_id', parsed.data.ticket_id)
@@ -87,7 +98,7 @@ export async function updateTechnicianRepairAction(
     return { success: false, error: error.message }
   }
 
-  if (parsed.data.status === 'completed') {
+  if (resolvedStatus === 'completed') {
     await supabase
       .from('appointments')
       .update({ appointment_status: 'completed' })
@@ -101,13 +112,15 @@ export async function updateTechnicianRepairAction(
     entity_type: 'repair',
     entity_id: parsed.data.ticket_id,
     action: 'repair_updated_by_tech',
-    description: `Technician ${profile.first_name} ${profile.last_name} updated ${parsed.data.ticket_id} to ${parsed.data.status.replace('_', ' ')}.`,
+    description: `Technician ${profile.first_name} ${profile.last_name} updated ${parsed.data.ticket_id} to ${resolvedStatus.replace('_', ' ')}.`,
   })
 
   revalidateTechPortals()
   return {
     success: true,
-    message: `Ticket ${parsed.data.ticket_id} updated successfully.`,
+    message: autoCompletedFromDeposit
+      ? `Final cost is already covered by verified payments — ticket ${parsed.data.ticket_id} marked Completed!`
+      : `Ticket ${parsed.data.ticket_id} updated successfully.`,
   }
 }
 
@@ -132,6 +145,29 @@ export async function recordOnsitePaymentAction(
   }
 
   const supabase = await createClient()
+  const { data: repairRow } = await supabase
+    .from('v_repair_details')
+    .select('*')
+    .eq('ticket_id', parsed.data.ticket_id)
+    .eq('technician_id', profile.user_id)
+    .maybeSingle()
+
+  if (repairRow) {
+    const summary = getTicketPaymentSummary(repairRow as RepairDetailView)
+    if (!summary.canRecordFieldPayment) {
+      return {
+        success: false,
+        error: 'This ticket is already covered by verified or pending payments.',
+      }
+    }
+    if (summary.hasFinalBill && parsed.data.amount_php > summary.payableRemaining) {
+      return {
+        success: false,
+        error: `Amount exceeds the remaining unpaid balance of PHP ${summary.payableRemaining.toFixed(2)}.`,
+      }
+    }
+  }
+
   const { error } = await supabase.rpc('rpc_record_and_verify_payment', {
     p_ticket_id: parsed.data.ticket_id,
     p_payment_id: null,

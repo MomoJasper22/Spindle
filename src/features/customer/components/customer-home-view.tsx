@@ -13,6 +13,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { ActivityFeed } from '@/features/customer/components/activity-feed'
 import { formatManilaDate, formatPHP } from '@/lib/formatters'
+import { getTicketPaymentSummary } from '@/lib/payments'
 import type {
   ActivityLogRow,
   AppointmentDetailView,
@@ -48,9 +49,8 @@ export function CustomerHomeView({
     : null
 
   const openBalancePhp = activeBookings.reduce((sum, r) => {
-    const target = Number(r.final_cost_php ?? r.estimated_cost_php ?? 0)
-    const paid = Number(r.verified_paid_php ?? 0)
-    return sum + Math.max(0, target - paid)
+    const summary = getTicketPaymentSummary(r)
+    return sum + (summary.canAcceptOnlinePayment ? summary.payableRemaining : 0)
   }, 0)
 
   const totalPaidPhp = payments

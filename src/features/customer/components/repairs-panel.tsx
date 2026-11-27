@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, Controller, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   ArrowRight,
@@ -39,12 +39,19 @@ import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
 import { StatusBadge, getCustomerStatusLabel } from '@/components/shared/status-badge'
-import { REPAIR_PRIORITIES, REPAIR_STATUSES, SERVICE_TYPES, TIME_SLOTS } from '@/lib/constants'
+import {
+  REPAIR_PRIORITIES,
+  REPAIR_STATUSES,
+  SERVICE_TYPES,
+  TIME_SLOTS,
+  getServiceBookingFeePhp,
+} from '@/lib/constants'
 import {
   formatManilaDate,
   formatPHP,
   getManilaTodayISO,
 } from '@/lib/formatters'
+import { getTicketPaymentSummary } from '@/lib/payments'
 import type {
   AppointmentDetailView,
   CustomerApplianceRow,
@@ -52,7 +59,7 @@ import type {
 } from '@/types/database'
 import {
   cancelRepairTicketAction,
-  createRepairBookingAction,
+  createBookingCheckoutAction,
   rescheduleAppointmentAction,
 } from '../actions/customer-actions'
 import {
@@ -76,6 +83,7 @@ interface RepairsPanelProps {
   defaultServiceAddress: string
   defaultOpen?: boolean
   defaultApplianceId?: string
+  initialNotice?: { type: 'error' | 'success'; message: string } | null
 }
 
 export function RepairsPanel({
@@ -85,6 +93,7 @@ export function RepairsPanel({
   defaultServiceAddress,
   defaultOpen = false,
   defaultApplianceId,
+  initialNotice = null,
 }: RepairsPanelProps) {
   const activeAppliances = appliances.filter((a) => a.registration_status !== 'cancelled')
   const todayISO = getManilaTodayISO()
@@ -101,8 +110,9 @@ export function RepairsPanel({
   )
   const [rescheduleTarget, setRescheduleTarget] = React.useState<AppointmentDetailView | null>(null)
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
-    null
+    initialNotice
   )
+  const [isRedirecting, setIsRedirecting] = React.useState(false)
   const [isPending, startTransition] = React.useTransition()
 
   const bookForm = useForm<RepairBookingInput>({
@@ -131,6 +141,9 @@ export function RepairsPanel({
     },
   })
 
+  const watchedServiceType = useWatch({ control: bookForm.control, name: 'service_type' })
+  const bookingFeePhp = getServiceBookingFeePhp(watchedServiceType)
+
   function openBookDialog() {
     bookForm.reset({
       appliance_id: resolvedDefaultApplianceId,
@@ -158,13 +171,14 @@ export function RepairsPanel({
   }
 
   function onBookSubmit(values: RepairBookingInput) {
+    if (isRedirecting) return
     setFeedback(null)
     startTransition(async () => {
-      const result = await createRepairBookingAction(values)
-      if (result.success) {
-        setBookDialogOpen(false)
-        setFeedback({ type: 'success', message: result.message })
-      } else {
+      const result = await createBookingCheckoutAction(values)
+      if (result.success && result.data?.checkoutUrl) {
+        setIsRedirecting(true)
+        window.location.assign(result.data.checkoutUrl)
+      } else if (!result.success) {
         setFeedback({ type: 'error', message: result.error })
       }
     })
@@ -315,8 +329,8 @@ export function RepairsPanel({
         <div className="grid gap-4 lg:grid-cols-2">
           {filteredRepairs.map((repair) => {
             const apt = appointmentByTicket.get(repair.ticket_id)
-            const totalAmount = Number(repair.final_cost_php ?? repair.estimated_cost_php ?? 0)
-            const remaining = Math.max(0, totalAmount - Number(repair.verified_paid_php ?? 0))
+            const paymentSummary = getTicketPaymentSummary(repair)
+            const totalAmount = paymentSummary.targetTotal
             const canModify = ['pending', 'confirmed'].includes(repair.status)
             const canReschedule =
               apt && !['completed', 'cancelled'].includes(repair.status) && !['completed', 'cancelled'].includes(apt.appointment_status)
@@ -383,11 +397,11 @@ export function RepairsPanel({
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    {repair.status === 'awaiting_payment' && remaining > 0 && (
+                    {paymentSummary.canAcceptOnlinePayment && (
                       <Button asChild size="sm">
                         <Link href={`/customer/payments?ticket=${repair.ticket_id}`}>
                           <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
-                          <span>Pay {formatPHP(remaining)}</span>
+                          <span>Pay {formatPHP(paymentSummary.payableRemaining)}</span>
                         </Link>
                       </Button>
                     )}
@@ -440,11 +454,11 @@ export function RepairsPanel({
 
       {/* Book Home Visit Modal */}
       <Dialog open={bookDialogOpen} onOpenChange={setBookDialogOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto max-w-xl">
           <DialogHeader>
             <DialogTitle>Schedule a Home Visit</DialogTitle>
             <DialogDescription>
-              Pick your appliance, describe what is happening, and choose a date and time that works for you.
+              Pick your appliance, describe what is happening, and pay the upfront visit fee via PayMongo to place your booking.
             </DialogDescription>
           </DialogHeader>
 
@@ -617,13 +631,32 @@ export function RepairsPanel({
               />
             </div>
 
+            <div className="rounded-xl border border-teal-200 bg-primary-tint/50 p-3.5 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-foreground">Upfront Booking Fee</span>
+                <span className="font-heading text-base font-bold tabular-nums text-primary">
+                  {formatPHP(bookingFeePhp)}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Paid securely via PayMongo (GCash, Maya, QR Ph, or Card) before your booking is placed, and credited toward your total bill.
+              </p>
+            </div>
+
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setBookDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isPending || isRedirecting}
+                onClick={() => setBookDialogOpen(false)}
+              >
                 Close
               </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                <span>Confirm Home Visit</span>
+              <Button type="submit" disabled={isPending || isRedirecting}>
+                {(isPending || isRedirecting) && (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                )}
+                <span>Proceed to Payment ({formatPHP(bookingFeePhp)})</span>
               </Button>
             </DialogFooter>
           </form>

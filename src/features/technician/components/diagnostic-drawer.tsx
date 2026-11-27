@@ -27,6 +27,7 @@ import { FormBanner } from '@/components/shared/form-banner'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PAYMENT_METHODS } from '@/lib/constants'
 import { formatAddress, formatPHPhone, formatPHP, humanizeLabel } from '@/lib/formatters'
+import { getTicketPaymentSummary } from '@/lib/payments'
 import type { RepairDetailView } from '@/types/database'
 import {
   recordOnsitePaymentAction,
@@ -81,8 +82,8 @@ export function DiagnosticDrawer({ ticket, open, onOpenChange }: DiagnosticDrawe
     },
   })
 
-  const targetCost = ticket?.final_cost_php ?? ticket?.estimated_cost_php ?? 0
-  const initialBalance = Math.max(0, Number(targetCost) - Number(ticket?.verified_paid_php ?? 0))
+  const initialSummary = ticket ? getTicketPaymentSummary(ticket) : null
+  const initialBalance = initialSummary?.hasFinalBill ? initialSummary.payableRemaining : 0
 
   const paymentForm = useForm<TechnicianPaymentInput>({
     resolver: zodResolver(technicianPaymentSchema),
@@ -106,8 +107,8 @@ export function DiagnosticDrawer({ ticket, open, onOpenChange }: DiagnosticDrawe
     )
       ? (ticket.status as TechnicianRepairUpdateInput['status'])
       : 'assigned'
-    const nextTargetCost = ticket.final_cost_php ?? ticket.estimated_cost_php ?? 0
-    const nextBalance = Math.max(0, Number(nextTargetCost) - Number(ticket.verified_paid_php ?? 0))
+    const nextSummary = getTicketPaymentSummary(ticket)
+    const nextBalance = nextSummary.hasFinalBill ? nextSummary.payableRemaining : 0
 
     repairForm.reset({
       ticket_id: ticket.ticket_id,
@@ -163,6 +164,7 @@ export function DiagnosticDrawer({ ticket, open, onOpenChange }: DiagnosticDrawe
 
   if (!ticket) return null
 
+  const paymentSummary = getTicketPaymentSummary(ticket)
   const visibleFeedback = feedback && feedback.ticketId === ticket.ticket_id ? feedback : null
 
   const customerAddress = formatAddress({
@@ -213,8 +215,11 @@ export function DiagnosticDrawer({ ticket, open, onOpenChange }: DiagnosticDrawe
             {ticket.issue_description}
           </p>
           <div className="flex flex-wrap gap-4 pt-1 text-xs text-muted-foreground tabular-nums">
-            <span>Verified Paid: <strong className="text-emerald-700">{formatPHP(ticket.verified_paid_php)}</strong></span>
-            <span>Pending Verification: <strong className="text-amber-700">{formatPHP(ticket.pending_paid_php)}</strong></span>
+            <span>Verified Paid: <strong className="text-emerald-700">{formatPHP(paymentSummary.verifiedPaid)}</strong></span>
+            <span>Pending Verification: <strong className="text-amber-700">{formatPHP(paymentSummary.pendingPaid)}</strong></span>
+            {paymentSummary.hasFinalBill && (
+              <span>Payable Balance: <strong className="text-foreground">{formatPHP(paymentSummary.payableRemaining)}</strong></span>
+            )}
           </div>
         </div>
 
@@ -313,6 +318,16 @@ export function DiagnosticDrawer({ ticket, open, onOpenChange }: DiagnosticDrawe
             <span>Record On-Site Field Payment</span>
           </div>
 
+          {!paymentSummary.canRecordFieldPayment ? (
+            <p className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+              {paymentSummary.isSettled || ticket.status === 'completed'
+                ? 'This ticket is already settled in full. No further field collection is needed.'
+                : paymentSummary.isCoveredByPending
+                  ? 'Pending payments already cover the full final cost. Awaiting admin verification.'
+                  : 'Payments cannot be recorded on cancelled tickets.'}
+            </p>
+          ) : (
+          <>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="tech-pay-method">Method</Label>
@@ -391,6 +406,8 @@ export function DiagnosticDrawer({ ticket, open, onOpenChange }: DiagnosticDrawe
             {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
             <span>Record Field Payment</span>
           </Button>
+          </>
+          )}
         </form>
       </SheetContent>
     </Sheet>

@@ -28,6 +28,7 @@ export const APPLIANCE_ICON_KEYS = [
   'window-aircon',
   'refrigerator',
   'washing-machine',
+  'top-load-washer',
   'cooking-range',
   'commercial-chiller',
   'microwave-oven',
@@ -44,7 +45,8 @@ export const APPLIANCE_ICON_LABELS: Record<ApplianceIconKey, string> = {
   'split-aircon': 'Split Aircon',
   'window-aircon': 'Window Aircon',
   refrigerator: 'Refrigerator',
-  'washing-machine': 'Washing Machine',
+  'washing-machine': 'Front-Load Washer',
+  'top-load-washer': 'Top-Load Washer',
   'cooking-range': 'Cooking Range',
   'commercial-chiller': 'Commercial Chiller',
   'microwave-oven': 'Microwave',
@@ -60,7 +62,7 @@ const CATEGORY_TO_ICON_MAP: Record<string, ApplianceIconKey> = {
   'Window-Type Aircon': 'window-aircon',
   'Inverter Refrigerator': 'refrigerator',
   'Front-Load Washing Machine': 'washing-machine',
-  'Top-Load Washing Machine': 'washing-machine',
+  'Top-Load Washing Machine': 'top-load-washer',
   'Gas / Induction Range': 'cooking-range',
   'Commercial Chiller / Freezer': 'commercial-chiller',
   'Microwave Oven': 'microwave-oven',
@@ -132,6 +134,17 @@ export const SERVICE_TYPES = [
 ] as const
 
 export type ServiceType = (typeof SERVICE_TYPES)[number]['value']
+
+export const SERVICE_BOOKING_FEES_PHP: Record<ServiceType, number> = {
+  diagnostic: 350,
+  repair: 450,
+  maintenance_cleaning: 650,
+  installation: 800,
+}
+
+export function getServiceBookingFeePhp(serviceType: ServiceType): number {
+  return SERVICE_BOOKING_FEES_PHP[serviceType] ?? 450
+}
 
 export const REPAIR_STATUSES = [
   'pending',

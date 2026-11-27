@@ -185,4 +185,6 @@ export interface PaymentDetailView {
   appliance_brand: string
   appliance_category: string
   appliance_model_number: string
+  paymongo_checkout_id?: string | null
+  paymongo_payment_id?: string | null
 }

@@ -652,21 +652,31 @@ export async function adminUpdateRepairAction(
 
   const supabase = await createClient()
   const { data: existingRepair } = await supabase
-    .from('repair')
-    .select('completed_at')
+    .from('v_repair_details')
+    .select('completed_at, verified_paid_php')
     .eq('ticket_id', parsed.data.ticket_id)
     .maybeSingle()
+
+  const verifiedPaidPhp = Number(existingRepair?.verified_paid_php ?? 0)
+  const finalCostPhp = parsed.data.final_cost_php
+  const autoCompletedFromDeposit =
+    parsed.data.status === 'awaiting_payment' &&
+    finalCostPhp !== null &&
+    finalCostPhp > 0 &&
+    verifiedPaidPhp >= finalCostPhp
+
+  const resolvedStatus = autoCompletedFromDeposit ? 'completed' : parsed.data.status
 
   const { error } = await supabase
     .from('repair')
     .update({
-      status: parsed.data.status,
+      status: resolvedStatus,
       priority: parsed.data.priority,
       diagnostic_notes: parsed.data.diagnostic_notes || null,
       estimated_cost_php: parsed.data.estimated_cost_php,
-      final_cost_php: parsed.data.final_cost_php,
+      final_cost_php: finalCostPhp,
       completed_at:
-        parsed.data.status === 'completed'
+        resolvedStatus === 'completed'
           ? (existingRepair?.completed_at ?? new Date().toISOString())
           : null,
     })
@@ -674,12 +684,12 @@ export async function adminUpdateRepairAction(
 
   if (error) return { success: false, error: error.message }
 
-  if (parsed.data.status === 'cancelled') {
+  if (resolvedStatus === 'cancelled') {
     await supabase
       .from('appointments')
       .update({ appointment_status: 'cancelled' })
       .eq('ticket_id', parsed.data.ticket_id)
-  } else if (parsed.data.status === 'completed') {
+  } else if (resolvedStatus === 'completed') {
     await supabase
       .from('appointments')
       .update({ appointment_status: 'completed' })
@@ -692,11 +702,16 @@ export async function adminUpdateRepairAction(
     entity_type: 'repair',
     entity_id: parsed.data.ticket_id,
     action: 'repair_updated_by_admin',
-    description: `Admin updated repair ${parsed.data.ticket_id} (status: ${parsed.data.status}, priority: ${parsed.data.priority}).`,
+    description: `Admin updated repair ${parsed.data.ticket_id} (status: ${resolvedStatus}, priority: ${parsed.data.priority}).`,
   })
 
   revalidateAdminPaths()
-  return { success: true, message: `Updated repair ticket ${parsed.data.ticket_id}.` }
+  return {
+    success: true,
+    message: autoCompletedFromDeposit
+      ? `Final cost is already settled by verified payments — ticket ${parsed.data.ticket_id} marked Completed!`
+      : `Updated repair ticket ${parsed.data.ticket_id}.`,
+  }
 }
 
 export async function adminUpdateAppointmentAction(
@@ -835,6 +850,20 @@ export async function adminCancelPaymentAction(
   const adminProfile = await requireAdminFeature('payments')
   const supabase = await createClient()
 
+  const { data: existingPayment } = await supabase
+    .from('payments')
+    .select('payment_id, ticket_id, payment_status')
+    .eq('payment_id', paymentId)
+    .maybeSingle()
+
+  if (!existingPayment) {
+    return { success: false, error: `Payment ${paymentId} not found.` }
+  }
+
+  if (existingPayment.payment_status === 'cancelled') {
+    return { success: false, error: `Payment ${paymentId} is already cancelled.` }
+  }
+
   const { error } = await supabase
     .from('payments')
     .update({
@@ -842,8 +871,31 @@ export async function adminCancelPaymentAction(
       remarks: remarks || 'Cancelled by administrator',
     })
     .eq('payment_id', paymentId)
+    .neq('payment_status', 'cancelled')
 
   if (error) return { success: false, error: error.message }
+
+  // If a verified payment was cancelled on a completed ticket, reopen it to awaiting_payment if balance is no longer settled
+  if (existingPayment.payment_status === 'verified') {
+    const { data: repairView } = await supabase
+      .from('v_repair_details')
+      .select('status, final_cost_php, verified_paid_php')
+      .eq('ticket_id', existingPayment.ticket_id)
+      .maybeSingle()
+
+    if (
+      repairView &&
+      repairView.status === 'completed' &&
+      repairView.final_cost_php !== null &&
+      Number(repairView.final_cost_php) > 0 &&
+      Number(repairView.verified_paid_php ?? 0) < Number(repairView.final_cost_php)
+    ) {
+      await supabase
+        .from('repair')
+        .update({ status: 'awaiting_payment', completed_at: null })
+        .eq('ticket_id', existingPayment.ticket_id)
+    }
+  }
 
   await supabase.from('activity_logs').insert({
     actor_id: adminProfile.user_id,

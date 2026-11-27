@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useForm, Controller, useWatch } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Laptop, Loader2, Pencil, Plus, Search, ShieldCheck, Trash2, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -32,7 +32,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
-import { ApplianceIcon, ApplianceIconPicker } from '@/components/shared/appliance-icons'
+import { ApplianceIcon } from '@/components/shared/appliance-icons'
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
@@ -42,7 +42,6 @@ import {
   APPLIANCE_CATEGORIES,
   REGISTRATION_STATUSES,
   getDefaultApplianceIcon,
-  resolveApplianceIconKey,
 } from '@/lib/constants'
 import { formatFullName, formatManilaDate, humanizeLabel } from '@/lib/formatters'
 import type { CustomerApplianceRow, UserWithRole } from '@/types/database'
@@ -63,7 +62,6 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
   const [statusFilter, setStatusFilter] = React.useState('all')
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [editing, setEditing] = React.useState<CustomerApplianceRow | null>(null)
-  const [iconManuallyPicked, setIconManuallyPicked] = React.useState(false)
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
     null
   )
@@ -79,7 +77,6 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
       customer_id: customers[0]?.user_id ?? '',
       brand: '',
       category: APPLIANCE_CATEGORIES[0],
-      icon: getDefaultApplianceIcon(APPLIANCE_CATEGORIES[0]),
       model_number: '',
       serial_number: '',
       purchase_date: '',
@@ -88,16 +85,12 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
     },
   })
 
-  const watchedCategory = useWatch({ control: form.control, name: 'category' })
-
   function openCreate() {
     setEditing(null)
-    setIconManuallyPicked(false)
     form.reset({
       customer_id: customers[0]?.user_id ?? '',
       brand: '',
       category: APPLIANCE_CATEGORIES[0],
-      icon: getDefaultApplianceIcon(APPLIANCE_CATEGORIES[0]),
       model_number: '',
       serial_number: '',
       purchase_date: '',
@@ -110,12 +103,10 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
 
   function openEdit(item: CustomerApplianceRow) {
     setEditing(item)
-    setIconManuallyPicked(true)
     form.reset({
       customer_id: item.customer_id,
       brand: item.brand,
       category: item.category as AdminApplianceInput['category'],
-      icon: resolveApplianceIconKey(item.icon, item.category),
       model_number: item.model_number,
       serial_number: item.serial_number,
       purchase_date: item.purchase_date ?? '',
@@ -128,8 +119,12 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
 
   function onSubmit(values: AdminApplianceInput) {
     setFeedback(null)
+    const payload: AdminApplianceInput = {
+      ...values,
+      icon: getDefaultApplianceIcon(values.category),
+    }
     startTransition(async () => {
-      const result = await adminUpsertApplianceAction(values, editing?.appliance_id)
+      const result = await adminUpsertApplianceAction(payload, editing?.appliance_id)
       if (result.success) {
         setDialogOpen(false)
         setFeedback({ type: 'success', message: result.message })
@@ -471,29 +466,22 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
                 )}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="adm-app-cat">Category</Label>
+                <Label htmlFor="adm-app-cat">Appliance Type</Label>
                 <Controller
                   name="category"
                   control={form.control}
                   render={({ field }) => (
-                    <Select
-                      value={field.value}
-                      onValueChange={(nextCategory) => {
-                        field.onChange(nextCategory)
-                        if (!iconManuallyPicked) {
-                          form.setValue('icon', getDefaultApplianceIcon(nextCategory), {
-                            shouldValidate: true,
-                          })
-                        }
-                      }}
-                    >
+                    <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger id="adm-app-cat">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {APPLIANCE_CATEGORIES.map((c) => (
                           <SelectItem key={c} value={c}>
-                            {c}
+                            <span className="inline-flex items-center gap-2.5">
+                              <ApplianceIcon category={c} className="h-5 w-5 shrink-0" />
+                              <span>{c}</span>
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -501,25 +489,6 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
                   )}
                 />
               </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Appliance Icon</Label>
-              <Controller
-                name="icon"
-                control={form.control}
-                render={({ field }) => (
-                  <ApplianceIconPicker
-                    value={field.value}
-                    category={watchedCategory}
-                    onChange={(nextIcon) => {
-                      setIconManuallyPicked(true)
-                      field.onChange(nextIcon)
-                    }}
-                    error={form.formState.errors.icon?.message}
-                  />
-                )}
-              />
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">

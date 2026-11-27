@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { useForm, Controller, useWatch } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CalendarPlus, ChevronRight, Laptop, Loader2, Pencil, Plus, Search, Trash2, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -37,12 +37,11 @@ import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
 import { StatusBadge } from '@/components/shared/status-badge'
-import { ApplianceIcon, ApplianceIconPicker } from '@/components/shared/appliance-icons'
+import { ApplianceIcon } from '@/components/shared/appliance-icons'
 import {
   APPLIANCE_BRAND_SUGGESTIONS,
   APPLIANCE_CATEGORIES,
   getDefaultApplianceIcon,
-  resolveApplianceIconKey,
 } from '@/lib/constants'
 import { formatManilaDate } from '@/lib/formatters'
 import type { CustomerApplianceRow } from '@/types/database'
@@ -63,7 +62,6 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
   const [dialogOpen, setDialogOpen] = React.useState(openAddByDefault)
   const [selectedAppliance, setSelectedAppliance] = React.useState<CustomerApplianceRow | null>(null)
   const [editingAppliance, setEditingAppliance] = React.useState<CustomerApplianceRow | null>(null)
-  const [iconManuallyPicked, setIconManuallyPicked] = React.useState(false)
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
     null
   )
@@ -74,7 +72,6 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
     control,
     handleSubmit,
     reset,
-    setValue,
     formState: { errors },
   } = useForm<ApplianceInput>({
     resolver: zodResolver(applianceSchema),
@@ -82,7 +79,6 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
     defaultValues: {
       brand: '',
       category: APPLIANCE_CATEGORIES[0],
-      icon: getDefaultApplianceIcon(APPLIANCE_CATEGORIES[0]),
       model_number: '',
       serial_number: '',
       purchase_date: '',
@@ -90,15 +86,11 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
     },
   })
 
-  const watchedCategory = useWatch({ control, name: 'category' })
-
   function openCreateDialog() {
     setEditingAppliance(null)
-    setIconManuallyPicked(false)
     reset({
       brand: '',
       category: APPLIANCE_CATEGORIES[0],
-      icon: getDefaultApplianceIcon(APPLIANCE_CATEGORIES[0]),
       model_number: '',
       serial_number: '',
       purchase_date: '',
@@ -111,11 +103,9 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
   function openEditDialog(item: CustomerApplianceRow) {
     setSelectedAppliance(null)
     setEditingAppliance(item)
-    setIconManuallyPicked(true)
     reset({
       brand: item.brand,
       category: item.category as ApplianceInput['category'],
-      icon: resolveApplianceIconKey(item.icon, item.category),
       model_number: item.model_number,
       serial_number: item.serial_number,
       purchase_date: item.purchase_date ?? '',
@@ -127,10 +117,14 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
 
   function onSubmit(values: ApplianceInput) {
     setFeedback(null)
+    const payload: ApplianceInput = {
+      ...values,
+      icon: getDefaultApplianceIcon(values.category),
+    }
     startTransition(async () => {
       const result = editingAppliance
-        ? await updateApplianceAction(editingAppliance.appliance_id, values)
-        : await createApplianceAction(values)
+        ? await updateApplianceAction(editingAppliance.appliance_id, payload)
+        : await createApplianceAction(payload)
 
       if (result.success) {
         setDialogOpen(false)
@@ -441,24 +435,17 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
                   name="category"
                   control={control}
                   render={({ field }) => (
-                    <Select
-                      value={field.value}
-                      onValueChange={(nextCategory) => {
-                        field.onChange(nextCategory)
-                        if (!iconManuallyPicked) {
-                          setValue('icon', getDefaultApplianceIcon(nextCategory), {
-                            shouldValidate: true,
-                          })
-                        }
-                      }}
-                    >
+                    <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger id="app-category">
                         <SelectValue placeholder="Choose appliance type" />
                       </SelectTrigger>
                       <SelectContent>
                         {APPLIANCE_CATEGORIES.map((cat) => (
                           <SelectItem key={cat} value={cat}>
-                            {cat}
+                            <span className="inline-flex items-center gap-2.5">
+                              <ApplianceIcon category={cat} className="h-5 w-5 shrink-0" />
+                              <span>{cat}</span>
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -471,25 +458,6 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
                   </p>
                 )}
               </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Appliance Icon</Label>
-              <Controller
-                name="icon"
-                control={control}
-                render={({ field }) => (
-                  <ApplianceIconPicker
-                    value={field.value}
-                    category={watchedCategory}
-                    onChange={(nextIcon) => {
-                      setIconManuallyPicked(true)
-                      field.onChange(nextIcon)
-                    }}
-                    error={errors.icon?.message}
-                  />
-                )}
-              />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">

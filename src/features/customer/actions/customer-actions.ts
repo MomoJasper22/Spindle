@@ -1,11 +1,21 @@
 'use server'
 
+import crypto from 'node:crypto'
+import { headers } from 'next/headers'
 import { revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { requireRole } from '@/lib/auth/session'
 import { getManilaTodayISO, normalizePHPhone } from '@/lib/formatters'
-import { getDefaultApplianceIcon } from '@/lib/constants'
+import { getDefaultApplianceIcon, getServiceBookingFeePhp } from '@/lib/constants'
+import { getTicketPaymentSummary } from '@/lib/payments'
+import {
+  createPayMongoCheckoutSession,
+  retrievePayMongoCheckoutSession,
+} from '@/lib/paymongo'
+import { finalizePayMongoCheckoutSession } from '@/lib/paymongo-checkout'
+import type { RepairDetailView } from '@/types/database'
 import {
   applianceSchema,
   customerPaymentSchema,
@@ -18,6 +28,19 @@ import {
   type RepairBookingInput,
   type RescheduleAppointmentInput,
 } from '../schemas/customer-schemas'
+
+async function getRequestOrigin(): Promise<string> {
+  const hdrs = await headers()
+  const host = hdrs.get('x-forwarded-host') ?? hdrs.get('host') ?? 'localhost:3000'
+  const proto =
+    hdrs.get('x-forwarded-proto') ??
+    (host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https')
+  return `${proto}://${host}`
+}
+
+function generateCheckoutSessionId(): string {
+  return `CHK-${crypto.randomBytes(4).toString('hex').toUpperCase()}`
+}
 
 export type ActionResult<T = void> =
   | { success: true; message: string; data?: T }
@@ -219,38 +242,145 @@ export async function deleteOrCancelApplianceAction(
   return { success: true, message: 'Appliance marked as inactive.' }
 }
 
-export async function createRepairBookingAction(
+export async function createBookingCheckoutAction(
   input: RepairBookingInput
-): Promise<ActionResult<{ ticket_id: string; appointment_id: string }>> {
+): Promise<ActionResult<{ checkoutUrl: string; sessionId: string; amountPhp: number }>> {
   const profile = await requireRole('customer')
   const parsed = repairBookingSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Please check your booking details.' }
   }
 
-  const supabase = await createClient()
-  const { data, error } = await supabase.rpc('rpc_create_repair_with_appointment', {
-    p_customer_id: profile.user_id,
-    p_appliance_id: parsed.data.appliance_id,
-    p_service_type: parsed.data.service_type,
-    p_priority: parsed.data.priority,
-    p_issue_description: parsed.data.issue_description,
-    p_scheduled_date: parsed.data.scheduled_date,
-    p_time_slot: parsed.data.time_slot,
-    p_service_address: parsed.data.service_address,
-    p_remarks: parsed.data.remarks || null,
-  })
-
-  if (error) {
-    return { success: false, error: error.message }
+  if (parsed.data.scheduled_date < getManilaTodayISO()) {
+    return { success: false, error: 'Please choose today or an upcoming date for your visit.' }
   }
 
-  const row = Array.isArray(data) ? data[0] : data
-  revalidateCustomerPortal()
-  return {
-    success: true,
-    message: 'Your home visit has been booked! We will assign a technician shortly.',
-    data: row,
+  const supabase = await createClient()
+  const { data: appliance, error: appErr } = await supabase
+    .from('customer_appliances')
+    .select('appliance_id, brand, category, model_number, registration_status')
+    .eq('appliance_id', parsed.data.appliance_id)
+    .eq('customer_id', profile.user_id)
+    .maybeSingle()
+
+  if (appErr || !appliance) {
+    return { success: false, error: 'Please select one of your saved appliances.' }
+  }
+
+  if (appliance.registration_status === 'cancelled') {
+    return { success: false, error: 'Inactive appliances cannot be booked for a home visit.' }
+  }
+
+  const amountPhp = getServiceBookingFeePhp(parsed.data.service_type)
+  const admin = createAdminClient()
+
+  // Prevent accidental double checkout/payment for an identical pending booking request
+  const { data: existingOpen } = await admin
+    .from('payment_checkout_sessions')
+    .select('session_id, paymongo_checkout_id, checkout_url, created_at')
+    .eq('customer_id', profile.user_id)
+    .eq('session_kind', 'booking_deposit')
+    .eq('status', 'awaiting_payment')
+    .eq('appliance_id', parsed.data.appliance_id)
+    .eq('service_type', parsed.data.service_type)
+    .eq('scheduled_date', parsed.data.scheduled_date)
+    .eq('time_slot', parsed.data.time_slot)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (existingOpen) {
+    try {
+      const existingPm = await retrievePayMongoCheckoutSession(existingOpen.paymongo_checkout_id)
+      if (existingPm.paidPayment || existingPm.paymentIntentStatus === 'succeeded') {
+        await finalizePayMongoCheckoutSession({
+          sessionId: existingOpen.session_id,
+          expectedCustomerId: profile.user_id,
+        })
+        return {
+          success: false,
+          error: 'Your payment for this home visit was already completed and your booking has been placed!',
+        }
+      }
+      if (existingPm.status === 'active' && existingOpen.checkout_url) {
+        return {
+          success: true,
+          message: 'Resuming your open PayMongo checkout session.',
+          data: {
+            checkoutUrl: existingOpen.checkout_url,
+            sessionId: existingOpen.session_id,
+            amountPhp,
+          },
+        }
+      }
+    } catch {
+      // If existing session is expired or unreadable, cancel it and create a fresh one
+      await admin
+        .from('payment_checkout_sessions')
+        .update({ status: 'expired' })
+        .eq('session_id', existingOpen.session_id)
+    }
+  }
+
+  const sessionId = generateCheckoutSessionId()
+  const origin = await getRequestOrigin()
+  const successUrl = `${origin}/api/paymongo/callback?session_id=${encodeURIComponent(sessionId)}`
+  const cancelUrl = `${origin}/customer/bookings?payment_cancelled=1`
+
+  try {
+    const pmSession = await createPayMongoCheckoutSession({
+      amountPhp,
+      lineItemName: `Spindle Home Visit — ${appliance.brand} ${appliance.category}`,
+      description: `Upfront booking fee (${parsed.data.scheduled_date}, ${parsed.data.time_slot}) — credited toward your total service bill.`,
+      referenceNumber: sessionId,
+      successUrl,
+      cancelUrl,
+      customerName: `${profile.first_name} ${profile.last_name}`.trim(),
+      customerEmail: profile.email,
+      customerPhone: profile.phone ?? undefined,
+      metadata: {
+        spindle_session_id: sessionId,
+        spindle_kind: 'booking_deposit',
+        customer_id: profile.user_id,
+      },
+    })
+
+    const { error: insertErr } = await admin.from('payment_checkout_sessions').insert({
+      session_id: sessionId,
+      session_kind: 'booking_deposit',
+      customer_id: profile.user_id,
+      appliance_id: parsed.data.appliance_id,
+      service_type: parsed.data.service_type,
+      priority: parsed.data.priority,
+      issue_description: parsed.data.issue_description,
+      scheduled_date: parsed.data.scheduled_date,
+      time_slot: parsed.data.time_slot,
+      service_address: parsed.data.service_address,
+      remarks: parsed.data.remarks || null,
+      amount_php: amountPhp,
+      paymongo_checkout_id: pmSession.id,
+      checkout_url: pmSession.checkoutUrl,
+      status: 'awaiting_payment',
+    })
+
+    if (insertErr) {
+      return { success: false, error: insertErr.message }
+    }
+
+    return {
+      success: true,
+      message: 'Checkout ready. Redirecting to PayMongo...',
+      data: {
+        checkoutUrl: pmSession.checkoutUrl,
+        sessionId,
+        amountPhp,
+      },
+    }
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Unable to start PayMongo checkout.',
+    }
   }
 }
 
@@ -384,42 +514,161 @@ export async function cancelRepairTicketAction(ticketId: string): Promise<Action
   return { success: true, message: 'Your booking has been cancelled.' }
 }
 
-export async function submitCustomerPaymentAction(
+export async function createTicketPaymentCheckoutAction(
   input: CustomerPaymentInput
-): Promise<ActionResult> {
-  await requireRole('customer')
+): Promise<ActionResult<{ checkoutUrl: string; sessionId: string }>> {
+  const profile = await requireRole('customer')
   const parsed = customerPaymentSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Please check your payment details.' }
   }
 
-  if (parsed.data.payment_method !== 'Cash' && !parsed.data.reference_no?.trim()) {
+  const supabase = await createClient()
+  const { data: repairRow, error: repairErr } = await supabase
+    .from('v_repair_details')
+    .select('*')
+    .eq('ticket_id', parsed.data.ticket_id)
+    .eq('customer_id', profile.user_id)
+    .maybeSingle()
+
+  if (repairErr || !repairRow) {
+    return { success: false, error: 'We could not find that booking.' }
+  }
+
+  const repair = repairRow as RepairDetailView
+  const summary = getTicketPaymentSummary(repair)
+
+  if (repair.status === 'cancelled' || repair.status === 'completed') {
+    return { success: false, error: 'This booking is already completed or cancelled.' }
+  }
+
+  if (!summary.hasFinalBill) {
     return {
       success: false,
-      error: 'Please enter the reference number for your digital or bank transfer.',
+      error: 'Your technician has not posted the final service bill yet.',
     }
   }
 
-  const supabase = await createClient()
-  const { error } = await supabase.rpc('rpc_record_and_verify_payment', {
-    p_ticket_id: parsed.data.ticket_id,
-    p_payment_id: null,
-    p_payment_method: parsed.data.payment_method,
-    p_amount_php: parsed.data.amount_php,
-    p_installment_no: parsed.data.installment_no,
-    p_reference_no: parsed.data.reference_no || null,
-    p_remarks: parsed.data.remarks || null,
-    p_verify_immediately: false,
-  })
-
-  if (error) {
-    return { success: false, error: error.message }
+  if (summary.payableRemaining <= 0) {
+    return {
+      success: false,
+      error: summary.isCoveredByPending
+        ? 'Your remaining balance is already covered by a payment being verified.'
+        : 'This booking is already paid in full.',
+    }
   }
 
-  revalidateCustomerPortal()
-  return {
-    success: true,
-    message: 'Payment details sent. We will confirm it shortly.',
+  if (parsed.data.amount_php > summary.payableRemaining) {
+    return {
+      success: false,
+      error: `Payment amount exceeds your remaining unpaid balance of PHP ${summary.payableRemaining.toFixed(2)}.`,
+    }
+  }
+
+  const admin = createAdminClient()
+
+  // Check if an open PayMongo checkout session already exists for this ticket to avoid double charging
+  const { data: openSessions } = await admin
+    .from('payment_checkout_sessions')
+    .select('session_id, amount_php, paymongo_checkout_id, checkout_url')
+    .eq('customer_id', profile.user_id)
+    .eq('ticket_id', repair.ticket_id)
+    .eq('session_kind', 'ticket_balance')
+    .eq('status', 'awaiting_payment')
+    .order('created_at', { ascending: false })
+
+  for (const openSession of openSessions ?? []) {
+    try {
+      const pmCheck = await retrievePayMongoCheckoutSession(openSession.paymongo_checkout_id)
+      if (pmCheck.paidPayment || pmCheck.paymentIntentStatus === 'succeeded') {
+        await finalizePayMongoCheckoutSession({
+          sessionId: openSession.session_id,
+          expectedCustomerId: profile.user_id,
+        })
+        return {
+          success: false,
+          error: 'A completed PayMongo payment was found for this booking and has now been applied!',
+        }
+      }
+      if (
+        pmCheck.status === 'active' &&
+        Math.abs(Number(openSession.amount_php) - parsed.data.amount_php) < 0.01 &&
+        openSession.checkout_url
+      ) {
+        return {
+          success: true,
+          message: 'Resuming your active PayMongo checkout session.',
+          data: {
+            checkoutUrl: openSession.checkout_url,
+            sessionId: openSession.session_id,
+          },
+        }
+      }
+      await admin
+        .from('payment_checkout_sessions')
+        .update({ status: 'cancelled' })
+        .eq('session_id', openSession.session_id)
+    } catch {
+      await admin
+        .from('payment_checkout_sessions')
+        .update({ status: 'expired' })
+        .eq('session_id', openSession.session_id)
+    }
+  }
+
+  const sessionId = generateCheckoutSessionId()
+  const origin = await getRequestOrigin()
+  const successUrl = `${origin}/api/paymongo/callback?session_id=${encodeURIComponent(sessionId)}`
+  const cancelUrl = `${origin}/customer/payments?payment_cancelled=1&ticket=${encodeURIComponent(repair.ticket_id)}`
+
+  try {
+    const pmSession = await createPayMongoCheckoutSession({
+      amountPhp: parsed.data.amount_php,
+      lineItemName: `${repair.appliance_brand} ${repair.appliance_category} (${repair.ticket_id})`,
+      description: `Service balance payment for ${repair.ticket_id}`,
+      referenceNumber: `${repair.ticket_id}-${sessionId}`,
+      successUrl,
+      cancelUrl,
+      customerName: `${profile.first_name} ${profile.last_name}`.trim(),
+      customerEmail: profile.email,
+      customerPhone: profile.phone ?? undefined,
+      metadata: {
+        spindle_session_id: sessionId,
+        spindle_kind: 'ticket_balance',
+        ticket_id: repair.ticket_id,
+        customer_id: profile.user_id,
+      },
+    })
+
+    const { error: insertErr } = await admin.from('payment_checkout_sessions').insert({
+      session_id: sessionId,
+      session_kind: 'ticket_balance',
+      customer_id: profile.user_id,
+      ticket_id: repair.ticket_id,
+      amount_php: parsed.data.amount_php,
+      remarks: parsed.data.remarks || null,
+      paymongo_checkout_id: pmSession.id,
+      checkout_url: pmSession.checkoutUrl,
+      status: 'awaiting_payment',
+    })
+
+    if (insertErr) {
+      return { success: false, error: insertErr.message }
+    }
+
+    return {
+      success: true,
+      message: 'Checkout ready. Redirecting to PayMongo...',
+      data: {
+        checkoutUrl: pmSession.checkoutUrl,
+        sessionId,
+      },
+    }
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Unable to start PayMongo checkout.',
+    }
   }
 }
 

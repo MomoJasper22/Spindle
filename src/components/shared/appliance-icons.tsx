@@ -1,17 +1,9 @@
 import * as React from 'react'
 import {
-  APPLIANCE_ICON_KEYS,
-  APPLIANCE_ICON_LABELS,
   resolveApplianceIconKey,
   type ApplianceIconKey,
 } from '@/lib/constants'
 import { cn } from '@/lib/utils'
-
-export const APPLIANCE_ICON_OPTIONS: readonly { key: ApplianceIconKey; label: string }[] =
-  APPLIANCE_ICON_KEYS.map((key) => ({
-    key,
-    label: APPLIANCE_ICON_LABELS[key],
-  }))
 
 interface ApplianceIllustrationProps {
   iconKey: ApplianceIconKey
@@ -99,6 +91,29 @@ export function ApplianceIllustration({
           <circle cx="60" cy="69" r="17" fill={accent} />
           <path
             d="M44 70c4-4 10-4 16 0s12 4 16 0a16.5 16.5 0 0 1-32 0Z"
+            fill="#38BDF8"
+          />
+        </svg>
+      )
+
+    case 'top-load-washer':
+      return (
+        <svg viewBox="0 0 120 120" fill="none" className={svgClass} aria-hidden="true">
+          <path
+            d="M26 24a6 6 0 0 1 6-6h56a6 6 0 0 1 6 6v12H26V24Z"
+            fill={isActive ? '#CCFBF1' : '#E6E1D6'}
+            stroke={outline}
+            strokeWidth="2.4"
+          />
+          <circle cx="38" cy="27" r="3.2" fill={accent} />
+          <circle cx="48" cy="27" r="2.4" fill="#B45309" />
+          <rect x="57" y="23.5" width="26" height="7" rx="2" fill="#FFFFFF" stroke={outline} strokeWidth="1.5" />
+          <rect x="24" y="36" width="72" height="68" rx="7" fill="#FFFFFF" stroke={outline} strokeWidth="2.4" />
+          <rect x="32" y="42" width="56" height="10" rx="3" fill={accent} />
+          <rect x="48" y="45.5" width="24" height="3" rx="1.5" fill="#FFFFFF" />
+          <rect x="34" y="58" width="52" height="34" rx="5" fill={isActive ? '#CCFBF1' : '#E6E1D6'} stroke={outline} strokeWidth="1.8" />
+          <path
+            d="M40 77c5-4 11-4 20 0s15 4 20 0v9a3 3 0 0 1-3 3H43a3 3 0 0 1-3-3v-9Z"
             fill="#38BDF8"
           />
         </svg>
@@ -247,61 +262,4 @@ export function ApplianceIcon({
 }: ApplianceIconProps) {
   const key = resolveApplianceIconKey(icon, category)
   return <ApplianceIllustration iconKey={key} isActive={isActive} className={className} />
-}
-
-interface ApplianceIconPickerProps {
-  value?: ApplianceIconKey | string | null
-  category?: string | null
-  onChange: (value: ApplianceIconKey) => void
-  error?: string
-}
-
-export function ApplianceIconPicker({
-  value,
-  category,
-  onChange,
-  error,
-}: ApplianceIconPickerProps) {
-  const selectedKey = resolveApplianceIconKey(value, category)
-
-  return (
-    <div className="space-y-2">
-      <div
-        role="radiogroup"
-        aria-label="Appliance icon"
-        className="grid grid-cols-3 gap-2 sm:grid-cols-4"
-      >
-        {APPLIANCE_ICON_OPTIONS.map((option) => {
-          const isSelected = selectedKey === option.key
-          return (
-            <button
-              key={option.key}
-              type="button"
-              role="radio"
-              aria-checked={isSelected}
-              onClick={() => onChange(option.key)}
-              className={cn(
-                'flex flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                isSelected
-                  ? 'border-primary bg-primary text-white shadow-xs'
-                  : 'border-border bg-background text-foreground hover:border-primary/50 hover:bg-primary-tint/45'
-              )}
-            >
-              <ApplianceIllustration
-                iconKey={option.key}
-                isActive={isSelected}
-                className="h-9 w-9 shrink-0"
-              />
-              <span className="text-[11px] font-medium leading-tight">{option.label}</span>
-            </button>
-          )
-        })}
-      </div>
-      {error && (
-        <p role="alert" className="text-xs font-medium text-destructive">
-          {error}
-        </p>
-      )}
-    </div>
-  )
 }

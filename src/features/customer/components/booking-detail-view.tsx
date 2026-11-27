@@ -46,6 +46,7 @@ import {
   formatPHP,
   getManilaTodayISO,
 } from '@/lib/formatters'
+import { getTicketPaymentSummary } from '@/lib/payments'
 import { cn } from '@/lib/utils'
 import type {
   AppointmentDetailView,
@@ -98,9 +99,9 @@ export function BookingDetailView({
   const serviceLabel =
     SERVICE_TYPES.find((s) => s.value === repair.service_type)?.label ?? 'Appliance Service'
 
-  const targetTotal = Number(repair.final_cost_php ?? repair.estimated_cost_php ?? 0)
-  const paidTotal = Number(repair.verified_paid_php ?? 0)
-  const balance = Math.max(0, targetTotal - paidTotal)
+  const paymentSummary = getTicketPaymentSummary(repair)
+  const paidTotal = paymentSummary.verifiedPaid
+  const balance = paymentSummary.remainingBalance
 
   const canModify = ['pending', 'confirmed'].includes(repair.status)
   const canReschedule =
@@ -384,14 +385,22 @@ export function BookingDetailView({
                 </span>
               </div>
 
-              {repair.status !== 'completed' && repair.status !== 'cancelled' && (
+              {paymentSummary.canAcceptOnlinePayment ? (
                 <Button asChild className="mt-2 w-full">
                   <Link href={`/customer/payments?ticket=${repair.ticket_id}`}>
                     <CreditCard className="h-4 w-4" aria-hidden="true" />
-                    <span>Make a Payment</span>
+                    <span>Pay {formatPHP(paymentSummary.payableRemaining)} via PayMongo</span>
                   </Link>
                 </Button>
-              )}
+              ) : paymentSummary.isCoveredByPending ? (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+                  Your submitted payment already covers this balance and is being confirmed.
+                </p>
+              ) : !paymentSummary.hasFinalBill && paidTotal > 0 && repair.status !== 'cancelled' ? (
+                <p className="rounded-lg border border-teal-200 bg-primary-tint/50 px-3 py-2 text-xs font-medium text-primary">
+                  Upfront booking fee paid. Any remaining balance will appear after your technician checks the unit.
+                </p>
+              ) : null}
             </CardContent>
           </Card>
 

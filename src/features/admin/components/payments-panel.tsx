@@ -38,6 +38,7 @@ import { FormBanner } from '@/components/shared/form-banner'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PAYMENT_METHODS, PAYMENT_STATUSES } from '@/lib/constants'
 import { formatManilaDate, formatPHP, humanizeLabel } from '@/lib/formatters'
+import { getTicketPaymentSummary } from '@/lib/payments'
 import type { PaymentDetailView, RepairDetailView } from '@/types/database'
 import {
   adminCancelPaymentAction,
@@ -60,7 +61,10 @@ export function AdminPaymentsPanel({ payments, repairs }: AdminPaymentsPanelProp
   )
   const [isPending, startTransition] = React.useTransition()
 
-  const activeTickets = repairs.filter((r) => r.status !== 'cancelled')
+  const activeTickets = repairs.filter((r) => {
+    const summary = getTicketPaymentSummary(r)
+    return summary.canRecordFieldPayment
+  })
 
   const form = useForm<AdminRecordPaymentInput>({
     resolver: zodResolver(adminRecordPaymentSchema),
@@ -80,8 +84,7 @@ export function AdminPaymentsPanel({ payments, repairs }: AdminPaymentsPanelProp
 
   function openRecordModal() {
     const t = activeTickets[0]
-    const targetCost = t?.final_cost_php ?? t?.estimated_cost_php ?? 0
-    const balance = Math.max(0, Number(targetCost) - Number(t?.verified_paid_php ?? 0))
+    const balance = t ? getTicketPaymentSummary(t).payableRemaining : 0
     form.reset({
       ticket_id: t?.ticket_id ?? '',
       payment_method: 'GCash',
@@ -337,7 +340,9 @@ export function AdminPaymentsPanel({ payments, repairs }: AdminPaymentsPanelProp
                         <p>
                           {pay.received_by_first_name
                             ? `${pay.received_by_first_name} ${pay.received_by_last_name}`
-                            : 'Customer Portal'}
+                            : pay.paymongo_checkout_id || pay.paymongo_payment_id
+                              ? 'PayMongo Checkout'
+                              : 'Customer Portal'}
                         </p>
                         <p>{formatManilaDate(pay.payment_date)}</p>
                       </TableCell>
@@ -412,8 +417,7 @@ export function AdminPaymentsPanel({ payments, repairs }: AdminPaymentsPanelProp
                       field.onChange(nextTicketId)
                       const target = activeTickets.find((t) => t.ticket_id === nextTicketId)
                       if (target) {
-                        const targetCost = target.final_cost_php ?? target.estimated_cost_php ?? 0
-                        const balance = Math.max(0, Number(targetCost) - Number(target.verified_paid_php ?? 0))
+                        const balance = getTicketPaymentSummary(target).payableRemaining
                         form.setValue('amount_php', balance, { shouldValidate: true })
                       }
                     }}

@@ -6,34 +6,29 @@
 ALTER TABLE public.customer_appliances
   ADD COLUMN IF NOT EXISTS icon VARCHAR(50) NULL;
 
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_constraint
-    WHERE conname = 'chk_customer_appliances_icon_valid'
-  ) THEN
-    ALTER TABLE public.customer_appliances
-      ADD CONSTRAINT chk_customer_appliances_icon_valid
-      CHECK (
-        icon IS NULL
-        OR icon IN (
-          'split-aircon',
-          'window-aircon',
-          'refrigerator',
-          'washing-machine',
-          'cooking-range',
-          'commercial-chiller',
-          'microwave-oven',
-          'water-dispenser',
-          'television',
-          'clothes-dryer',
-          'electric-fan',
-          'water-heater'
-        )
-      );
-  END IF;
-END $$;
+ALTER TABLE public.customer_appliances
+  DROP CONSTRAINT IF EXISTS chk_customer_appliances_icon_valid;
+
+ALTER TABLE public.customer_appliances
+  ADD CONSTRAINT chk_customer_appliances_icon_valid
+  CHECK (
+    icon IS NULL
+    OR icon IN (
+      'split-aircon',
+      'window-aircon',
+      'refrigerator',
+      'washing-machine',
+      'top-load-washer',
+      'cooking-range',
+      'commercial-chiller',
+      'microwave-oven',
+      'water-dispenser',
+      'television',
+      'clothes-dryer',
+      'electric-fan',
+      'water-heater'
+    )
+  );
 
 CREATE OR REPLACE VIEW public.v_repair_details
 WITH (security_invoker = true) AS

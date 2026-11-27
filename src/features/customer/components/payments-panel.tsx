@@ -3,7 +3,8 @@
 import * as React from 'react'
 import { useForm, Controller, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ChevronDown, CreditCard, Loader2, Plus, Receipt } from 'lucide-react'
+import { CheckCircle2, ChevronDown, Clock, CreditCard, Loader2, Receipt } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -26,38 +27,45 @@ import {
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
 import { StatusBadge } from '@/components/shared/status-badge'
-import { PAYMENT_METHODS } from '@/lib/constants'
 import { formatManilaDate, formatPHP } from '@/lib/formatters'
+import { getTicketPaymentSummary } from '@/lib/payments'
 import { cn } from '@/lib/utils'
 import type { PaymentDetailView, RepairDetailView } from '@/types/database'
-import { submitCustomerPaymentAction } from '../actions/customer-actions'
+import { createTicketPaymentCheckoutAction } from '../actions/customer-actions'
 import { customerPaymentSchema, type CustomerPaymentInput } from '../schemas/customer-schemas'
 
 interface PaymentsPanelProps {
   repairs: RepairDetailView[]
   payments: PaymentDetailView[]
   defaultTicketId?: string
+  initialNotice?: { type: 'error' | 'success'; message: string } | null
 }
 
-export function PaymentsPanel({ repairs, payments, defaultTicketId }: PaymentsPanelProps) {
-  const payableTickets = repairs.filter((r) => r.status !== 'cancelled')
+export function PaymentsPanel({
+  repairs,
+  payments,
+  defaultTicketId,
+  initialNotice = null,
+}: PaymentsPanelProps) {
+  const billTickets = repairs.filter((r) => r.status !== 'cancelled')
+  const payableTickets = billTickets.filter((r) => getTicketPaymentSummary(r).canAcceptOnlinePayment)
+
   const preselected = defaultTicketId
     ? payableTickets.find((t) => t.ticket_id === defaultTicketId)
     : undefined
 
-  const initialAmount = preselected
-    ? Math.max(
-      0,
-      Number(preselected.final_cost_php ?? preselected.estimated_cost_php ?? 0) -
-      Number(preselected.verified_paid_php ?? 0)
-    )
-    : 0
+  const initialPayable = preselected
+    ? getTicketPaymentSummary(preselected).payableRemaining
+    : payableTickets[0]
+      ? getTicketPaymentSummary(payableTickets[0]).payableRemaining
+      : 0
 
-  const [dialogOpen, setDialogOpen] = React.useState(Boolean(preselected && preselected.status !== 'completed'))
+  const [dialogOpen, setDialogOpen] = React.useState(Boolean(preselected))
   const [expandedId, setExpandedId] = React.useState<string | null>(null)
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
-    null
+    initialNotice
   )
+  const [isRedirecting, setIsRedirecting] = React.useState(false)
   const [isPending, startTransition] = React.useTransition()
 
   const {
@@ -72,27 +80,26 @@ export function PaymentsPanel({ repairs, payments, defaultTicketId }: PaymentsPa
     mode: 'onBlur',
     defaultValues: {
       ticket_id: preselected?.ticket_id ?? payableTickets[0]?.ticket_id ?? '',
-      payment_method: 'GCash',
-      amount_php: initialAmount,
-      installment_no: null,
-      reference_no: '',
+      amount_php: initialPayable,
       remarks: '',
     },
   })
 
-  const selectedMethod = useWatch({ control, name: 'payment_method' })
+  const selectedTicketId = useWatch({ control, name: 'ticket_id' })
+  const selectedTicket = payableTickets.find((t) => t.ticket_id === selectedTicketId) ?? payableTickets[0]
+  const selectedMaxPayable = selectedTicket
+    ? getTicketPaymentSummary(selectedTicket).payableRemaining
+    : 0
 
   function openPaymentDialog(ticket?: RepairDetailView) {
-    const target = ticket ?? payableTickets.find((t) => t.status !== 'completed') ?? payableTickets[0]
-    const costTarget = target?.final_cost_php ?? target?.estimated_cost_php ?? 0
-    const remaining = Math.max(0, Number(costTarget) - Number(target?.verified_paid_php ?? 0))
+    const target = ticket ?? payableTickets[0]
+    if (!target) return
+    const summary = getTicketPaymentSummary(target)
+    if (!summary.canAcceptOnlinePayment) return
 
     reset({
-      ticket_id: target?.ticket_id ?? '',
-      payment_method: 'GCash',
-      amount_php: remaining > 0 ? remaining : 0,
-      installment_no: null,
-      reference_no: '',
+      ticket_id: target.ticket_id,
+      amount_php: summary.payableRemaining,
       remarks: '',
     })
     setFeedback(null)
@@ -100,13 +107,14 @@ export function PaymentsPanel({ repairs, payments, defaultTicketId }: PaymentsPa
   }
 
   function onSubmit(values: CustomerPaymentInput) {
+    if (isRedirecting) return
     setFeedback(null)
     startTransition(async () => {
-      const result = await submitCustomerPaymentAction(values)
-      if (result.success) {
-        setDialogOpen(false)
-        setFeedback({ type: 'success', message: result.message })
-      } else {
+      const result = await createTicketPaymentCheckoutAction(values)
+      if (result.success && result.data?.checkoutUrl) {
+        setIsRedirecting(true)
+        window.location.assign(result.data.checkoutUrl)
+      } else if (!result.success) {
         setFeedback({ type: 'error', message: result.error })
       }
     })
@@ -120,7 +128,7 @@ export function PaymentsPanel({ repairs, payments, defaultTicketId }: PaymentsPa
             My Payments
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Check what is due and send payments via GCash, Maya, QR Ph, or bank transfer.
+            Track your booking deposits, check remaining balances, and pay safely with PayMongo.
           </p>
         </div>
 
@@ -129,8 +137,8 @@ export function PaymentsPanel({ repairs, payments, defaultTicketId }: PaymentsPa
           disabled={payableTickets.length === 0}
           className="w-full sm:w-auto"
         >
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          <span>Make a Payment</span>
+          <CreditCard className="h-4 w-4" aria-hidden="true" />
+          <span>Pay Remaining Balance</span>
         </Button>
       </div>
 
@@ -142,18 +150,16 @@ export function PaymentsPanel({ repairs, payments, defaultTicketId }: PaymentsPa
           Service Bills
         </h2>
 
-        {payableTickets.length === 0 ? (
+        {billTickets.length === 0 ? (
           <EmptyState
             icon={Receipt}
             title="No bills right now"
-            description="When you book a home visit, your price estimate and remaining balance will show up here."
+            description="When you book a home visit, your booking payment and any remaining service balance will show up here."
           />
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
-            {payableTickets.map((ticket) => {
-              const targetTotal = Number(ticket.final_cost_php ?? ticket.estimated_cost_php ?? 0)
-              const paid = Number(ticket.verified_paid_php ?? 0)
-              const balance = Math.max(0, targetTotal - paid)
+            {billTickets.map((ticket) => {
+              const summary = getTicketPaymentSummary(ticket)
 
               return (
                 <Card key={ticket.ticket_id}>
@@ -174,33 +180,36 @@ export function PaymentsPanel({ repairs, payments, defaultTicketId }: PaymentsPa
                     <div className="grid grid-cols-3 gap-2 rounded-lg border border-dashed border-border bg-muted/50 p-3">
                       <div>
                         <p className="text-xs text-muted-foreground">
-                          {ticket.final_cost_php !== null ? 'Final bill' : 'Estimate'}
+                          {summary.hasFinalBill ? 'Final bill' : 'Booking deposit'}
                         </p>
                         <p className="mt-0.5 font-semibold tabular-nums text-foreground">
-                          {targetTotal > 0 ? formatPHP(targetTotal) : 'Pending'}
+                          {summary.targetTotal > 0 ? formatPHP(summary.targetTotal) : 'Pending'}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Paid</p>
                         <p className="mt-0.5 font-semibold tabular-nums text-emerald-700">
-                          {formatPHP(paid)}
+                          {formatPHP(summary.verifiedPaid)}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Balance</p>
                         <p className="mt-0.5 font-semibold tabular-nums text-foreground">
-                          {formatPHP(balance)}
+                          {formatPHP(summary.payableRemaining)}
                         </p>
                       </div>
                     </div>
 
-                    {ticket.pending_paid_php > 0 && (
-                      <p className="text-xs font-medium text-amber-800">
-                        +{formatPHP(ticket.pending_paid_php)} is currently being checked by our team.
+                    {summary.pendingPaid > 0 && (
+                      <p className="flex items-center gap-1.5 text-xs font-medium text-amber-800">
+                        <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        <span>
+                          {formatPHP(summary.pendingPaid)} is currently being confirmed — no duplicate payment needed.
+                        </span>
                       </p>
                     )}
 
-                    {ticket.status !== 'completed' && (
+                    {summary.canAcceptOnlinePayment ? (
                       <Button
                         type="button"
                         variant={ticket.status === 'awaiting_payment' ? 'default' : 'outline'}
@@ -209,9 +218,20 @@ export function PaymentsPanel({ repairs, payments, defaultTicketId }: PaymentsPa
                         onClick={() => openPaymentDialog(ticket)}
                       >
                         <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span>{balance > 0 ? `Pay ${formatPHP(balance)}` : 'Send Payment'}</span>
+                        <span>Pay {formatPHP(summary.payableRemaining)} with PayMongo</span>
                       </Button>
-                    )}
+                    ) : summary.isSettled ? (
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        <span>Paid in full</span>
+                      </div>
+                    ) : summary.isCoveredByPending ? (
+                      <Badge variant="amber">Payment confirmation in progress</Badge>
+                    ) : !summary.hasFinalBill && summary.verifiedPaid > 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        Upfront booking fee paid. Final balance will be unlocked after your technician checks the appliance.
+                      </p>
+                    ) : null}
                   </CardContent>
                 </Card>
               )
@@ -230,7 +250,7 @@ export function PaymentsPanel({ repairs, payments, defaultTicketId }: PaymentsPa
           <EmptyState
             icon={CreditCard}
             title="No payments sent yet"
-            description="Your confirmed receipts and sent payments will appear here."
+            description="Your confirmed PayMongo and on-site receipts will appear here."
           />
         ) : (
           <div className="divide-y divide-dashed divide-border rounded-xl border border-border bg-card">
@@ -295,13 +315,13 @@ export function PaymentsPanel({ repairs, payments, defaultTicketId }: PaymentsPa
         )}
       </section>
 
-      {/* Submit Payment Modal */}
+      {/* PayMongo Balance Checkout Modal */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Send a Payment</DialogTitle>
+            <DialogTitle>Pay Remaining Balance via PayMongo</DialogTitle>
             <DialogDescription>
-              Share your payment details below. Our team checks it quickly and marks your visit paid.
+              Pay securely using GCash, Maya, QR Ph, or debit/credit card. Verified automatically once complete.
             </DialogDescription>
           </DialogHeader>
 
@@ -320,9 +340,8 @@ export function PaymentsPanel({ repairs, payments, defaultTicketId }: PaymentsPa
                       field.onChange(nextTicketId)
                       const target = payableTickets.find((t) => t.ticket_id === nextTicketId)
                       if (target) {
-                        const targetCost = target.final_cost_php ?? target.estimated_cost_php ?? 0
-                        const balance = Math.max(0, Number(targetCost) - Number(target.verified_paid_php ?? 0))
-                        setValue('amount_php', balance, { shouldValidate: true })
+                        const summary = getTicketPaymentSummary(target)
+                        setValue('amount_php', summary.payableRemaining, { shouldValidate: true })
                       }
                     }}
                   >
@@ -330,11 +349,14 @@ export function PaymentsPanel({ repairs, payments, defaultTicketId }: PaymentsPa
                       <SelectValue placeholder="Choose a booking" />
                     </SelectTrigger>
                     <SelectContent>
-                      {payableTickets.map((t) => (
-                        <SelectItem key={t.ticket_id} value={t.ticket_id}>
-                          {t.appliance_brand} {t.appliance_category} ({formatManilaDate(t.scheduled_date)})
-                        </SelectItem>
-                      ))}
+                      {payableTickets.map((t) => {
+                        const s = getTicketPaymentSummary(t)
+                        return (
+                          <SelectItem key={t.ticket_id} value={t.ticket_id}>
+                            {t.appliance_brand} {t.appliance_category} ({formatPHP(s.payableRemaining)} due)
+                          </SelectItem>
+                        )
+                      })}
                     </SelectContent>
                   </Select>
                 )}
@@ -346,101 +368,54 @@ export function PaymentsPanel({ repairs, payments, defaultTicketId }: PaymentsPa
               )}
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="pay-method">Payment method</Label>
-                <Controller
-                  name="payment_method"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="pay-method">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PAYMENT_METHODS.map((m) => (
-                          <SelectItem key={m} value={m}>
-                            {m}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="pay-amount">Amount (PHP)</Label>
-                <Input
-                  id="pay-amount"
-                  type="number"
-                  step="0.01"
-                  min="1"
-                  aria-invalid={Boolean(errors.amount_php)}
-                  {...register('amount_php', { valueAsNumber: true })}
-                />
-                {errors.amount_php && (
-                  <p role="alert" className="text-xs font-medium text-destructive">
-                    {errors.amount_php.message}
-                  </p>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <Label htmlFor="pay-amount">Amount to Pay (PHP)</Label>
+                {selectedMaxPayable > 0 && (
+                  <span className="text-muted-foreground tabular-nums">
+                    Max due: {formatPHP(selectedMaxPayable)}
+                  </span>
                 )}
               </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="pay-reference">
-                  Confirmation / Reference No.{' '}
-                  {selectedMethod !== 'Cash' && <span className="text-destructive">*</span>}
-                </Label>
-                <Input
-                  id="pay-reference"
-                  placeholder="GCash / Maya / Bank ref #"
-                  aria-invalid={Boolean(errors.reference_no)}
-                  {...register('reference_no')}
-                />
-                {errors.reference_no && (
-                  <p role="alert" className="text-xs font-medium text-destructive">
-                    {errors.reference_no.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="pay-installment">Part payment no. (optional)</Label>
-                <Input
-                  id="pay-installment"
-                  type="number"
-                  min="1"
-                  placeholder="e.g. 1"
-                  {...register('installment_no', {
-                    setValueAs: (v) => (v === '' || v === null ? null : Number(v)),
-                  })}
-                />
-                {errors.installment_no && (
-                  <p role="alert" className="text-xs font-medium text-destructive">
-                    {errors.installment_no.message}
-                  </p>
-                )}
-              </div>
+              <Input
+                id="pay-amount"
+                type="number"
+                step="0.01"
+                min="1"
+                max={selectedMaxPayable || undefined}
+                aria-invalid={Boolean(errors.amount_php)}
+                {...register('amount_php', { valueAsNumber: true })}
+              />
+              {errors.amount_php && (
+                <p role="alert" className="text-xs font-medium text-destructive">
+                  {errors.amount_php.message}
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="pay-remarks">Note (optional)</Label>
               <Input
                 id="pay-remarks"
-                placeholder="e.g. Downpayment or full payment"
+                placeholder="e.g. Final service balance"
                 {...register('remarks')}
               />
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isPending || isRedirecting}
+                onClick={() => setDialogOpen(false)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                <span>Send Payment</span>
+              <Button type="submit" disabled={isPending || isRedirecting || selectedMaxPayable <= 0}>
+                {(isPending || isRedirecting) && (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                )}
+                <span>Pay with PayMongo</span>
               </Button>
             </DialogFooter>
           </form>

@@ -2,7 +2,6 @@ import { z } from 'zod'
 import {
   APPLIANCE_CATEGORIES,
   APPLIANCE_ICON_KEYS,
-  PAYMENT_METHODS,
   REPAIR_PRIORITIES,
   SERVICE_BRANCHES,
   TIME_SLOTS,
@@ -59,36 +58,14 @@ export const rescheduleAppointmentSchema = z.object({
 
 export type RescheduleAppointmentInput = z.infer<typeof rescheduleAppointmentSchema>
 
-export const customerPaymentSchema = z
-  .object({
-    ticket_id: z.string().trim().min(1, 'Select a repair ticket.'),
-    payment_method: z.enum(PAYMENT_METHODS, { message: 'Select a payment method.' }),
-    amount_php: z
-      .number({ message: 'Enter a valid PHP amount.' })
-      .positive('Payment amount must be greater than PHP 0.00.')
-      .max(1000000, 'Amount exceeds single transaction limit.'),
-    installment_no: z
-      .number({ message: 'Enter a whole installment number.' })
-      .int('Installment number must be a whole number.')
-      .min(1, 'Installment number must be at least 1.')
-      .nullable(),
-    reference_no: z
-      .string()
-      .trim()
-      .max(100, 'Reference number cannot exceed 100 characters.')
-      .optional()
-      .or(z.literal('')),
-    remarks: z.string().trim().max(500).optional().or(z.literal('')),
-  })
-  .superRefine((data, ctx) => {
-    if (data.payment_method !== 'Cash' && !data.reference_no?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['reference_no'],
-        message: 'Enter the confirmation or reference number for your transfer.',
-      })
-    }
-  })
+export const customerPaymentSchema = z.object({
+  ticket_id: z.string().trim().min(1, 'Select a booking.'),
+  amount_php: z
+    .number({ message: 'Enter a valid PHP amount.' })
+    .min(1, 'Minimum online payment is PHP 1.00.')
+    .max(1000000, 'Amount exceeds single transaction limit.'),
+  remarks: z.string().trim().max(500).optional().or(z.literal('')),
+})
 
 export type CustomerPaymentInput = z.infer<typeof customerPaymentSchema>
 
