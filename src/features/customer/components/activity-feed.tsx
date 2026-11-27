@@ -2,6 +2,7 @@ import * as React from 'react'
 import { Activity } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/shared/empty-state'
+import { ScrollableList } from '@/components/shared/scrollable-list'
 import { formatManilaDateTime, humanizeLabel } from '@/lib/formatters'
 import type { ActivityLogRow } from '@/types/database'
 
@@ -35,30 +36,36 @@ export function ActivityFeed({
             description="Updates appear here as soon as you add an appliance, book a visit, or send a payment."
           />
         ) : (
-          <ul className="divide-y divide-dashed divide-border">
-            {logs.map((log) => (
-              <li
-                key={log.log_id}
-                className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-              >
-                <div className="min-w-0 space-y-0.5">
-                  <p className="text-sm font-medium text-foreground">{log.description}</p>
-                  {audience === 'staff' && (
-                    <p className="text-xs text-muted-foreground">
-                      <span className="font-mono text-[11px]">{log.entity_id}</span> &middot;{' '}
-                      {humanizeLabel(log.action)}
-                    </p>
-                  )}
-                </div>
-                <time
-                  dateTime={log.created_at}
-                  className="shrink-0 text-xs text-muted-foreground tabular-nums"
+          <ScrollableList
+            regionLabel={title}
+            maxHeightClassName="max-h-96"
+            className="pr-1"
+          >
+            <ul className="divide-y divide-dashed divide-border">
+              {logs.map((log) => (
+                <li
+                  key={log.log_id}
+                  className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                 >
-                  {formatManilaDateTime(log.created_at)}
-                </time>
-              </li>
-            ))}
-          </ul>
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="text-sm font-medium text-foreground">{log.description}</p>
+                    {audience === 'staff' && (
+                      <p className="text-xs text-muted-foreground">
+                        <span className="font-mono text-[11px]">{log.entity_id}</span> &middot;{' '}
+                        {humanizeLabel(log.action)}
+                      </p>
+                    )}
+                  </div>
+                  <time
+                    dateTime={log.created_at}
+                    className="shrink-0 text-xs text-muted-foreground tabular-nums"
+                  >
+                    {formatManilaDateTime(log.created_at)}
+                  </time>
+                </li>
+              ))}
+            </ul>
+          </ScrollableList>
         )}
       </CardContent>
     </Card>

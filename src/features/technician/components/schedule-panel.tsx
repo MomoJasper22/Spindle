@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/table'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
+import { ScrollableList } from '@/components/shared/scrollable-list'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { TIME_SLOTS } from '@/lib/constants'
 import { formatManilaDate, formatPHPhone, getManilaTodayISO } from '@/lib/formatters'
@@ -170,8 +171,9 @@ export function SchedulePanel({ appointments }: SchedulePanelProps) {
           />
         ) : (
           <>
-            <div className="space-y-3 md:hidden">
-              {filtered.map((apt) => {
+            <ScrollableList regionLabel="Technician appointment schedule list" className="md:hidden p-0.5 pr-1">
+              <div className="space-y-3">
+                {filtered.map((apt) => {
                 const isFinal = ['completed', 'cancelled'].includes(apt.appointment_status)
                 return (
                   <div
@@ -235,8 +237,9 @@ export function SchedulePanel({ appointments }: SchedulePanelProps) {
                     )}
                   </div>
                 )
-              })}
-            </div>
+                })}
+              </div>
+            </ScrollableList>
 
             <div className="hidden md:block">
               <Table regionLabel="Technician appointment schedule">

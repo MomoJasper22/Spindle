@@ -35,6 +35,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
+import { ScrollableList } from '@/components/shared/scrollable-list'
 import { StatusBadge } from '@/components/shared/status-badge'
 import {
   REPAIR_PRIORITIES,
@@ -313,8 +314,9 @@ export function AdminRepairsPanel({ repairs, users, appliances }: AdminRepairsPa
           />
         ) : (
           <>
-            <div className="space-y-3 md:hidden">
-              {filtered.map((t) => (
+            <ScrollableList regionLabel="Master repair transactions list" className="md:hidden p-0.5 pr-1">
+              <div className="space-y-3">
+                {filtered.map((t) => (
                 <div key={t.ticket_id} className="rounded-xl border border-border bg-card p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -342,8 +344,9 @@ export function AdminRepairsPanel({ repairs, users, appliances }: AdminRepairsPa
                     </Button>
                   </div>
                 </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </ScrollableList>
 
             <div className="hidden md:block">
               <Table regionLabel="Master repair transactions">

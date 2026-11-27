@@ -21,6 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { EmptyState } from '@/components/shared/empty-state'
+import { ScrollableList } from '@/components/shared/scrollable-list'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { REPAIR_PRIORITIES } from '@/lib/constants'
 import { formatManilaDate, formatPHPhone, formatPHP, humanizeLabel } from '@/lib/formatters'
@@ -170,102 +171,110 @@ export function PipelinePanel({ repairs, onSelectTicket }: PipelinePanelProps) {
                     </span>
                   </header>
 
-                  <div className="space-y-2.5 flex-1">
-                    {stageTickets.length === 0 ? (
-                      <p className="rounded-lg border border-dashed border-slate-200 py-6 text-center text-xs text-muted-foreground">
-                        No jobs in stage
-                      </p>
-                    ) : (
-                      stageTickets.map((ticket) => (
-                        <button
-                          key={ticket.ticket_id}
-                          type="button"
-                          onClick={() => onSelectTicket(ticket)}
-                          className="w-full rounded-lg border border-border bg-card p-3.5 text-left shadow-2xs transition-colors hover:border-primary/50 hover:bg-primary-tint/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono text-xs font-semibold text-primary">
-                              {ticket.ticket_id}
-                            </span>
-                            <StatusBadge status={ticket.priority} showIcon={false} />
-                          </div>
-                          <p className="mt-1.5 text-sm font-semibold text-foreground">
-                            {ticket.customer_first_name} {ticket.customer_last_name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {ticket.appliance_brand} &middot; {ticket.appliance_model_number}
-                          </p>
-                          <div className="mt-2.5 space-y-1 text-[11px] text-muted-foreground">
-                            <p className="flex items-center gap-1 truncate">
-                              <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
-                              <span>
-                                {[ticket.customer_address_barangay, ticket.customer_address_city]
-                                  .filter(Boolean)
-                                  .join(', ') || 'Address on file'}
+                  <ScrollableList
+                    regionLabel={`${stage.title} queue`}
+                    maxHeightClassName="max-h-[30rem]"
+                    className="flex-1 p-0.5 pr-1"
+                  >
+                    <div className="space-y-2.5">
+                      {stageTickets.length === 0 ? (
+                        <p className="rounded-lg border border-dashed border-slate-200 py-6 text-center text-xs text-muted-foreground">
+                          No jobs in stage
+                        </p>
+                      ) : (
+                        stageTickets.map((ticket) => (
+                          <button
+                            key={ticket.ticket_id}
+                            type="button"
+                            onClick={() => onSelectTicket(ticket)}
+                            className="w-full rounded-lg border border-border bg-card p-3.5 text-left shadow-2xs transition-colors hover:border-primary/50 hover:bg-primary-tint/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-mono text-xs font-semibold text-primary">
+                                {ticket.ticket_id}
                               </span>
+                              <StatusBadge status={ticket.priority} showIcon={false} />
+                            </div>
+                            <p className="mt-1.5 text-sm font-semibold text-foreground">
+                              {ticket.customer_first_name} {ticket.customer_last_name}
                             </p>
-                            <p className="flex items-center gap-1">
-                              <Phone className="h-3 w-3 shrink-0" aria-hidden="true" />
-                              <span>{formatPHPhone(ticket.customer_phone)}</span>
+                            <p className="text-xs text-muted-foreground">
+                              {ticket.appliance_brand} &middot; {ticket.appliance_model_number}
                             </p>
-                          </div>
-                          <div className="mt-3 flex items-center justify-between border-t border-border pt-2 text-xs">
-                            <span className="text-muted-foreground">
-                              {formatManilaDate(ticket.scheduled_date)}
-                            </span>
-                            <span className="font-semibold text-foreground tabular-nums">
-                              {ticket.final_cost_php !== null
-                                ? formatPHP(ticket.final_cost_php)
-                                : formatPHP(ticket.estimated_cost_php)}
-                            </span>
-                          </div>
-                        </button>
-                      ))
-                    )}
-                  </div>
+                            <div className="mt-2.5 space-y-1 text-[11px] text-muted-foreground">
+                              <p className="flex items-center gap-1 truncate">
+                                <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                                <span>
+                                  {[ticket.customer_address_barangay, ticket.customer_address_city]
+                                    .filter(Boolean)
+                                    .join(', ') || 'Address on file'}
+                                </span>
+                              </p>
+                              <p className="flex items-center gap-1">
+                                <Phone className="h-3 w-3 shrink-0" aria-hidden="true" />
+                                <span>{formatPHPhone(ticket.customer_phone)}</span>
+                              </p>
+                            </div>
+                            <div className="mt-3 flex items-center justify-between border-t border-border pt-2 text-xs">
+                              <span className="text-muted-foreground">
+                                {formatManilaDate(ticket.scheduled_date)}
+                              </span>
+                              <span className="font-semibold text-foreground tabular-nums">
+                                {ticket.final_cost_php !== null
+                                  ? formatPHP(ticket.final_cost_php)
+                                  : formatPHP(ticket.estimated_cost_php)}
+                              </span>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </ScrollableList>
                 </section>
               )
             })}
           </div>
         ) : (
           <>
-            <div className="space-y-3 md:hidden">
-              {filtered.map((ticket) => (
-                <div
-                  key={ticket.ticket_id}
-                  className="rounded-xl border border-border bg-card p-4 space-y-3"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="font-mono text-xs font-semibold text-primary">
-                        {ticket.ticket_id}
+            <ScrollableList regionLabel="Assigned repair tickets list" className="md:hidden p-0.5 pr-1">
+              <div className="space-y-3">
+                {filtered.map((ticket) => (
+                  <div
+                    key={ticket.ticket_id}
+                    className="rounded-xl border border-border bg-card p-4 space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="font-mono text-xs font-semibold text-primary">
+                          {ticket.ticket_id}
+                        </span>
+                        <p className="mt-0.5 font-semibold text-foreground">
+                          {ticket.customer_first_name} {ticket.customer_last_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {ticket.appliance_brand} {ticket.appliance_model_number}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <StatusBadge status={ticket.status} />
+                        <StatusBadge status={ticket.priority} showIcon={false} />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-border pt-2.5 text-xs">
+                      <span className="text-muted-foreground">
+                        {formatManilaDate(ticket.scheduled_date)} &middot;{' '}
+                        {ticket.final_cost_php !== null
+                          ? formatPHP(ticket.final_cost_php)
+                          : formatPHP(ticket.estimated_cost_php)}
                       </span>
-                      <p className="mt-0.5 font-semibold text-foreground">
-                        {ticket.customer_first_name} {ticket.customer_last_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {ticket.appliance_brand} {ticket.appliance_model_number}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <StatusBadge status={ticket.status} />
-                      <StatusBadge status={ticket.priority} showIcon={false} />
+                      <Button size="sm" variant="outline" onClick={() => onSelectTicket(ticket)}>
+                        Open Drawer
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between border-t border-border pt-2.5 text-xs">
-                    <span className="text-muted-foreground">
-                      {formatManilaDate(ticket.scheduled_date)} &middot;{' '}
-                      {ticket.final_cost_php !== null
-                        ? formatPHP(ticket.final_cost_php)
-                        : formatPHP(ticket.estimated_cost_php)}
-                    </span>
-                    <Button size="sm" variant="outline" onClick={() => onSelectTicket(ticket)}>
-                      Open Drawer
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </ScrollableList>
 
             <div className="hidden md:block">
               <Table regionLabel="Assigned repair tickets">

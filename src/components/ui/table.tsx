@@ -3,15 +3,27 @@ import { cn } from '@/lib/utils'
 
 interface TableProps extends React.TableHTMLAttributes<HTMLTableElement> {
   regionLabel?: string
+  maxHeightClassName?: string
 }
 
 const Table = React.forwardRef<HTMLTableElement, TableProps>(
-  ({ className, regionLabel = 'Data table', ...props }, ref) => (
+  (
+    {
+      className,
+      regionLabel = 'Data table',
+      maxHeightClassName = 'max-h-[min(62dvh,34rem)]',
+      ...props
+    },
+    ref
+  ) => (
     <div
       tabIndex={0}
       role="region"
       aria-label={regionLabel}
-      className="relative w-full overflow-x-auto rounded-xl border border-border bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className={cn(
+        'relative w-full overflow-auto overscroll-contain spindle-scroll rounded-xl border border-border bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        maxHeightClassName
+      )}
     >
       <table
         ref={ref}
@@ -29,7 +41,10 @@ const TableHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <thead
     ref={ref}
-    className={cn('border-b border-border bg-muted/70 [&_tr]:border-b', className)}
+    className={cn(
+      'sticky top-0 z-10 bg-muted shadow-[0_1px_0_0_var(--color-border)] [&_tr]:border-b-0 [&_tr:hover]:bg-transparent',
+      className
+    )}
     {...props}
   />
 ))

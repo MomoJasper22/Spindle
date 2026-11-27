@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/select'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
+import { ScrollableList } from '@/components/shared/scrollable-list'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { formatManilaDate, formatPHP } from '@/lib/formatters'
 import { getTicketPaymentSummary } from '@/lib/payments'
@@ -157,8 +158,13 @@ export function PaymentsPanel({
             description="When you book a home visit, your booking payment and any remaining service balance will show up here."
           />
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {billTickets.map((ticket) => {
+          <ScrollableList
+            regionLabel="Service bills summary"
+            maxHeightClassName="max-h-[min(55dvh,30rem)]"
+            className="p-0.5 pr-1.5"
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              {billTickets.map((ticket) => {
               const summary = getTicketPaymentSummary(ticket)
 
               return (
@@ -235,8 +241,9 @@ export function PaymentsPanel({
                   </CardContent>
                 </Card>
               )
-            })}
-          </div>
+              })}
+            </div>
+          </ScrollableList>
         )}
       </section>
 
@@ -253,8 +260,13 @@ export function PaymentsPanel({
             description="Your confirmed PayMongo and on-site receipts will appear here."
           />
         ) : (
-          <div className="divide-y divide-dashed divide-border rounded-xl border border-border bg-card">
-            {payments.map((pay) => {
+          <ScrollableList
+            regionLabel="Past payments ledger"
+            maxHeightClassName="max-h-[min(55dvh,30rem)]"
+            className="border border-border bg-card"
+          >
+            <div className="divide-y divide-dashed divide-border">
+              {payments.map((pay) => {
               const isExpanded = expandedId === pay.payment_id
               return (
                 <div key={pay.payment_id} className="p-4 sm:p-5">
@@ -310,8 +322,9 @@ export function PaymentsPanel({
                   )}
                 </div>
               )
-            })}
-          </div>
+              })}
+            </div>
+          </ScrollableList>
         )}
       </section>
 

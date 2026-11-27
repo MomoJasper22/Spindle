@@ -4,6 +4,7 @@ import { Activity, ArrowRight, CheckCircle2, Clock, CreditCard, ShieldCheck, Use
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/shared/empty-state'
+import { ScrollableList } from '@/components/shared/scrollable-list'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { REPAIR_STATUSES } from '@/lib/constants'
 import { formatManilaDateTime, formatPHP, humanizeLabel } from '@/lib/formatters'
@@ -187,28 +188,34 @@ export function ExecutiveSummaryPanel({
                 description="Operational events across customers, technicians, and administrators will appear here once transactions begin."
               />
             ) : (
-              <ul className="divide-y divide-border">
-                {activityLogs.map((log) => (
-                  <li
-                    key={log.log_id}
-                    className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-                  >
-                    <div className="min-w-0 space-y-0.5">
-                      <p className="text-sm font-medium text-foreground">{log.description}</p>
-                      <p className="text-xs text-muted-foreground">
-                        <span className="font-mono text-[11px]">{log.entity_id}</span> &middot;{' '}
-                        {humanizeLabel(log.entity_type)} &middot; {humanizeLabel(log.action)}
-                      </p>
-                    </div>
-                    <time
-                      dateTime={log.created_at}
-                      className="shrink-0 text-xs text-muted-foreground tabular-nums"
+              <ScrollableList
+                regionLabel="System-Wide Activity Log"
+                maxHeightClassName="max-h-[26rem]"
+                className="pr-1"
+              >
+                <ul className="divide-y divide-border">
+                  {activityLogs.map((log) => (
+                    <li
+                      key={log.log_id}
+                      className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                     >
-                      {formatManilaDateTime(log.created_at)}
-                    </time>
-                  </li>
-                ))}
-              </ul>
+                      <div className="min-w-0 space-y-0.5">
+                        <p className="text-sm font-medium text-foreground">{log.description}</p>
+                        <p className="text-xs text-muted-foreground">
+                          <span className="font-mono text-[11px]">{log.entity_id}</span> &middot;{' '}
+                          {humanizeLabel(log.entity_type)} &middot; {humanizeLabel(log.action)}
+                        </p>
+                      </div>
+                      <time
+                        dateTime={log.created_at}
+                        className="shrink-0 text-xs text-muted-foreground tabular-nums"
+                      >
+                        {formatManilaDateTime(log.created_at)}
+                      </time>
+                    </li>
+                  ))}
+                </ul>
+              </ScrollableList>
             )}
           </CardContent>
         </Card>

@@ -37,6 +37,7 @@ import {
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
+import { ScrollableList } from '@/components/shared/scrollable-list'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import {
@@ -232,8 +233,9 @@ export function TechniciansPanel({
           />
         ) : (
           <>
-            <div className="space-y-3 md:hidden">
-              {techUsers.map((tech) => {
+            <ScrollableList regionLabel="Technician roster list" className="md:hidden p-0.5 pr-1">
+              <div className="space-y-3">
+                {techUsers.map((tech) => {
                 const tp = techProfileById.get(tech.user_id) ?? null
                 const activeJobs = repairs.filter(
                   (r) =>
@@ -313,8 +315,9 @@ export function TechniciansPanel({
                     </div>
                   </div>
                 )
-              })}
-            </div>
+                })}
+              </div>
+            </ScrollableList>
 
             <div className="hidden md:block">
               <Table regionLabel="Technician roster and workload">

@@ -38,6 +38,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
+import { ScrollableList } from '@/components/shared/scrollable-list'
 import { StatusBadge, getCustomerStatusLabel } from '@/components/shared/status-badge'
 import {
   REPAIR_STATUSES,
@@ -323,8 +324,9 @@ export function RepairsPanel({
           }
         />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {filteredRepairs.map((repair) => {
+        <ScrollableList regionLabel="My bookings list" className="p-0.5 pr-1.5">
+          <div className="grid gap-4 lg:grid-cols-2">
+            {filteredRepairs.map((repair) => {
             const apt = appointmentByTicket.get(repair.ticket_id)
             const paymentSummary = getTicketPaymentSummary(repair)
             const totalAmount = paymentSummary.targetTotal
@@ -445,8 +447,9 @@ export function RepairsPanel({
                 </div>
               </div>
             )
-          })}
-        </div>
+            })}
+          </div>
+        </ScrollableList>
       )}
 
       {/* Book Home Visit Modal */}

@@ -36,6 +36,7 @@ import { ApplianceIcon, ApplianceTypePicker } from '@/components/shared/applianc
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
+import { ScrollableList } from '@/components/shared/scrollable-list'
 import { StatusBadge } from '@/components/shared/status-badge'
 import {
   APPLIANCE_BRAND_SUGGESTIONS,
@@ -236,8 +237,9 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
           />
         ) : (
           <>
-            <div className="space-y-3 md:hidden">
-              {filtered.map((item) => {
+            <ScrollableList regionLabel="Master appliance registrations list" className="md:hidden p-0.5 pr-1">
+              <div className="space-y-3">
+                {filtered.map((item) => {
                 const owner = userById.get(item.customer_id)
                 return (
                   <div key={item.appliance_id} className="rounded-xl border border-border bg-card p-4 space-y-3">
@@ -296,8 +298,9 @@ export function AdminAppliancesPanel({ appliances, users }: AppliancesPanelProps
                     </div>
                   </div>
                 )
-              })}
-            </div>
+                })}
+              </div>
+            </ScrollableList>
 
             <div className="hidden md:block">
               <Table regionLabel="Master appliance registrations">

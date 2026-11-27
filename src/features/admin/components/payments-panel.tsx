@@ -35,6 +35,7 @@ import {
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
+import { ScrollableList } from '@/components/shared/scrollable-list'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PAYMENT_METHODS, PAYMENT_STATUSES } from '@/lib/constants'
 import { formatManilaDate, formatPHP, humanizeLabel } from '@/lib/formatters'
@@ -249,8 +250,9 @@ export function AdminPaymentsPanel({ payments, repairs }: AdminPaymentsPanelProp
           />
         ) : (
           <>
-            <div className="space-y-3 md:hidden">
-              {filtered.map((pay) => (
+            <ScrollableList regionLabel="Master PHP payment ledger list" className="md:hidden p-0.5 pr-1">
+              <div className="space-y-3">
+                {filtered.map((pay) => (
                 <div key={pay.payment_id} className="rounded-xl border border-border bg-card p-4 space-y-2.5">
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -298,8 +300,9 @@ export function AdminPaymentsPanel({ payments, repairs }: AdminPaymentsPanelProp
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </ScrollableList>
 
             <div className="hidden md:block">
               <Table regionLabel="Master PHP payment ledger">

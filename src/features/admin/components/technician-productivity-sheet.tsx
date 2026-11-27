@@ -21,6 +21,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { ScrollableList } from '@/components/shared/scrollable-list'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import type { TechAvailabilityStatus } from '@/lib/constants'
@@ -380,19 +381,25 @@ export function TechnicianProductivitySheet({
           )}
 
           {techLogs.length > 0 && (
-            <ul className="divide-y divide-dashed divide-border pt-1 text-xs">
-              {techLogs.slice(0, 6).map((log) => (
-                <li key={log.log_id} className="flex items-center justify-between gap-2 py-2">
-                  <span className="font-medium text-foreground">
-                    {log.previous_status ? `${humanizeLabel(log.previous_status)} → ` : ''}
-                    {humanizeLabel(log.new_status)}
-                  </span>
-                  <time dateTime={log.changed_at} className="text-muted-foreground tabular-nums">
-                    {formatManilaDateTime(log.changed_at)}
-                  </time>
-                </li>
-              ))}
-            </ul>
+            <ScrollableList
+              regionLabel="Availability status switches"
+              maxHeightClassName="max-h-56"
+              className="pr-1"
+            >
+              <ul className="divide-y divide-dashed divide-border pt-1 text-xs">
+                {techLogs.map((log) => (
+                  <li key={log.log_id} className="flex items-center justify-between gap-2 py-2">
+                    <span className="font-medium text-foreground">
+                      {log.previous_status ? `${humanizeLabel(log.previous_status)} → ` : ''}
+                      {humanizeLabel(log.new_status)}
+                    </span>
+                    <time dateTime={log.changed_at} className="text-muted-foreground tabular-nums">
+                      {formatManilaDateTime(log.changed_at)}
+                    </time>
+                  </li>
+                ))}
+              </ul>
+            </ScrollableList>
           )}
         </div>
 
@@ -439,25 +446,31 @@ export function TechnicianProductivitySheet({
           {techRepairs.length === 0 ? (
             <p className="text-xs text-muted-foreground">No repair tickets assigned yet.</p>
           ) : (
-            <ul className="divide-y divide-border rounded-xl border border-border bg-card px-3.5">
-              {techRepairs.slice(0, 5).map((ticket) => (
-                <li key={ticket.ticket_id} className="flex items-center justify-between gap-2 py-2.5 text-xs">
-                  <div className="min-w-0">
-                    <p className="font-mono font-semibold text-primary">{ticket.ticket_id}</p>
-                    <p className="truncate text-foreground">
-                      {ticket.customer_first_name} {ticket.customer_last_name} &middot;{' '}
-                      {ticket.appliance_brand} {ticket.appliance_category}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <StatusBadge status={ticket.status} />
-                    <span className="text-[11px] text-muted-foreground tabular-nums">
-                      {formatManilaDate(ticket.scheduled_date)}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <ScrollableList
+              regionLabel="Assigned repair tickets"
+              maxHeightClassName="max-h-56"
+              className="border border-border bg-card"
+            >
+              <ul className="divide-y divide-border px-3.5">
+                {techRepairs.map((ticket) => (
+                  <li key={ticket.ticket_id} className="flex items-center justify-between gap-2 py-2.5 text-xs">
+                    <div className="min-w-0">
+                      <p className="font-mono font-semibold text-primary">{ticket.ticket_id}</p>
+                      <p className="truncate text-foreground">
+                        {ticket.customer_first_name} {ticket.customer_last_name} &middot;{' '}
+                        {ticket.appliance_brand} {ticket.appliance_category}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <StatusBadge status={ticket.status} />
+                      <span className="text-[11px] text-muted-foreground tabular-nums">
+                        {formatManilaDate(ticket.scheduled_date)}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </ScrollableList>
           )}
         </div>
       </SheetContent>

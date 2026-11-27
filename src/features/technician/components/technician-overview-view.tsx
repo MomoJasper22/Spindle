@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
+import { ScrollableList } from '@/components/shared/scrollable-list'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { ActivityFeed } from '@/features/customer/components/activity-feed'
 import { TECH_AVAILABILITY_STATUSES, type TechAvailabilityStatus } from '@/lib/constants'
@@ -182,24 +183,30 @@ export function TechnicianOverviewView({
                 description="Check Upcoming in your Schedule page for your next assigned slots."
               />
             ) : (
-              <div className="divide-y divide-dashed divide-border">
-                {todaysVisits.slice(0, 4).map((apt) => (
-                  <div key={apt.appointment_id} className="py-3 first:pt-0 last:pb-0 space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-primary">{apt.time_slot}</span>
-                      <StatusBadge status={apt.appointment_status} />
+              <ScrollableList
+                regionLabel="Today's visits list"
+                maxHeightClassName="max-h-80"
+                className="pr-1"
+              >
+                <div className="divide-y divide-dashed divide-border">
+                  {todaysVisits.map((apt) => (
+                    <div key={apt.appointment_id} className="py-3 first:pt-0 last:pb-0 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-primary">{apt.time_slot}</span>
+                        <StatusBadge status={apt.appointment_status} />
+                      </div>
+                      <p className="text-sm font-semibold text-foreground">
+                        {apt.customer_first_name} {apt.customer_last_name} &middot;{' '}
+                        <span className="font-mono text-xs text-muted-foreground">{apt.ticket_id}</span>
+                      </p>
+                      <p className="flex items-start gap-1 text-xs text-muted-foreground">
+                        <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        <span className="line-clamp-1">{apt.service_address}</span>
+                      </p>
                     </div>
-                    <p className="text-sm font-semibold text-foreground">
-                      {apt.customer_first_name} {apt.customer_last_name} &middot;{' '}
-                      <span className="font-mono text-xs text-muted-foreground">{apt.ticket_id}</span>
-                    </p>
-                    <p className="flex items-start gap-1 text-xs text-muted-foreground">
-                      <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                      <span className="line-clamp-1">{apt.service_address}</span>
-                    </p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </ScrollableList>
             )}
           </CardContent>
         </Card>
@@ -229,37 +236,43 @@ export function TechnicianOverviewView({
                 description="New repair tickets assigned to you will appear here automatically."
               />
             ) : (
-              <div className="space-y-3">
-                {activeJobs.slice(0, 4).map((ticket) => (
-                  <button
-                    key={ticket.ticket_id}
-                    type="button"
-                    onClick={() => setSelectedTicketId(ticket.ticket_id)}
-                    className="w-full rounded-xl border border-border bg-card p-3.5 text-left transition-colors hover:border-primary/50 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-xs font-semibold text-primary">
-                        {ticket.ticket_id}
-                      </span>
-                      <StatusBadge status={ticket.status} />
-                    </div>
-                    <p className="mt-1 text-sm font-semibold text-foreground">
-                      {ticket.customer_first_name} {ticket.customer_last_name} &mdash;{' '}
-                      {ticket.appliance_brand} {ticket.appliance_model_number}
-                    </p>
-                    <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Phone className="h-3 w-3" aria-hidden="true" />
-                        {formatPHPhone(ticket.customer_phone)}
-                      </span>
-                      <span className="font-medium tabular-nums text-foreground">
-                        {formatManilaDate(ticket.scheduled_date)} &middot;{' '}
-                        {formatPHP(ticket.final_cost_php ?? ticket.estimated_cost_php)}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
+              <ScrollableList
+                regionLabel="Active repair queue"
+                maxHeightClassName="max-h-80"
+                className="p-0.5 pr-1"
+              >
+                <div className="space-y-3">
+                  {activeJobs.map((ticket) => (
+                    <button
+                      key={ticket.ticket_id}
+                      type="button"
+                      onClick={() => setSelectedTicketId(ticket.ticket_id)}
+                      className="w-full rounded-xl border border-border bg-card p-3.5 text-left transition-colors hover:border-primary/50 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-xs font-semibold text-primary">
+                          {ticket.ticket_id}
+                        </span>
+                        <StatusBadge status={ticket.status} />
+                      </div>
+                      <p className="mt-1 text-sm font-semibold text-foreground">
+                        {ticket.customer_first_name} {ticket.customer_last_name} &mdash;{' '}
+                        {ticket.appliance_brand} {ticket.appliance_model_number}
+                      </p>
+                      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Phone className="h-3 w-3" aria-hidden="true" />
+                          {formatPHPhone(ticket.customer_phone)}
+                        </span>
+                        <span className="font-medium tabular-nums text-foreground">
+                          {formatManilaDate(ticket.scheduled_date)} &middot;{' '}
+                          {formatPHP(ticket.final_cost_php ?? ticket.estimated_cost_php)}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </ScrollableList>
             )}
           </CardContent>
         </Card>

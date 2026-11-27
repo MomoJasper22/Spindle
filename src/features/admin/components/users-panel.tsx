@@ -37,6 +37,7 @@ import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
 import { PhilippineAddressFields } from '@/components/shared/ph-address-fields'
+import { ScrollableList } from '@/components/shared/scrollable-list'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import {
@@ -466,8 +467,9 @@ export function UsersPanel({
           />
         ) : (
           <>
-            <div className="space-y-3 md:hidden">
-              {filtered.map((user) => {
+            <ScrollableList regionLabel="System users directory list" className="md:hidden p-0.5 pr-1">
+              <div className="space-y-3">
+                {filtered.map((user) => {
                 const role = user.user_types?.type_name ?? 'customer'
                 const isSelf = user.user_id === currentAdminId
                 const displayName = formatFullName(user)
@@ -524,8 +526,9 @@ export function UsersPanel({
                     </div>
                   </div>
                 )
-              })}
-            </div>
+                })}
+              </div>
+            </ScrollableList>
 
             <div className="hidden md:block">
               <Table regionLabel="System users directory">

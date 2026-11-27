@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/select'
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { FormBanner } from '@/components/shared/form-banner'
+import { ScrollableList } from '@/components/shared/scrollable-list'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { SERVICE_TYPES, TIME_SLOTS } from '@/lib/constants'
 import {
@@ -414,21 +415,27 @@ export function BookingDetailView({
                   No payments submitted for this visit yet.
                 </p>
               ) : (
-                <div className="divide-y divide-dashed divide-border">
-                  {payments.map((pay) => (
-                    <div key={pay.payment_id} className="flex items-center justify-between gap-2 py-3 first:pt-0 last:pb-0">
-                      <div>
-                        <p className="text-sm font-semibold tabular-nums text-foreground">
-                          {formatPHP(pay.amount_php)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {pay.payment_method} &middot; {formatManilaDate(pay.payment_date)}
-                        </p>
+                <ScrollableList
+                  regionLabel="Payments for this visit"
+                  maxHeightClassName="max-h-72"
+                  className="pr-1"
+                >
+                  <div className="divide-y divide-dashed divide-border">
+                    {payments.map((pay) => (
+                      <div key={pay.payment_id} className="flex items-center justify-between gap-2 py-3 first:pt-0 last:pb-0">
+                        <div>
+                          <p className="text-sm font-semibold tabular-nums text-foreground">
+                            {formatPHP(pay.amount_php)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {pay.payment_method} &middot; {formatManilaDate(pay.payment_date)}
+                          </p>
+                        </div>
+                        <StatusBadge status={pay.payment_status} audience="customer" />
                       </div>
-                      <StatusBadge status={pay.payment_status} audience="customer" />
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                </ScrollableList>
               )}
             </CardContent>
           </Card>

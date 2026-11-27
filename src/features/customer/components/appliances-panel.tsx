@@ -29,6 +29,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { FormBanner } from '@/components/shared/form-banner'
+import { ScrollableList } from '@/components/shared/scrollable-list'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { ApplianceIcon, ApplianceTypePicker } from '@/components/shared/appliance-icons'
 import {
@@ -207,8 +208,9 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
           description="Try searching another brand, appliance type, or model."
         />
       ) : (
-        <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((item) => (
+        <ScrollableList regionLabel="My appliances list" className="p-0.5 pr-1.5">
+          <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((item) => (
             <Card
               key={item.appliance_id}
               className="transition-colors hover:border-primary/40"
@@ -260,8 +262,9 @@ export function AppliancesPanel({ appliances, openAddByDefault = false }: Applia
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
+            ))}
+          </div>
+        </ScrollableList>
       )}
 
       {/* Progressive-Disclosure Appliance Detail Sheet */}
