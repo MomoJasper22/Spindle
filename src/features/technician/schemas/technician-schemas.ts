@@ -52,7 +52,7 @@ export type TechnicianPaymentInput = z.infer<typeof technicianPaymentSchema>
 
 export const technicianAppointmentActionSchema = z.object({
   appointment_id: z.string().trim().min(1),
-  appointment_status: z.enum(['confirmed', 'rescheduled']),
+  appointment_status: z.enum(['confirmed', 'rescheduled', 'completed']),
   scheduled_date: z
     .string()
     .trim()

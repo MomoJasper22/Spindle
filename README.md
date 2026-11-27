@@ -21,10 +21,11 @@
 - **Profile (`/customer/profile`)**: Update contact details, Philippine address, interactive focal-framed avatar (`ProfilePhotoField`), password, or deactivate account.
 
 ### Technician Portal (`/technician/*`)
-- **Dashboard (`/technician/dashboard`)**: Daily job KPIs, clickable today's visits & active job queue, and self-service availability status toggle (`available`, `busy`, `lunch`, `off_duty`) recorded in `technician_status_logs`.
-- **Jobs & Schedule (`/technician/jobs`)**: Unified chronological visit agenda and repair workbench (`Today`, `Active & Upcoming`, `Completed`, `All Jobs`), one-click **Start Job** (auto-confirming pending visit slots), inline visit rescheduling with slot-conflict checks, and slide-over diagnostic & billing drawer (`DiagnosticDrawer`) to log findings, update estimated/final PHP costs, transition status, and record cash/e-wallet collections. (`/technician/schedule` redirects to `/technician/jobs`.)
+- **Dashboard (`/technician/dashboard`)**: Daily job KPIs, active queue snapshot, upcoming schedule, and self-service availability status toggle (`available`, `busy`, `on_leave`) recorded in `technician_status_logs`.
+- **Assigned Jobs (`/technician/jobs`)**: Search/filter assigned repair tickets and slide-over diagnostic & billing workbench (`DiagnosticDrawer`) to log findings, update estimated/final PHP costs, transition status, and record cash/e-wallet collections.
+- **Schedule (`/technician/schedule`)**: Inspect upcoming home visits and reschedule/update visit status with slot-conflict checks.
 - **Collections (`/technician/collections`)**: Track collected and verified payments per ticket.
-- **Profile (`/technician/profile`)**: Manage avatar focal framing, nickname, password, and inspect locked certification/specialization profile details.
+- **Profile (`/technician/profile`)**: Manage avatar focal framing, password, and inspect locked certification/specialization profile details.
 
 ### Operations Admin Portal (`/admin/*`)
 Granular RBAC controlled via `users.admin_permissions`: **Super Admins** (`null`) can access every module; **Limited Admins** (`string[]` matching `ADMIN_FEATURES`) see and route exclusively within their granted modules.
@@ -75,7 +76,7 @@ src/
 │   ├── auth/                       # Login/signup/password/avatar forms, schemas & actions
 │   ├── onboarding/                 # Onboarding form, dynamic role schema & action
 │   ├── customer/                   # Home, appliances, bookings, payments, profile modules
-│   ├── technician/                 # Overview, unified jobs & schedule, diagnostic drawer, collections
+│   ├── technician/                 # Overview, pipeline, diagnostic drawer, schedule, collections
 │   └── admin/                      # Executive summary, repairs, dispatch, payments,
 │                                   # technicians, productivity sheet, appliances, users
 ├── lib/

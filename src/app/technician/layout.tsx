@@ -6,7 +6,8 @@ import { PageSkeleton } from '@/components/shared/page-skeleton'
 
 const TECHNICIAN_NAV: PortalNavItem[] = [
   { label: 'Overview', mobileLabel: 'Overview', href: '/technician/dashboard', icon: 'dashboard' },
-  { label: 'Jobs & Schedule', mobileLabel: 'Jobs', href: '/technician/jobs', icon: 'wrench' },
+  { label: 'Assigned Jobs', mobileLabel: 'Jobs', href: '/technician/jobs', icon: 'wrench' },
+  { label: 'Schedule & Agenda', mobileLabel: 'Schedule', href: '/technician/schedule', icon: 'calendar' },
   { label: 'Field Collections', mobileLabel: 'Payments', href: '/technician/collections', icon: 'payments' },
 ]
 

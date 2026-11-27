@@ -61,22 +61,14 @@ export async function updateTechnicianRepairAction(
   }
 
   const supabase = await createClient()
-  const { data: existingRepair, error: fetchError } = await supabase
+  const { data: existingRepair } = await supabase
     .from('v_repair_details')
-    .select('ticket_id, status, completed_at, verified_paid_php')
+    .select('completed_at, verified_paid_php')
     .eq('ticket_id', parsed.data.ticket_id)
     .eq('technician_id', profile.user_id)
     .maybeSingle()
 
-  if (fetchError || !existingRepair) {
-    return { success: false, error: 'Assigned repair ticket not found.' }
-  }
-
-  if (existingRepair.status === 'cancelled') {
-    return { success: false, error: 'Cancelled tickets cannot be updated.' }
-  }
-
-  const verifiedPaidPhp = Number(existingRepair.verified_paid_php ?? 0)
+  const verifiedPaidPhp = Number(existingRepair?.verified_paid_php ?? 0)
   const finalCostPhp = parsed.data.final_cost_php
   const autoCompletedFromDeposit =
     parsed.data.status === 'awaiting_payment' &&
@@ -87,7 +79,7 @@ export async function updateTechnicianRepairAction(
   const resolvedStatus = autoCompletedFromDeposit ? 'completed' : parsed.data.status
   const completedAt =
     resolvedStatus === 'completed'
-      ? (existingRepair.completed_at ?? new Date().toISOString())
+      ? (existingRepair?.completed_at ?? new Date().toISOString())
       : null
 
   const { error } = await supabase
@@ -106,7 +98,6 @@ export async function updateTechnicianRepairAction(
     return { success: false, error: error.message }
   }
 
-  // Keep linked visit appointment synchronized with repair progression
   if (resolvedStatus === 'completed') {
     await supabase
       .from('appointments')
@@ -114,13 +105,6 @@ export async function updateTechnicianRepairAction(
       .eq('ticket_id', parsed.data.ticket_id)
       .eq('technician_id', profile.user_id)
       .in('appointment_status', ['requested', 'confirmed', 'rescheduled'])
-  } else if (resolvedStatus === 'in_progress' || resolvedStatus === 'awaiting_payment') {
-    await supabase
-      .from('appointments')
-      .update({ appointment_status: 'confirmed' })
-      .eq('ticket_id', parsed.data.ticket_id)
-      .eq('technician_id', profile.user_id)
-      .in('appointment_status', ['requested', 'rescheduled'])
   }
 
   await supabase.from('activity_logs').insert({
@@ -137,65 +121,6 @@ export async function updateTechnicianRepairAction(
     message: autoCompletedFromDeposit
       ? `Final cost is already covered by verified payments — ticket ${parsed.data.ticket_id} marked Completed!`
       : `Ticket ${parsed.data.ticket_id} updated successfully.`,
-  }
-}
-
-export async function startTechnicianJobAction(ticketId: string): Promise<TechActionResult> {
-  const profile = await requireRole('technician')
-  const cleanId = ticketId.trim()
-  if (!cleanId) {
-    return { success: false, error: 'Missing ticket ID.' }
-  }
-
-  const supabase = await createClient()
-  const { data: repair, error: fetchError } = await supabase
-    .from('repair')
-    .select('ticket_id, status')
-    .eq('ticket_id', cleanId)
-    .eq('technician_id', profile.user_id)
-    .maybeSingle()
-
-  if (fetchError || !repair) {
-    return { success: false, error: 'Assigned repair ticket not found.' }
-  }
-
-  if (['completed', 'cancelled'].includes(repair.status)) {
-    return { success: false, error: 'Completed or cancelled jobs cannot be restarted.' }
-  }
-
-  if (repair.status === 'in_progress') {
-    return { success: true, message: `Job ${cleanId} is already in progress.` }
-  }
-
-  const { error } = await supabase
-    .from('repair')
-    .update({ status: 'in_progress' })
-    .eq('ticket_id', cleanId)
-    .eq('technician_id', profile.user_id)
-
-  if (error) {
-    return { success: false, error: error.message }
-  }
-
-  await supabase
-    .from('appointments')
-    .update({ appointment_status: 'confirmed' })
-    .eq('ticket_id', cleanId)
-    .eq('technician_id', profile.user_id)
-    .in('appointment_status', ['requested', 'rescheduled'])
-
-  await supabase.from('activity_logs').insert({
-    actor_id: profile.user_id,
-    entity_type: 'repair',
-    entity_id: cleanId,
-    action: 'repair_started_by_tech',
-    description: `Technician ${profile.first_name} ${profile.last_name} started work on ${cleanId}.`,
-  })
-
-  revalidateTechPortals()
-  return {
-    success: true,
-    message: `Job ${cleanId} started and visit slot confirmed.`,
   }
 }
 
@@ -294,17 +219,6 @@ export async function updateTechnicianAppointmentAction(
     return { success: false, error: 'Completed or cancelled appointments cannot be modified.' }
   }
 
-  const { data: repair } = await supabase
-    .from('repair')
-    .select('status')
-    .eq('ticket_id', apt.ticket_id)
-    .eq('technician_id', profile.user_id)
-    .maybeSingle()
-
-  if (repair && ['completed', 'cancelled'].includes(repair.status)) {
-    return { success: false, error: 'Visits for completed or cancelled jobs cannot be rescheduled.' }
-  }
-
   if (parsed.data.appointment_status === 'rescheduled') {
     if (parsed.data.scheduled_date < getManilaTodayISO()) {
       return { success: false, error: 'Rescheduled date cannot be in the past.' }
@@ -348,12 +262,6 @@ export async function updateTechnicianAppointmentAction(
       .update({ scheduled_date: parsed.data.scheduled_date })
       .eq('ticket_id', apt.ticket_id)
       .eq('technician_id', profile.user_id)
-  } else if (parsed.data.appointment_status === 'confirmed' && repair?.status === 'pending') {
-    await supabase
-      .from('repair')
-      .update({ status: 'assigned' })
-      .eq('ticket_id', apt.ticket_id)
-      .eq('technician_id', profile.user_id)
   }
 
   await supabase.from('activity_logs').insert({
@@ -361,16 +269,13 @@ export async function updateTechnicianAppointmentAction(
     entity_type: 'appointment',
     entity_id: apt.appointment_id,
     action: `appointment_${parsed.data.appointment_status}`,
-    description: `Technician updated visit ${apt.appointment_id} (${apt.ticket_id}) to ${parsed.data.appointment_status} (${parsed.data.scheduled_date} · ${parsed.data.time_slot}).`,
+    description: `Technician updated appointment ${apt.appointment_id} to ${parsed.data.appointment_status} (${parsed.data.scheduled_date} · ${parsed.data.time_slot}).`,
   })
 
   revalidateTechPortals()
   return {
     success: true,
-    message:
-      parsed.data.appointment_status === 'confirmed'
-        ? `Visit slot for ${apt.ticket_id} confirmed.`
-        : `Visit for ${apt.ticket_id} rescheduled to ${parsed.data.scheduled_date} (${parsed.data.time_slot}).`,
+    message: `Appointment ${apt.appointment_id} marked ${parsed.data.appointment_status}.`,
   }
 }
 
