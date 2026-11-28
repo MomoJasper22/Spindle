@@ -44,13 +44,24 @@ import {
   updateApplianceAction,
 } from '../actions/customer-actions'
 import { applianceSchema, type ApplianceInput } from '../schemas/customer-schemas'
+import { seedCustomerCache } from '../lib/customer-portal-cache'
 
 interface AppliancesPanelProps {
+  customerId?: string
   appliances: CustomerApplianceRow[]
   openAddByDefault?: boolean
 }
 
-export function AppliancesPanel({ appliances, openAddByDefault = false }: AppliancesPanelProps) {
+export function AppliancesPanel({
+  customerId,
+  appliances,
+  openAddByDefault = false,
+}: AppliancesPanelProps) {
+  React.useEffect(() => {
+    if (customerId) {
+      seedCustomerCache({ customerId, appliances })
+    }
+  }, [customerId, appliances])
   const [search, setSearch] = React.useState('')
   const [dialogOpen, setDialogOpen] = React.useState(openAddByDefault)
   const [selectedAppliance, setSelectedAppliance] = React.useState<CustomerApplianceRow | null>(null)

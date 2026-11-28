@@ -8,7 +8,7 @@ import {
 } from '@/lib/data/portal-data'
 import { formatAddress } from '@/lib/formatters'
 import { RepairsPanel } from '@/features/customer/components/repairs-panel'
-import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
+import { CustomerBookingsFallback } from '@/features/customer/components/customer-cached-fallbacks'
 
 export const metadata: Metadata = {
   title: 'My Bookings',
@@ -69,6 +69,7 @@ async function CustomerBookingsContent({
   return (
     <RepairsPanel
       key={`${params.book ?? ''}:${params.appliance ?? ''}:${params.payment_success ?? ''}:${params.payment_cancelled ?? ''}`}
+      customerId={profile.user_id}
       appliances={appliances}
       repairs={repairs}
       appointments={appointments}
@@ -94,7 +95,7 @@ export default function CustomerBookingsPage({
   }>
 }) {
   return (
-    <Suspense fallback={<PortalContentSkeleton />}>
+    <Suspense fallback={<CustomerBookingsFallback />}>
       <CustomerBookingsContent searchParams={searchParams} />
     </Suspense>
   )

@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import Link from 'next/link'
+import Link, { useLinkStatus } from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   CalendarClock,
@@ -84,6 +84,17 @@ const ROLE_LABELS: Partial<Record<UserRole, string>> = {
   admin: 'Operations Admin',
 }
 
+function TechNavPendingDot({ enabled }: { enabled: boolean }) {
+  const { pending } = useLinkStatus()
+  if (!enabled || !pending) return null
+  return (
+    <span
+      aria-hidden="true"
+      className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-teal-300 animate-pulse"
+    />
+  )
+}
+
 export function PortalShell({
   role,
   roleBadgeLabel,
@@ -98,10 +109,27 @@ export function PortalShell({
 }: PortalShellProps) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = React.useState(false)
+  const [pendingHref, setPendingHref] = React.useState<string | null>(null)
+  const isTechnician = role === 'technician'
+  const linkPrefetch = isTechnician ? true : undefined
   const roleLabel = roleBadgeLabel ?? ROLE_LABELS[role]
 
+  React.useEffect(() => {
+    setPendingHref(null)
+  }, [pathname])
+
   function isLinkActive(href: string) {
+    if (isTechnician && pendingHref) {
+      return pendingHref === href
+    }
     return pathname === href || pathname.startsWith(`${href}/`)
+  }
+
+  function handleNavClick(href: string, onNavigate?: () => void) {
+    if (isTechnician && pathname !== href) {
+      setPendingHref(href)
+    }
+    onNavigate?.()
   }
 
   const profileActive = isLinkActive(profileHref)
@@ -129,7 +157,8 @@ export function PortalShell({
             <Link
               key={item.href}
               href={item.href}
-              onClick={onNavigate}
+              prefetch={linkPrefetch}
+              onClick={() => handleNavClick(item.href, onNavigate)}
               aria-current={active ? 'page' : undefined}
               className={cn(
                 'flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors',
@@ -140,6 +169,7 @@ export function PortalShell({
             >
               <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="truncate">{item.label}</span>
+              <TechNavPendingDot enabled={isTechnician} />
             </Link>
           )
         })}
@@ -152,7 +182,8 @@ export function PortalShell({
       <div className="border-t border-slate-800 p-3">
         <Link
           href={profileHref}
-          onClick={onNavigate}
+          prefetch={linkPrefetch}
+          onClick={() => handleNavClick(profileHref, onNavigate)}
           aria-current={profileActive ? 'page' : undefined}
           aria-label="Open your profile and settings"
           className={cn(
@@ -193,7 +224,14 @@ export function PortalShell({
       {/* Desktop Sidebar (Deep Ink-Navy #141B29) */}
       <aside className="hidden lg:flex lg:w-64 lg:shrink-0 lg:flex-col lg:sticky lg:top-0 lg:h-dvh bg-sidebar text-sidebar-foreground border-r border-slate-800">
         <div className="flex items-center justify-between px-5 py-5 border-b border-slate-800">
-          <Link href={navItems[0]?.href ?? '/'} aria-label="Spindle workspace home">
+          <Link
+            href={navItems[0]?.href ?? '/'}
+            prefetch={linkPrefetch}
+            onClick={() => {
+              if (navItems[0]?.href) handleNavClick(navItems[0].href)
+            }}
+            aria-label="Spindle workspace home"
+          >
             <SpindleLogo variant="light" showTagline />
           </Link>
         </div>
@@ -236,13 +274,21 @@ export function PortalShell({
               {renderUserFooter(() => setMobileOpen(false))}
             </SheetContent>
           </Sheet>
-          <Link href={navItems[0]?.href ?? '/'}>
+          <Link
+            href={navItems[0]?.href ?? '/'}
+            prefetch={linkPrefetch}
+            onClick={() => {
+              if (navItems[0]?.href) handleNavClick(navItems[0].href)
+            }}
+          >
             <SpindleLogo variant="dark" size="sm" />
           </Link>
         </div>
 
         <Link
           href={profileHref}
+          prefetch={linkPrefetch}
+          onClick={() => handleNavClick(profileHref)}
           aria-label="Open your profile and settings"
           className="inline-flex items-center gap-2 rounded-full border border-border bg-card py-1 pl-1 pr-2.5 text-xs font-semibold text-foreground hover:bg-muted"
         >
@@ -281,6 +327,8 @@ export function PortalShell({
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={linkPrefetch}
+                onClick={() => handleNavClick(item.href)}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'relative flex min-h-[54px] flex-col items-center justify-center gap-1 px-1 py-1.5 text-[11px] font-semibold transition-colors',

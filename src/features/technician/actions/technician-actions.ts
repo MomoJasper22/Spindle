@@ -51,27 +51,39 @@ function generateCheckoutSessionId(): string {
   return `CHK-${crypto.randomBytes(4).toString('hex').toUpperCase()}`
 }
 
-function revalidateTechPortals(extraTags: string[] = []) {
-  const tags = new Set([
-    'technician-repairs',
-    'technician-appointments',
-    'technician-payments',
-    'technician-activity',
+function revalidateTechPortals(options: {
+  techId: string
+  customerId?: string | null
+  includePayments?: boolean
+  extraTags?: string[]
+  revalidateTechLayout?: boolean
+}) {
+  const { techId, customerId, includePayments = false, extraTags = [], revalidateTechLayout = false } = options
+  const tags = new Set<string>([
+    `technician-repairs:${techId}`,
+    `technician-appointments:${techId}`,
+    `technician-activity:${techId}`,
     'admin-repairs',
     'admin-appointments',
-    'admin-payments',
     'admin-activity',
-    'customer-repairs',
-    'customer-appointments',
-    'customer-payments',
-    'customer-activity',
+    customerId ? `customer-repairs:${customerId}` : 'customer-repairs',
+    customerId ? `customer-appointments:${customerId}` : 'customer-appointments',
+    customerId ? `customer-activity:${customerId}` : 'customer-activity',
     ...extraTags,
   ])
+
+  if (includePayments) {
+    tags.add(`technician-payments:${techId}`)
+    tags.add('admin-payments')
+    tags.add(customerId ? `customer-payments:${customerId}` : 'customer-payments')
+  }
+
   for (const tag of tags) {
     updateTag(tag)
   }
-  revalidatePath('/technician', 'layout')
-  revalidatePath('/customer', 'layout')
+  if (revalidateTechLayout) {
+    revalidatePath('/technician', 'layout')
+  }
   revalidatePath('/admin', 'layout')
 }
 
@@ -141,7 +153,7 @@ export async function updateTechnicianRepairAction(
   const supabase = await createClient()
   const { data: existingRepair } = await supabase
     .from('v_repair_details')
-    .select('completed_at, estimated_cost_php, verified_paid_php, pending_paid_php')
+    .select('customer_id, completed_at, estimated_cost_php, verified_paid_php, pending_paid_php')
     .eq('ticket_id', parsed.data.ticket_id)
     .eq('technician_id', profile.user_id)
     .maybeSingle()
@@ -217,7 +229,10 @@ export async function updateTechnicianRepairAction(
     description: `Technician ${profile.first_name} ${profile.last_name} updated ${parsed.data.ticket_id} to ${resolvedStatus.replace('_', ' ')}.`,
   })
 
-  revalidateTechPortals()
+  revalidateTechPortals({
+    techId: profile.user_id,
+    customerId: existingRepair.customer_id,
+  })
   return {
     success: true,
     message: autoCompletedFromDeposit
@@ -322,7 +337,11 @@ export async function recordOnsitePaymentAction(
       .eq('status', 'awaiting_payment')
   }
 
-  revalidateTechPortals()
+  revalidateTechPortals({
+    techId: profile.user_id,
+    customerId: (repairRow as RepairDetailView).customer_id,
+    includePayments: true,
+  })
   return {
     success: true,
     message: 'On-site payment recorded and queued for admin verification.',
@@ -345,7 +364,7 @@ export async function createTechnicianPayMongoCheckoutAction(
   const supabase = await createClient()
   const { data: initialRepair } = await supabase
     .from('v_repair_details')
-    .select('ticket_id')
+    .select('ticket_id, customer_id')
     .eq('ticket_id', parsed.data.ticket_id)
     .eq('technician_id', profile.user_id)
     .maybeSingle()
@@ -356,7 +375,11 @@ export async function createTechnicianPayMongoCheckoutAction(
 
   const { finalizedCount, openSessions } = await syncPaidOpenCheckoutSessions(parsed.data.ticket_id)
   if (finalizedCount > 0) {
-    revalidateTechPortals()
+    revalidateTechPortals({
+      techId: profile.user_id,
+      customerId: initialRepair.customer_id,
+      includePayments: true,
+    })
   }
 
   const { data: repairRow } = await supabase
@@ -491,7 +514,7 @@ export async function verifyTechnicianPayMongoCheckoutAction(
 
   const { data: repair } = await supabase
     .from('v_repair_details')
-    .select('ticket_id')
+    .select('ticket_id, customer_id')
     .eq('ticket_id', ticketId)
     .eq('technician_id', profile.user_id)
     .maybeSingle()
@@ -503,7 +526,11 @@ export async function verifyTechnicianPayMongoCheckoutAction(
   const { finalizedCount, openSessions } = await syncPaidOpenCheckoutSessions(ticketId)
 
   if (finalizedCount > 0) {
-    revalidateTechPortals()
+    revalidateTechPortals({
+      techId: profile.user_id,
+      customerId: repair.customer_id,
+      includePayments: true,
+    })
     return {
       success: true,
       message: 'PayMongo payment verified and applied to this ticket.',
@@ -539,7 +566,7 @@ export async function updateTechnicianAppointmentAction(
   const supabase = await createClient()
   const { data: apt, error: fetchError } = await supabase
     .from('appointments')
-    .select('appointment_id, ticket_id, appointment_status, scheduled_date, time_slot')
+    .select('appointment_id, ticket_id, customer_id, appointment_status, scheduled_date, time_slot')
     .eq('appointment_id', parsed.data.appointment_id)
     .eq('technician_id', profile.user_id)
     .single()
@@ -636,7 +663,10 @@ export async function updateTechnicianAppointmentAction(
     description: `Technician updated appointment ${apt.appointment_id} to ${parsed.data.appointment_status} (${parsed.data.scheduled_date} · ${parsed.data.time_slot}).`,
   })
 
-  revalidateTechPortals()
+  revalidateTechPortals({
+    techId: profile.user_id,
+    customerId: apt.customer_id,
+  })
   return {
     success: true,
     message: `Visit ${apt.appointment_id} marked ${parsed.data.appointment_status}.`,
@@ -678,12 +708,12 @@ export async function updateTechnicianNicknameAction(
       : 'Technician cleared their display nickname.',
   })
 
-  revalidateTechPortals([
-    'user-profile',
-    'admin-users',
-    'admin-tech-profiles',
-    'admin-status-logs',
-  ])
+  updateTag(profile.auth_user_id ? `user-profile:${profile.auth_user_id}` : 'user-profile')
+  updateTag(`technician-activity:${profile.user_id}`)
+  updateTag('admin-users')
+  updateTag('admin-tech-profiles')
+  updateTag('admin-status-logs')
+  revalidatePath('/technician', 'layout')
   return { success: true, message: 'Nickname saved.' }
 }
 
@@ -735,11 +765,10 @@ export async function updateTechnicianAvailabilityAction(
     })
   }
 
-  revalidateTechPortals([
-    'user-profile',
-    'admin-tech-profiles',
-    'admin-status-logs',
-  ])
+  updateTag(profile.auth_user_id ? `user-profile:${profile.auth_user_id}` : 'user-profile')
+  updateTag(`technician-activity:${profile.user_id}`)
+  updateTag('admin-tech-profiles')
+  updateTag('admin-status-logs')
   return {
     success: true,
     message: `Status updated to ${getTechAvailabilityLabel(nextStatus)}.`,

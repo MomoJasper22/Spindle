@@ -34,6 +34,7 @@ import {
 import { buildTechnicianJobItems, type TechnicianJobItem } from '../lib/technician-jobs'
 import { TechnicianAvailabilityControl } from './technician-availability-control'
 import { TechnicianKpiCards } from './technician-kpi-cards'
+import { seedTechnicianCache } from '../lib/technician-portal-cache'
 
 const JobWorkbenchDrawer = dynamic(
   () => import('./diagnostic-drawer').then((m) => m.JobWorkbenchDrawer),
@@ -41,6 +42,7 @@ const JobWorkbenchDrawer = dynamic(
 )
 
 interface TechnicianOverviewViewProps {
+  techId?: string
   techDisplayName: string
   availabilityStatus: TechAvailabilityStatus
   repairs: RepairDetailView[]
@@ -50,6 +52,7 @@ interface TechnicianOverviewViewProps {
 }
 
 export function TechnicianOverviewView({
+  techId,
   techDisplayName,
   availabilityStatus,
   repairs,
@@ -57,6 +60,19 @@ export function TechnicianOverviewView({
   payments,
   activityLogs,
 }: TechnicianOverviewViewProps) {
+  React.useEffect(() => {
+    if (techId) {
+      seedTechnicianCache({
+        techId,
+        techDisplayName,
+        availabilityStatus,
+        repairs,
+        appointments,
+        payments,
+        activityLogs,
+      })
+    }
+  }, [techId, techDisplayName, availabilityStatus, repairs, appointments, payments, activityLogs])
   const [selectedTicketId, setSelectedTicketId] = React.useState<string | null>(null)
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
     null
@@ -161,7 +177,7 @@ export function TechnicianOverviewView({
               <CardDescription>Tap a visit to log diagnostics, pricing, or payment</CardDescription>
             </div>
             <Button asChild variant="ghost" size="sm">
-              <Link href="/technician/jobs?tab=today">
+              <Link href="/technician/jobs?tab=today" prefetch={true}>
                 <span>All Today</span>
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               </Link>
@@ -290,7 +306,7 @@ export function TechnicianOverviewView({
               <CardDescription>Upcoming visits and open tickets outside today</CardDescription>
             </div>
             <Button asChild variant="ghost" size="sm">
-              <Link href="/technician/jobs">
+              <Link href="/technician/jobs" prefetch={true}>
                 <span>All Jobs</span>
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               </Link>

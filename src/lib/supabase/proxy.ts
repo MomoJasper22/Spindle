@@ -39,10 +39,9 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   }
 
   const pathname = request.nextUrl.pathname
-  const isProtectedRoleRoute =
-    pathname.startsWith('/customer') ||
-    pathname.startsWith('/technician') ||
-    pathname.startsWith('/admin')
+  const isCustomerOrTechRoute =
+    pathname.startsWith('/customer') || pathname.startsWith('/technician')
+  const isProtectedRoleRoute = isCustomerOrTechRoute || pathname.startsWith('/admin')
   const isOnboardingRoute = pathname.startsWith('/onboarding')
   const isAuthRoute = pathname === '/login' || pathname === '/signup'
 
@@ -73,16 +72,30 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     },
   })
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Verify JWT locally via getClaims() to avoid an Auth HTTP round-trip on every navigation/prefetch;
+  // fall back to getUser() only when local verification fails or a refresh is needed.
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+  let authUserId = claimsData?.claims?.sub ?? null
 
-  if (!user) {
+  if (claimsError || !authUserId) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    authUserId = user?.id ?? null
+  }
+
+  if (!authUserId) {
     if (isProtectedRoleRoute || isOnboardingRoute) {
       const loginUrl = new URL('/login', request.url)
       loginUrl.searchParams.set('next', pathname)
       return redirectWithCookies(loginUrl, supabaseResponse)
     }
+    return supabaseResponse
+  }
+
+  // Customer and Technician layouts/pages enforce role, onboarding, and active status
+  // via the privately cached requireRole() helper, so skip the extra DB round-trip here.
+  if (isCustomerOrTechRoute) {
     return supabaseResponse
   }
 
@@ -93,7 +106,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   const { data: profile } = await supabase
     .from('users')
     .select('user_id, is_onboarded, is_active, admin_permissions, user_types(type_name)')
-    .eq('auth_user_id', user.id)
+    .eq('auth_user_id', authUserId)
     .maybeSingle()
 
   const rawUserTypes = profile?.user_types as unknown

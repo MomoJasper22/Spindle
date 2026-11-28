@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import { requireRole } from '@/lib/auth/session'
 import { getCustomerPayments, getCustomerRepairs } from '@/lib/data/portal-data'
 import { PaymentsPanel } from '@/features/customer/components/payments-panel'
-import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
+import { CustomerPaymentsFallback } from '@/features/customer/components/customer-cached-fallbacks'
 
 export const metadata: Metadata = {
   title: 'My Payments',
@@ -47,6 +47,7 @@ async function CustomerPaymentsContent({
   return (
     <PaymentsPanel
       key={`${params.ticket ?? 'list'}:${params.payment_success ?? ''}:${params.payment_cancelled ?? ''}`}
+      customerId={profile.user_id}
       repairs={repairs}
       payments={payments}
       defaultTicketId={params.ticket}
@@ -66,7 +67,7 @@ export default function CustomerPaymentsPage({
   }>
 }) {
   return (
-    <Suspense fallback={<PortalContentSkeleton />}>
+    <Suspense fallback={<CustomerPaymentsFallback />}>
       <CustomerPaymentsContent searchParams={searchParams} />
     </Suspense>
   )

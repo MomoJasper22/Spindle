@@ -1,5 +1,5 @@
-import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
+import { CustomerRouteFallback } from '@/features/customer/components/customer-cached-fallbacks'
 
 export default function CustomerLoading() {
-  return <PortalContentSkeleton />
+  return <CustomerRouteFallback />
 }

@@ -15,7 +15,7 @@ import type {
 const USER_PUBLIC_COLUMNS =
   'user_id, auth_user_id, first_name, last_name, middle_name, nickname, email, phone, user_type_id, branch_location, avatar_url, avatar_position, admin_permissions, address_street, address_barangay, address_city, address_province, address_zip_code, is_onboarded, is_active, created_at, updated_at, user_types(type_name, description)'
 
-const PORTAL_CACHE = { stale: 120, revalidate: 30, expire: 300 } as const
+const PORTAL_CACHE = { stale: 300, revalidate: 120, expire: 900 } as const
 
 // ---------------------------------------------------------------------------
 // Customer Portal Queries
@@ -23,7 +23,7 @@ const PORTAL_CACHE = { stale: 120, revalidate: 30, expire: 300 } as const
 
 export async function getCustomerAppliances(customerId: string): Promise<CustomerApplianceRow[]> {
   'use cache: private'
-  cacheTag('customer-appliances')
+  cacheTag('customer-appliances', `customer-appliances:${customerId}`)
   cacheLife(PORTAL_CACHE)
 
   const supabase = await createClient()
@@ -38,7 +38,7 @@ export async function getCustomerAppliances(customerId: string): Promise<Custome
 
 export async function getCustomerRepairs(customerId: string): Promise<RepairDetailView[]> {
   'use cache: private'
-  cacheTag('customer-repairs')
+  cacheTag('customer-repairs', `customer-repairs:${customerId}`)
   cacheLife(PORTAL_CACHE)
 
   const supabase = await createClient()
@@ -53,7 +53,7 @@ export async function getCustomerRepairs(customerId: string): Promise<RepairDeta
 
 export async function getCustomerAppointments(customerId: string): Promise<AppointmentDetailView[]> {
   'use cache: private'
-  cacheTag('customer-appointments')
+  cacheTag('customer-appointments', `customer-appointments:${customerId}`)
   cacheLife(PORTAL_CACHE)
 
   const supabase = await createClient()
@@ -68,7 +68,7 @@ export async function getCustomerAppointments(customerId: string): Promise<Appoi
 
 export async function getCustomerPayments(customerId: string): Promise<PaymentDetailView[]> {
   'use cache: private'
-  cacheTag('customer-payments')
+  cacheTag('customer-payments', `customer-payments:${customerId}`)
   cacheLife(PORTAL_CACHE)
 
   const supabase = await createClient()
@@ -81,9 +81,12 @@ export async function getCustomerPayments(customerId: string): Promise<PaymentDe
   return (data ?? []) as PaymentDetailView[]
 }
 
-export async function getCustomerActivityLogs(limit = 5): Promise<ActivityLogRow[]> {
+export async function getCustomerActivityLogs(
+  customerId: string,
+  limit = 5
+): Promise<ActivityLogRow[]> {
   'use cache: private'
-  cacheTag('customer-activity')
+  cacheTag('customer-activity', `customer-activity:${customerId}`)
   cacheLife(PORTAL_CACHE)
 
   const supabase = await createClient()
@@ -105,7 +108,14 @@ export async function getCustomerBookingDetail(
   payments: PaymentDetailView[]
 }> {
   'use cache: private'
-  cacheTag('customer-repairs', 'customer-appointments', 'customer-payments')
+  cacheTag(
+    'customer-repairs',
+    'customer-appointments',
+    'customer-payments',
+    `customer-repairs:${customerId}`,
+    `customer-appointments:${customerId}`,
+    `customer-payments:${customerId}`
+  )
   cacheLife(PORTAL_CACHE)
 
   const supabase = await createClient()
@@ -145,7 +155,7 @@ export async function getCustomerBookingDetail(
 
 export async function getTechnicianRepairs(techId: string): Promise<RepairDetailView[]> {
   'use cache: private'
-  cacheTag('technician-repairs')
+  cacheTag('technician-repairs', `technician-repairs:${techId}`)
   cacheLife(PORTAL_CACHE)
 
   const supabase = await createClient()
@@ -160,7 +170,7 @@ export async function getTechnicianRepairs(techId: string): Promise<RepairDetail
 
 export async function getTechnicianAppointments(techId: string): Promise<AppointmentDetailView[]> {
   'use cache: private'
-  cacheTag('technician-appointments')
+  cacheTag('technician-appointments', `technician-appointments:${techId}`)
   cacheLife(PORTAL_CACHE)
 
   const supabase = await createClient()
@@ -173,9 +183,9 @@ export async function getTechnicianAppointments(techId: string): Promise<Appoint
   return (data ?? []) as AppointmentDetailView[]
 }
 
-export async function getTechnicianPayments(): Promise<PaymentDetailView[]> {
+export async function getTechnicianPayments(techId?: string): Promise<PaymentDetailView[]> {
   'use cache: private'
-  cacheTag('technician-payments')
+  cacheTag('technician-payments', ...(techId ? [`technician-payments:${techId}`] : []))
   cacheLife(PORTAL_CACHE)
 
   const supabase = await createClient()
@@ -187,9 +197,12 @@ export async function getTechnicianPayments(): Promise<PaymentDetailView[]> {
   return (data ?? []) as PaymentDetailView[]
 }
 
-export async function getTechnicianActivityLogs(limit = 10): Promise<ActivityLogRow[]> {
+export async function getTechnicianActivityLogs(
+  limit = 10,
+  techId?: string
+): Promise<ActivityLogRow[]> {
   'use cache: private'
-  cacheTag('technician-activity')
+  cacheTag('technician-activity', ...(techId ? [`technician-activity:${techId}`] : []))
   cacheLife(PORTAL_CACHE)
 
   const supabase = await createClient()

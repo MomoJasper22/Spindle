@@ -123,7 +123,7 @@ export function CustomerHomeView({
 
             <div className="flex sm:justify-end">
               <Button asChild variant="outline" className="w-full sm:w-auto">
-                <Link href={`/customer/bookings/${nextBooking.ticket_id}`}>
+                <Link href={`/customer/bookings/${nextBooking.ticket_id}`} prefetch={true}>
                   <span>View Details</span>
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
@@ -162,6 +162,7 @@ export function CustomerHomeView({
       <div className="grid gap-3.5 sm:grid-cols-3">
         <Link
           href="/customer/appliances"
+          prefetch={true}
           className="group rounded-2xl border border-border bg-card p-5 shadow-2xs transition-colors hover:border-primary/50"
         >
           <div className="flex items-center justify-between">
@@ -179,6 +180,7 @@ export function CustomerHomeView({
 
         <Link
           href="/customer/bookings"
+          prefetch={true}
           className="group rounded-2xl border border-border bg-card p-5 shadow-2xs transition-colors hover:border-primary/50"
         >
           <div className="flex items-center justify-between">
@@ -196,6 +198,7 @@ export function CustomerHomeView({
 
         <Link
           href="/customer/payments"
+          prefetch={true}
           className="group rounded-2xl border border-border bg-card p-5 shadow-2xs transition-colors hover:border-primary/50"
         >
           <div className="flex items-center justify-between">

@@ -32,22 +32,23 @@ export type FinalizePayMongoOutcome =
       reason: string
     }
 
-export function revalidatePaymentPortalTags() {
-  updateTag('customer-appliances')
-  updateTag('customer-repairs')
-  updateTag('customer-appointments')
-  updateTag('customer-payments')
-  updateTag('customer-activity')
-  updateTag('technician-repairs')
-  updateTag('technician-appointments')
-  updateTag('technician-payments')
-  updateTag('technician-activity')
+export function revalidatePaymentPortalTags(
+  customerId?: string | null,
+  technicianId?: string | null
+) {
+  updateTag(customerId ? `customer-appliances:${customerId}` : 'customer-appliances')
+  updateTag(customerId ? `customer-repairs:${customerId}` : 'customer-repairs')
+  updateTag(customerId ? `customer-appointments:${customerId}` : 'customer-appointments')
+  updateTag(customerId ? `customer-payments:${customerId}` : 'customer-payments')
+  updateTag(customerId ? `customer-activity:${customerId}` : 'customer-activity')
+  updateTag(technicianId ? `technician-repairs:${technicianId}` : 'technician-repairs')
+  updateTag(technicianId ? `technician-appointments:${technicianId}` : 'technician-appointments')
+  updateTag(technicianId ? `technician-payments:${technicianId}` : 'technician-payments')
+  updateTag(technicianId ? `technician-activity:${technicianId}` : 'technician-activity')
   updateTag('admin-repairs')
   updateTag('admin-appointments')
   updateTag('admin-payments')
   updateTag('admin-activity')
-  revalidatePath('/customer', 'layout')
-  revalidatePath('/technician', 'layout')
   revalidatePath('/admin', 'layout')
 }
 
@@ -122,7 +123,7 @@ export async function finalizePayMongoCheckoutSession(options: {
     }
 
     const row = Array.isArray(data) ? data[0] : data
-    revalidatePaymentPortalTags()
+    revalidatePaymentPortalTags(session.customer_id)
     return {
       finalized: true,
       alreadyFinalized: Boolean(row?.already_finalized),
@@ -145,7 +146,17 @@ export async function finalizePayMongoCheckoutSession(options: {
   }
 
   const row = Array.isArray(data) ? data[0] : data
-  revalidatePaymentPortalTags()
+  let technicianId: string | null = null
+  const resolvedTicketId = String(row?.ticket_id ?? session.ticket_id ?? '')
+  if (resolvedTicketId) {
+    const { data: repairRow } = await admin
+      .from('repair')
+      .select('technician_id')
+      .eq('ticket_id', resolvedTicketId)
+      .maybeSingle()
+    technicianId = (repairRow?.technician_id as string | null | undefined) ?? null
+  }
+  revalidatePaymentPortalTags(session.customer_id, technicianId)
   return {
     finalized: true,
     alreadyFinalized: Boolean(row?.already_finalized),

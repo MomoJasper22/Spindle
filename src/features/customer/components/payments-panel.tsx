@@ -34,8 +34,10 @@ import { cn } from '@/lib/utils'
 import type { PaymentDetailView, RepairDetailView } from '@/types/database'
 import { createTicketPaymentCheckoutAction } from '../actions/customer-actions'
 import { customerPaymentSchema, type CustomerPaymentInput } from '../schemas/customer-schemas'
+import { seedCustomerCache } from '../lib/customer-portal-cache'
 
 interface PaymentsPanelProps {
+  customerId?: string
   repairs: RepairDetailView[]
   payments: PaymentDetailView[]
   defaultTicketId?: string
@@ -43,11 +45,17 @@ interface PaymentsPanelProps {
 }
 
 export function PaymentsPanel({
+  customerId,
   repairs,
   payments,
   defaultTicketId,
   initialNotice = null,
 }: PaymentsPanelProps) {
+  React.useEffect(() => {
+    if (customerId) {
+      seedCustomerCache({ customerId, repairs, payments })
+    }
+  }, [customerId, repairs, payments])
   const billTickets = repairs.filter((r) => r.status !== 'cancelled')
   const payableTickets = billTickets.filter((r) => getTicketPaymentSummary(r).canAcceptOnlinePayment)
 

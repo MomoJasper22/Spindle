@@ -50,25 +50,25 @@ export type ActionResult<T = void> =
   | { success: true; message: string; data?: T }
   | { success: false; error: string }
 
-function revalidateCustomerPortal() {
-  updateTag('user-profile')
-  updateTag('customer-appliances')
-  updateTag('customer-repairs')
-  updateTag('customer-appointments')
-  updateTag('customer-payments')
-  updateTag('customer-activity')
-  updateTag('technician-repairs')
-  updateTag('technician-appointments')
-  updateTag('technician-payments')
-  updateTag('technician-activity')
+function revalidateCustomerApplianceTags(customerId: string) {
+  updateTag(`customer-appliances:${customerId}`)
+  updateTag(`customer-activity:${customerId}`)
   updateTag('admin-appliances')
+  updateTag('admin-activity')
+}
+
+function revalidateCustomerBookingTags(customerId: string, technicianId?: string | null) {
+  updateTag(`customer-repairs:${customerId}`)
+  updateTag(`customer-appointments:${customerId}`)
+  updateTag(`customer-activity:${customerId}`)
+  if (technicianId) {
+    updateTag(`technician-repairs:${technicianId}`)
+    updateTag(`technician-appointments:${technicianId}`)
+    updateTag(`technician-activity:${technicianId}`)
+  }
   updateTag('admin-repairs')
   updateTag('admin-appointments')
-  updateTag('admin-payments')
   updateTag('admin-activity')
-  revalidatePath('/customer', 'layout')
-  revalidatePath('/technician', 'layout')
-  revalidatePath('/admin', 'layout')
 }
 
 export async function createApplianceAction(input: ApplianceInput): Promise<ActionResult> {
@@ -124,7 +124,7 @@ export async function createApplianceAction(input: ApplianceInput): Promise<Acti
     description: `Added ${parsed.data.brand} ${parsed.data.category} (${parsed.data.model_number}).`,
   })
 
-  revalidateCustomerPortal()
+  revalidateCustomerApplianceTags(profile.user_id)
   return { success: true, message: 'Appliance saved to your account.' }
 }
 
@@ -178,7 +178,7 @@ export async function updateApplianceAction(
     description: `Updated ${parsed.data.brand} ${parsed.data.model_number}.`,
   })
 
-  revalidateCustomerPortal()
+  revalidateCustomerApplianceTags(profile.user_id)
   return { success: true, message: 'Appliance details updated.' }
 }
 
@@ -220,7 +220,7 @@ export async function deleteOrCancelApplianceAction(
       description: `Removed a saved appliance.`,
     })
 
-    revalidateCustomerPortal()
+    revalidateCustomerApplianceTags(profile.user_id)
     return { success: true, message: 'Appliance removed.' }
   }
 
@@ -242,7 +242,7 @@ export async function deleteOrCancelApplianceAction(
     description: `Marked an appliance as inactive.`,
   })
 
-  revalidateCustomerPortal()
+  revalidateCustomerApplianceTags(profile.user_id)
   return { success: true, message: 'Appliance marked as inactive.' }
 }
 
@@ -482,7 +482,7 @@ export async function rescheduleAppointmentAction(
     description: `Moved home visit to ${parsed.data.scheduled_date} (${parsed.data.time_slot}).`,
   })
 
-  revalidateCustomerPortal()
+  revalidateCustomerBookingTags(profile.user_id, appointment.technician_id)
   return { success: true, message: 'Visit schedule updated.' }
 }
 
@@ -492,7 +492,7 @@ export async function cancelRepairTicketAction(ticketId: string): Promise<Action
 
   const { data: repair, error: fetchError } = await supabase
     .from('repair')
-    .select('ticket_id, status')
+    .select('ticket_id, status, technician_id')
     .eq('ticket_id', ticketId)
     .eq('customer_id', profile.user_id)
     .single()
@@ -532,7 +532,7 @@ export async function cancelRepairTicketAction(ticketId: string): Promise<Action
     description: `Cancelled home visit booking.`,
   })
 
-  revalidateCustomerPortal()
+  revalidateCustomerBookingTags(profile.user_id, repair.technician_id)
   return { success: true, message: 'Your booking has been cancelled.' }
 }
 
@@ -732,7 +732,11 @@ export async function updateCustomerProfileAction(
     description: `Updated contact details and home address.`,
   })
 
-  revalidateCustomerPortal()
+  updateTag(profile.auth_user_id ? `user-profile:${profile.auth_user_id}` : 'user-profile')
+  updateTag(`customer-activity:${profile.user_id}`)
+  updateTag('admin-users')
+  updateTag('admin-activity')
+  revalidatePath('/customer', 'layout')
   return { success: true, message: 'Your profile details have been saved.' }
 }
 
@@ -757,7 +761,7 @@ export async function deactivateCustomerAccountAction(): Promise<ActionResult> {
     return { success: false, error: error.message }
   }
 
-  updateTag('user-profile')
+  updateTag(profile.auth_user_id ? `user-profile:${profile.auth_user_id}` : 'user-profile')
   updateTag('admin-users')
   await supabase.auth.signOut()
   redirect('/login?error=account_inactive')

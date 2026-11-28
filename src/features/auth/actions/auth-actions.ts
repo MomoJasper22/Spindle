@@ -63,7 +63,7 @@ export async function signInAction(input: LoginInput): Promise<AuthActionResult>
     ? profile.user_types[0]?.type_name
     : (profile.user_types as { type_name?: UserRole } | null)?.type_name
 
-  updateTag('user-profile')
+  updateTag(`user-profile:${authData.user.id}`)
 
   if (!profile.is_onboarded) {
     redirect('/onboarding')
@@ -174,17 +174,20 @@ export async function signUpAction(input: SignupInput): Promise<AuthActionResult
     redirect('/login')
   }
 
-  updateTag('user-profile')
+  updateTag(`user-profile:${authUserId}`)
   redirect('/onboarding')
 }
 
 export async function signOutAction(): Promise<void> {
   const supabase = await createClient()
+  let signedOutAuthUserId: string | null = null
 
   try {
     const {
       data: { user },
     } = await supabase.auth.getUser()
+
+    signedOutAuthUserId = user?.id ?? null
 
     if (user) {
       const admin = createAdminClient()
@@ -230,7 +233,7 @@ export async function signOutAction(): Promise<void> {
 
           updateTag('admin-tech-profiles')
           updateTag('admin-status-logs')
-          updateTag('technician-activity')
+          updateTag(`technician-activity:${profile.user_id}`)
         }
       }
     }
@@ -239,6 +242,6 @@ export async function signOutAction(): Promise<void> {
   }
 
   await supabase.auth.signOut()
-  updateTag('user-profile')
+  updateTag(signedOutAuthUserId ? `user-profile:${signedOutAuthUserId}` : 'user-profile')
   redirect('/login')
 }

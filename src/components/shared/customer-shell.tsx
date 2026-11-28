@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import Link from 'next/link'
+import Link, { useLinkStatus } from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   CalendarCheck,
@@ -16,7 +16,7 @@ import type { AvatarPosition } from '@/lib/avatar'
 import { cn } from '@/lib/utils'
 
 interface CustomerShellProps {
-  firstName: string
+  firstName?: string
   userName: string
   avatarUrl?: string | null
   avatarPosition?: AvatarPosition | null
@@ -30,17 +30,41 @@ const CUSTOMER_TABS = [
   { label: 'Payments', mobileLabel: 'Payments', href: '/customer/payments', icon: CreditCard },
 ] as const
 
+function NavLinkPendingDot() {
+  const { pending } = useLinkStatus()
+  if (!pending) return null
+  return (
+    <span
+      aria-hidden="true"
+      className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse"
+    />
+  )
+}
+
 export function CustomerShell({
-  firstName,
   userName,
   avatarUrl,
   avatarPosition,
   children,
 }: CustomerShellProps) {
   const pathname = usePathname()
+  const [pendingHref, setPendingHref] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    setPendingHref(null)
+  }, [pathname])
 
   function isActive(href: string) {
+    if (pendingHref) {
+      return pendingHref === href
+    }
     return pathname === href || pathname.startsWith(`${href}/`)
+  }
+
+  function handleNavClick(href: string) {
+    if (pathname !== href) {
+      setPendingHref(href)
+    }
   }
 
   const profileActive = isActive('/customer/profile')
@@ -50,7 +74,13 @@ export function CustomerShell({
       {/* Desktop Top Navigation (No Sidebar) */}
       <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur-xs">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <Link href="/customer/home" aria-label="Spindle Home" className="shrink-0">
+          <Link
+            href="/customer/home"
+            prefetch={true}
+            onClick={() => handleNavClick('/customer/home')}
+            aria-label="Spindle Home"
+            className="shrink-0"
+          >
             <SpindleLogo variant="dark" size="sm" />
           </Link>
 
@@ -62,6 +92,8 @@ export function CustomerShell({
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={true}
+                  onClick={() => handleNavClick(item.href)}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
                     'inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors',
@@ -72,6 +104,7 @@ export function CustomerShell({
                 >
                   <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
                   <span>{item.label}</span>
+                  <NavLinkPendingDot />
                 </Link>
               )
             })}
@@ -80,6 +113,8 @@ export function CustomerShell({
           <div className="flex items-center gap-2.5">
             <Link
               href="/customer/profile"
+              prefetch={true}
+              onClick={() => handleNavClick('/customer/profile')}
               aria-current={profileActive ? 'page' : undefined}
               aria-label="Open your profile and settings"
               className={cn(
@@ -95,7 +130,8 @@ export function CustomerShell({
                 name={userName}
                 size="sm"
               />
-              <span className="hidden sm:inline max-w-[120px] truncate">{firstName}</span>
+              <span className="hidden sm:inline max-w-[220px] truncate">{userName}</span>
+              <NavLinkPendingDot />
             </Link>
           </div>
         </div>
@@ -121,6 +157,8 @@ export function CustomerShell({
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={true}
+                onClick={() => handleNavClick(item.href)}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'relative flex min-h-[54px] flex-col items-center justify-center gap-1 px-1 py-1.5 text-[11px] font-semibold transition-colors',
@@ -141,6 +179,8 @@ export function CustomerShell({
 
           <Link
             href="/customer/profile"
+            prefetch={true}
+            onClick={() => handleNavClick('/customer/profile')}
             aria-current={profileActive ? 'page' : undefined}
             className={cn(
               'relative flex min-h-[54px] flex-col items-center justify-center gap-1 px-1 py-1.5 text-[11px] font-semibold transition-colors',

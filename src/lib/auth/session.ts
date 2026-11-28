@@ -57,27 +57,22 @@ export function getRoleHomePath(
   }
 }
 
-async function fetchCurrentUserProfile(): Promise<AuthenticatedUserProfile | null> {
+async function fetchUserProfileByAuthId(
+  authUserId: string,
+  metaAvatarPositionJson: string | null
+): Promise<AuthenticatedUserProfile | null> {
   'use cache: private'
-  cacheTag('user-profile')
-  cacheLife({ stale: 300, revalidate: 60, expire: 900 })
+  cacheTag('user-profile', `user-profile:${authUserId}`)
+  cacheLife({ stale: 300, revalidate: 120, expire: 900 })
 
   const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-
-  if (error || !user) {
-    return null
-  }
 
   const { data: profile } = await supabase
     .from('users')
     .select(
       'user_id, auth_user_id, first_name, last_name, middle_name, nickname, email, phone, user_type_id, branch_location, avatar_url, avatar_position, admin_permissions, address_street, address_barangay, address_city, address_province, address_zip_code, is_onboarded, is_active, created_at, updated_at, user_types(type_name)'
     )
-    .eq('auth_user_id', user.id)
+    .eq('auth_user_id', authUserId)
     .maybeSingle()
 
   if (!profile || !profile.is_active) {
@@ -107,8 +102,17 @@ async function fetchCurrentUserProfile(): Promise<AuthenticatedUserProfile | nul
   }
   void _ignored
 
+  let fallbackMetaPosition: unknown = null
+  if (!rest.avatar_position && metaAvatarPositionJson) {
+    try {
+      fallbackMetaPosition = JSON.parse(metaAvatarPositionJson)
+    } catch {
+      fallbackMetaPosition = null
+    }
+  }
+
   const avatarPosition = normalizeAvatarPosition(
-    rest.avatar_position ?? user.user_metadata?.avatar_position
+    rest.avatar_position ?? fallbackMetaPosition
   )
 
   return {
@@ -123,7 +127,32 @@ async function fetchCurrentUserProfile(): Promise<AuthenticatedUserProfile | nul
 }
 
 export const getCurrentUserProfile = cache(async (): Promise<AuthenticatedUserProfile | null> => {
-  return fetchCurrentUserProfile()
+  const supabase = await createClient()
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+
+  let authUserId = claimsData?.claims?.sub ?? null
+  const claimsUserMeta = claimsData?.claims?.user_metadata as Record<string, unknown> | undefined
+  let rawMetaPosition: unknown = claimsUserMeta?.avatar_position
+
+  if (claimsError || !authUserId) {
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser()
+
+    if (error || !user) {
+      return null
+    }
+    authUserId = user.id
+    rawMetaPosition = user.user_metadata?.avatar_position
+  }
+
+  const metaAvatarPositionJson =
+    rawMetaPosition && typeof rawMetaPosition === 'object'
+      ? JSON.stringify(rawMetaPosition)
+      : null
+
+  return fetchUserProfileByAuthId(authUserId, metaAvatarPositionJson)
 })
 
 export async function requireAuthenticatedUser(options?: {

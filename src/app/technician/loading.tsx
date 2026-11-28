@@ -1,5 +1,5 @@
-import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
+import { TechnicianRouteFallback } from '@/features/technician/components/technician-cached-fallbacks'
 
 export default function TechnicianLoading() {
-  return <PortalContentSkeleton />
+  return <TechnicianRouteFallback />
 }

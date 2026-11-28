@@ -31,12 +31,10 @@ function extractAvatarStoragePath(avatarUrl: string | null | undefined): string 
   return rawPath ? decodeURIComponent(rawPath) : null
 }
 
-function revalidateAllPortals() {
-  updateTag('user-profile')
+function revalidateAvatarPortals(role: 'customer' | 'technician' | 'admin', authUserId: string | null) {
+  updateTag(authUserId ? `user-profile:${authUserId}` : 'user-profile')
   updateTag('admin-users')
-  revalidatePath('/customer', 'layout')
-  revalidatePath('/technician', 'layout')
-  revalidatePath('/admin', 'layout')
+  revalidatePath(`/${role}`, 'layout')
 }
 
 async function persistAvatarPositionMetadata(
@@ -142,7 +140,7 @@ export async function uploadAvatarAction(formData: FormData): Promise<AvatarActi
     description: `${profile.first_name} ${profile.last_name} updated their profile photo.`,
   })
 
-  revalidateAllPortals()
+  revalidateAvatarPortals(profile.role, profile.auth_user_id)
   return {
     success: true,
     message: 'Profile photo updated.',
@@ -173,7 +171,7 @@ export async function updateAvatarPositionAction(
     }
   }
 
-  revalidateAllPortals()
+  revalidateAvatarPortals(profile.role, profile.auth_user_id)
   return {
     success: true,
     message: 'Photo position saved.',
@@ -217,7 +215,7 @@ export async function removeAvatarAction(): Promise<AvatarActionResult> {
     description: `${profile.first_name} ${profile.last_name} removed their profile photo.`,
   })
 
-  revalidateAllPortals()
+  revalidateAvatarPortals(profile.role, profile.auth_user_id)
   return {
     success: true,
     message: 'Profile photo removed.',

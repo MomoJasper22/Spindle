@@ -13,6 +13,7 @@ import { buildTechnicianJobItems } from '../lib/technician-jobs'
 import { PipelinePanel, type JobsTabKey } from './pipeline-panel'
 import { TechnicianAvailabilityControl } from './technician-availability-control'
 import type { WorkbenchSectionTab } from './diagnostic-drawer'
+import { seedTechnicianCache } from '../lib/technician-portal-cache'
 
 export type { JobsTabKey }
 
@@ -22,6 +23,7 @@ const JobWorkbenchDrawer = dynamic(
 )
 
 interface TechnicianJobsViewProps {
+  techId?: string
   availabilityStatus: TechAvailabilityStatus
   repairs: RepairDetailView[]
   appointments: AppointmentDetailView[]
@@ -33,6 +35,7 @@ interface TechnicianJobsViewProps {
 }
 
 export function TechnicianJobsView({
+  techId,
   availabilityStatus,
   repairs,
   appointments,
@@ -42,6 +45,17 @@ export function TechnicianJobsView({
   initialDrawerSection = 'work',
   initialNotice = null,
 }: TechnicianJobsViewProps) {
+  React.useEffect(() => {
+    if (techId) {
+      seedTechnicianCache({
+        techId,
+        availabilityStatus,
+        repairs,
+        appointments,
+        payments,
+      })
+    }
+  }, [techId, availabilityStatus, repairs, appointments, payments])
   const [activeTab, setActiveTab] = React.useState<JobsTabKey>(initialTab)
   const [selectedTicketId, setSelectedTicketId] = React.useState<string | null>(initialTicketId)
   const [drawerSection, setDrawerSection] =

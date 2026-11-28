@@ -8,7 +8,7 @@ import {
   getTechnicianRepairs,
 } from '@/lib/data/portal-data'
 import { TechnicianOverviewView } from '@/features/technician/components/technician-overview-view'
-import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
+import { TechnicianDashboardFallback } from '@/features/technician/components/technician-cached-fallbacks'
 import { formatTechnicianGreetingName } from '@/lib/formatters'
 
 export const metadata: Metadata = {
@@ -21,12 +21,13 @@ async function TechnicianDashboardContent() {
   const [repairs, appointments, payments, activityLogs] = await Promise.all([
     getTechnicianRepairs(profile.user_id),
     getTechnicianAppointments(profile.user_id),
-    getTechnicianPayments(),
-    getTechnicianActivityLogs(8),
+    getTechnicianPayments(profile.user_id),
+    getTechnicianActivityLogs(8, profile.user_id),
   ])
 
   return (
     <TechnicianOverviewView
+      techId={profile.user_id}
       techDisplayName={formatTechnicianGreetingName(profile)}
       availabilityStatus={profile.technician_profile?.availability_status ?? 'available'}
       repairs={repairs}
@@ -39,7 +40,7 @@ async function TechnicianDashboardContent() {
 
 export default function TechnicianDashboardPage() {
   return (
-    <Suspense fallback={<PortalContentSkeleton />}>
+    <Suspense fallback={<TechnicianDashboardFallback />}>
       <TechnicianDashboardContent />
     </Suspense>
   )

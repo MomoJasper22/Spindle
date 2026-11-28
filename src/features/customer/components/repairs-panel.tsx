@@ -70,8 +70,10 @@ import {
   type RepairBookingInput,
   type RescheduleAppointmentInput,
 } from '../schemas/customer-schemas'
+import { seedCustomerCache } from '../lib/customer-portal-cache'
 
 interface RepairsPanelProps {
+  customerId?: string
   appliances: CustomerApplianceRow[]
   repairs: RepairDetailView[]
   appointments: AppointmentDetailView[]
@@ -82,6 +84,7 @@ interface RepairsPanelProps {
 }
 
 export function RepairsPanel({
+  customerId,
   appliances,
   repairs,
   appointments,
@@ -90,6 +93,17 @@ export function RepairsPanel({
   defaultApplianceId,
   initialNotice = null,
 }: RepairsPanelProps) {
+  React.useEffect(() => {
+    if (customerId) {
+      seedCustomerCache({
+        customerId,
+        appliances,
+        repairs,
+        appointments,
+        defaultServiceAddress,
+      })
+    }
+  }, [customerId, appliances, repairs, appointments, defaultServiceAddress])
   const activeAppliances = appliances.filter((a) => a.registration_status !== 'cancelled')
   const todayISO = getManilaTodayISO()
 

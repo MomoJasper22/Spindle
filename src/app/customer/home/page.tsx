@@ -9,7 +9,10 @@ import {
   getCustomerRepairs,
 } from '@/lib/data/portal-data'
 import { CustomerHomeView } from '@/features/customer/components/customer-home-view'
-import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
+import {
+  CustomerCacheSeeder,
+  CustomerHomeFallback,
+} from '@/features/customer/components/customer-cached-fallbacks'
 
 export const metadata: Metadata = {
   title: 'Home',
@@ -23,24 +26,35 @@ async function CustomerHomeContent() {
     getCustomerRepairs(profile.user_id),
     getCustomerAppointments(profile.user_id),
     getCustomerPayments(profile.user_id),
-    getCustomerActivityLogs(5),
+    getCustomerActivityLogs(profile.user_id, 5),
   ])
 
   return (
-    <CustomerHomeView
-      firstName={profile.first_name}
-      appliances={appliances}
-      repairs={repairs}
-      appointments={appointments}
-      payments={payments}
-      activityLogs={activityLogs}
-    />
+    <>
+      <CustomerCacheSeeder
+        customerId={profile.user_id}
+        firstName={profile.first_name}
+        appliances={appliances}
+        repairs={repairs}
+        appointments={appointments}
+        payments={payments}
+        activityLogs={activityLogs}
+      />
+      <CustomerHomeView
+        firstName={profile.first_name}
+        appliances={appliances}
+        repairs={repairs}
+        appointments={appointments}
+        payments={payments}
+        activityLogs={activityLogs}
+      />
+    </>
   )
 }
 
 export default function CustomerHomePage() {
   return (
-    <Suspense fallback={<PortalContentSkeleton />}>
+    <Suspense fallback={<CustomerHomeFallback />}>
       <CustomerHomeContent />
     </Suspense>
   )

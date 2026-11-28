@@ -89,7 +89,7 @@ export async function completeOnboardingAction(
     description: `${profile.first_name} ${profile.last_name} completed workspace onboarding (${parsed.data.branch_location}).`,
   })
 
-  updateTag('user-profile')
+  updateTag(profile.auth_user_id ? `user-profile:${profile.auth_user_id}` : 'user-profile')
   updateTag('admin-users')
   updateTag('admin-tech-profiles')
   redirect(getRoleHomePath(profile.role, profile))

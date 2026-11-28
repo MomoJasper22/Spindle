@@ -10,7 +10,7 @@ import {
   TechnicianJobsView,
   type JobsTabKey,
 } from '@/features/technician/components/technician-jobs-view'
-import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
+import { TechnicianJobsFallback } from '@/features/technician/components/technician-cached-fallbacks'
 
 export const metadata: Metadata = {
   title: 'My Jobs',
@@ -48,7 +48,7 @@ async function TechnicianJobsContent({
   const [repairs, appointments, payments] = await Promise.all([
     getTechnicianRepairs(profile.user_id),
     getTechnicianAppointments(profile.user_id),
-    getTechnicianPayments(),
+    getTechnicianPayments(profile.user_id),
   ])
 
   const initialTab = resolveTab(params.tab)
@@ -83,6 +83,7 @@ async function TechnicianJobsContent({
   return (
     <TechnicianJobsView
       key={`${initialTab}:${params.ticket ?? ''}:${params.payment_success ?? ''}:${params.payment_cancelled ?? ''}`}
+      techId={profile.user_id}
       availabilityStatus={profile.technician_profile?.availability_status ?? 'available'}
       repairs={repairs}
       appointments={appointments}
@@ -108,7 +109,7 @@ export default function TechnicianJobsPage({
   }>
 }) {
   return (
-    <Suspense fallback={<PortalContentSkeleton />}>
+    <Suspense fallback={<TechnicianJobsFallback />}>
       <TechnicianJobsContent searchParams={searchParams} />
     </Suspense>
   )
