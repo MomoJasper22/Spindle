@@ -9,6 +9,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="flex min-h-dvh flex-col bg-background lg:grid lg:grid-cols-2">
       {/* Mobile Compact Header so the Form Leads Immediately */}
       <header className="sticky top-0 z-20 flex shrink-0 items-center justify-between border-b border-border bg-card/95 px-4 py-2.5 backdrop-blur-xs lg:hidden">
+        <Link href="/" aria-label="Back to Spindle home" className="inline-flex min-h-[44px] items-center">
+          <SpindleLogo variant="dark" size="sm" />
+        </Link>
         <Link
           href="/"
           className="inline-flex min-h-[44px] items-center gap-1.5 px-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
@@ -16,12 +19,25 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           <span>Home</span>
         </Link>
-        <Link href="/" aria-label="Back to Spindle home" className="inline-flex min-h-[44px] items-center">
-          <SpindleLogo variant="dark" size="sm" />
-        </Link>
       </header>
 
-      {/* Desktop Left Showcase Panel */}
+      {/* Left Clean Auth Form Canvas */}
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="flex flex-1 flex-col bg-card px-4 py-6 pb-safe sm:px-12 sm:py-10 lg:px-12 lg:py-12"
+      >
+        <div className="hidden lg:flex lg:justify-start">
+          <Link href="/" aria-label="Back to Spindle landing page">
+            <SpindleLogo variant="dark" size="lg" showTagline />
+          </Link>
+        </div>
+        <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-start sm:justify-center lg:py-6">
+          {children}
+        </div>
+      </main>
+
+      {/* Desktop Right Showcase Panel */}
       <aside className="relative hidden lg:flex flex-col justify-between overflow-hidden bg-[#141B29] px-12 py-12 text-[#F8F7F4]">
         <Image
           src="/images/auth-left-showcase.jpg"
@@ -68,22 +84,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           &copy; 2026 Spindle Appliance Care Inc. All rights reserved.
         </p>
       </aside>
-
-      {/* Right Clean Auth Form Canvas */}
-      <main
-        id="main-content"
-        tabIndex={-1}
-        className="flex flex-1 flex-col bg-card px-4 py-6 pb-safe sm:px-12 sm:py-10 lg:px-12 lg:py-12"
-      >
-        <div className="hidden lg:flex lg:justify-end">
-          <Link href="/" aria-label="Back to Spindle landing page">
-            <SpindleLogo variant="dark" size="lg" showTagline />
-          </Link>
-        </div>
-        <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-start sm:justify-center lg:py-6">
-          {children}
-        </div>
-      </main>
     </div>
   )
 }
