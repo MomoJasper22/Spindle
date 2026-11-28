@@ -65,7 +65,6 @@ export function MarqueeTrack<T>({
   const isDraggingRef = React.useRef(false)
   const velocityRef = React.useRef(0)
   const stepRemainingRef = React.useRef(0)
-  const reducedMotionRef = React.useRef(false)
   const dragStateRef = React.useRef<DragState | null>(null)
   const suppressClickRef = React.useRef(false)
   const clickResetTimerRef = React.useRef<number | null>(null)
@@ -126,17 +125,6 @@ export function MarqueeTrack<T>({
     return () => observer.disconnect()
   }, [applyTransform, items.length])
 
-  // Respect user reduced-motion preference while keeping drag interaction working.
-  React.useEffect(() => {
-    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
-    reducedMotionRef.current = media.matches
-    const onChange = (event: MediaQueryListEvent) => {
-      reducedMotionRef.current = event.matches
-    }
-    media.addEventListener('change', onChange)
-    return () => media.removeEventListener('change', onChange)
-  }, [])
-
   // Smooth sub-pixel right-to-left loop + post-drag momentum coasting.
   React.useEffect(() => {
     let rafId = 0
@@ -148,7 +136,6 @@ export function MarqueeTrack<T>({
 
       const setWidth = setWidthRef.current
       if (setWidth > 0 && !isDraggingRef.current) {
-        const isPaused = isHoveredRef.current || reducedMotionRef.current
         let delta = 0
 
         if (Math.abs(velocityRef.current) > 2) {
@@ -160,9 +147,7 @@ export function MarqueeTrack<T>({
 
         const stepRemaining = stepRemainingRef.current
         if (Math.abs(stepRemaining) > 0.25) {
-          const stepDelta = reducedMotionRef.current
-            ? stepRemaining
-            : stepRemaining * (1 - Math.exp(-12 * dt))
+          const stepDelta = stepRemaining * (1 - Math.exp(-12 * dt))
           stepRemainingRef.current -= stepDelta
           delta += stepDelta
         } else if (stepRemaining !== 0) {
@@ -170,7 +155,7 @@ export function MarqueeTrack<T>({
           stepRemainingRef.current = 0
         }
 
-        if (!isPaused) {
+        if (!isHoveredRef.current) {
           delta -= speedPxPerSec * dt
         }
 
