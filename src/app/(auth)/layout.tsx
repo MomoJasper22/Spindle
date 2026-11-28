@@ -9,15 +9,15 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="flex min-h-dvh flex-col bg-background lg:grid lg:grid-cols-2">
       {/* Mobile Compact Header so the Form Leads Immediately */}
       <header className="sticky top-0 z-20 flex shrink-0 items-center justify-between border-b border-border bg-card/95 px-4 py-2.5 backdrop-blur-xs lg:hidden">
-        <Link href="/" aria-label="Back to Spindle home" className="inline-flex min-h-[44px] items-center">
-          <SpindleLogo variant="dark" size="sm" />
-        </Link>
         <Link
           href="/"
           className="inline-flex min-h-[44px] items-center gap-1.5 px-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           <span>Home</span>
+        </Link>
+        <Link href="/" aria-label="Back to Spindle home" className="inline-flex min-h-[44px] items-center">
+          <SpindleLogo variant="dark" size="sm" />
         </Link>
       </header>
 
@@ -38,13 +38,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#141B29]/95 via-[#141B29]/82 to-[#141B29]/70"
         />
 
-        <div className="relative z-10 flex items-center">
-          <Link href="/" aria-label="Back to Spindle landing page">
-            <SpindleLogo variant="light" size="lg" showTagline />
-          </Link>
-        </div>
-
-        <div className="relative z-10 max-w-md space-y-6">
+        <div className="relative z-10 my-auto max-w-md space-y-6">
           <div className="space-y-3">
             <h1 className="font-heading text-3xl font-bold tracking-tight text-white xl:text-4xl">
               Dependable care for the appliances your home runs on.
@@ -79,9 +73,16 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <main
         id="main-content"
         tabIndex={-1}
-        className="flex flex-1 flex-col justify-start bg-card px-4 py-6 pb-safe sm:justify-center sm:px-12 sm:py-10 lg:px-16"
+        className="flex flex-1 flex-col bg-card px-4 py-6 pb-safe sm:px-12 sm:py-10 lg:px-12 lg:py-12"
       >
-        <div className="mx-auto w-full max-w-md">{children}</div>
+        <div className="hidden lg:flex lg:justify-end">
+          <Link href="/" aria-label="Back to Spindle landing page">
+            <SpindleLogo variant="dark" size="lg" showTagline />
+          </Link>
+        </div>
+        <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-start sm:justify-center lg:py-6">
+          {children}
+        </div>
       </main>
     </div>
   )

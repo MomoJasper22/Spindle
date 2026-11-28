@@ -60,25 +60,14 @@ export function CustomerHomeView({
 
   return (
     <div className="space-y-6">
-      {/* Greeting & Single Primary Action */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Magandang araw, {firstName}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Here is a quick look at your home visits, appliances, and payments.
-          </p>
-        </div>
-
-        {activeAppliances.length > 0 && (
-          <Button asChild size="lg" className="w-full sm:w-auto">
-            <Link href="/customer/bookings?book=1">
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              <span>Book a Home Visit</span>
-            </Link>
-          </Button>
-        )}
+      {/* Greeting */}
+      <div>
+        <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          Magandang araw, {firstName}
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Here is a quick look at your home visits, appliances, and payments.
+        </p>
       </div>
 
       {/* Next Upcoming Visit Highlight (Passbook Card) */}

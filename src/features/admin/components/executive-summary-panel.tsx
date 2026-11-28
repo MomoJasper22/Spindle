@@ -151,9 +151,17 @@ export function ExecutiveSummaryPanel({
               const count = repairs.filter((r) => r.status === status).length
               const pct = repairs.length > 0 ? Math.round((count / repairs.length) * 100) : 0
               return (
-                <div key={status} className="space-y-1">
+                <Link
+                  key={status}
+                  href={`/admin/repairs?status=${status}`}
+                  aria-label={`View ${humanizeLabel(status)} repair tickets (${count})`}
+                  className="group -mx-2 block space-y-1 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
                   <div className="flex items-center justify-between text-xs">
-                    <StatusBadge status={status} />
+                    <StatusBadge
+                      status={status}
+                      className="transition-transform group-hover:scale-[1.02]"
+                    />
                     <span className="font-semibold text-foreground tabular-nums">
                       {count} ({pct}%)
                     </span>
@@ -164,7 +172,7 @@ export function ExecutiveSummaryPanel({
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                </div>
+                </Link>
               )
             })}
           </CardContent>

@@ -4,19 +4,33 @@ import { requireAdminFeature } from '@/lib/auth/session'
 import { getAdminAppliances, getAdminRepairs, getAdminUsers } from '@/lib/data/portal-data'
 import { AdminRepairsPanel } from '@/features/admin/components/repairs-panel'
 import { PortalContentSkeleton } from '@/components/shared/page-skeleton'
+import { REPAIR_STATUSES } from '@/lib/constants'
 
 export const metadata: Metadata = {
   title: 'Repair Tickets',
 }
 
-async function AdminRepairsContent() {
-  await requireAdminFeature('repairs')
+function resolveStatusFilter(status?: string): string {
+  if (status && (REPAIR_STATUSES as readonly string[]).includes(status)) {
+    return status
+  }
+  return 'all'
+}
+
+async function AdminRepairsContent({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>
+}) {
+  const [, params] = await Promise.all([requireAdminFeature('repairs'), searchParams])
 
   const [repairs, users, appliances] = await Promise.all([
     getAdminRepairs(),
     getAdminUsers(),
     getAdminAppliances(),
   ])
+
+  const initialStatusFilter = resolveStatusFilter(params.status)
 
   return (
     <div className="space-y-6">
@@ -29,15 +43,25 @@ async function AdminRepairsContent() {
         </p>
       </div>
 
-      <AdminRepairsPanel repairs={repairs} users={users} appliances={appliances} />
+      <AdminRepairsPanel
+        key={initialStatusFilter}
+        repairs={repairs}
+        users={users}
+        appliances={appliances}
+        initialStatusFilter={initialStatusFilter}
+      />
     </div>
   )
 }
 
-export default function AdminRepairsPage() {
+export default function AdminRepairsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>
+}) {
   return (
     <Suspense fallback={<PortalContentSkeleton />}>
-      <AdminRepairsContent />
+      <AdminRepairsContent searchParams={searchParams} />
     </Suspense>
   )
 }

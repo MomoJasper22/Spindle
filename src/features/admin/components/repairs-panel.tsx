@@ -65,12 +65,22 @@ interface AdminRepairsPanelProps {
   repairs: RepairDetailView[]
   users: UserWithRole[]
   appliances: CustomerApplianceRow[]
+  initialStatusFilter?: string
 }
 
-export function AdminRepairsPanel({ repairs, users, appliances }: AdminRepairsPanelProps) {
+export function AdminRepairsPanel({
+  repairs,
+  users,
+  appliances,
+  initialStatusFilter = 'all',
+}: AdminRepairsPanelProps) {
   const [search, setSearch] = React.useState('')
-  const [statusFilter, setStatusFilter] = React.useState('all')
+  const [statusFilter, setStatusFilter] = React.useState(initialStatusFilter)
   const [branchFilter, setBranchFilter] = React.useState('all')
+
+  React.useEffect(() => {
+    setStatusFilter(initialStatusFilter)
+  }, [initialStatusFilter])
   const [createOpen, setCreateOpen] = React.useState(false)
   const [editing, setEditing] = React.useState<RepairDetailView | null>(null)
   const [feedback, setFeedback] = React.useState<{ type: 'error' | 'success'; message: string } | null>(
