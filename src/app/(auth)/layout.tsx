@@ -35,7 +35,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-start sm:justify-center lg:py-6">
           {children}
         </div>
-        <p className="pt-6 text-xs text-muted-foreground lg:pt-0">
+        <p className="pt-4 text-xs text-muted-foreground lg:pt-0">
           &copy; 2026 Spindle Appliance Care Inc. All rights reserved.
         </p>
       </main>
@@ -60,25 +60,25 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="relative z-10 max-w-md space-y-6">
           <div className="space-y-3">
             <h1 className="font-heading text-3xl font-bold tracking-tight text-white xl:text-4xl">
-              Expert appliance care, scheduled around your day.
+              Keep every home &amp; shop appliance running smoothly.
             </h1>
             <p className="text-base leading-relaxed text-slate-200">
-              Save your home or shop units once, book a convenient 2-hour visit window, and track diagnostics, repairs, and receipts in one place.
+              Book verified technicians across the Philippines, review clear Peso pricing before work starts, and track every home visit online.
             </p>
           </div>
 
           <ul className="space-y-3 text-sm text-slate-100">
             <li className="flex items-center gap-2.5">
               <ShieldCheck className="h-4 w-4 shrink-0 text-teal-300" aria-hidden="true" />
-              <span>Verified technicians for aircons, fridges, washers &amp; store units</span>
+              <span>Trained, vetted specialists for major home &amp; commercial brands</span>
             </li>
             <li className="flex items-center gap-2.5">
               <Wrench className="h-4 w-4 shrink-0 text-amber-300" aria-hidden="true" />
-              <span>2-hour arrival windows across Metro Manila, Laguna, Cebu &amp; Davao</span>
+              <span>Flexible 2-hour arrival windows across Metro Manila, Laguna, Cebu &amp; Davao</span>
             </li>
             <li className="flex items-center gap-2.5">
               <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-300" aria-hidden="true" />
-              <span>Clear Peso pricing via PayMongo (GCash, Maya, QR Ph, Card) or cash</span>
+              <span>Down payment or pay in full via PayMongo (GCash, Maya, QR Ph, Card) or cash</span>
             </li>
           </ul>
         </div>
